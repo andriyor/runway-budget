@@ -1,7 +1,9 @@
 services:
   api:
     build: { target: api }
-    env_file: { path: api/.env, required: false }
+    env_file:
+      - path: api/.env
+        required: false
     volumes:
       - data:/data
     restart: unless-stopped
