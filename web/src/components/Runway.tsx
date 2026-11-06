@@ -12,9 +12,9 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
   const [now] = useState(Date.now)
   if (burn <= 0) {
     return (
-      <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40">
+      <div className="rounded-xl bg-emerald-50 p-3 sm:p-4 dark:bg-emerald-950/40">
         <p className={muted}>{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-emerald-700 dark:text-emerald-400">No end</p>
+        <p className="mt-1 text-xl font-semibold text-emerald-700 sm:text-2xl dark:text-emerald-400">No end</p>
         <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">+{format(-burn, currency)} saved per month</p>
       </div>
     )
@@ -22,9 +22,9 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
   const months = Math.max(0, total / burn)
   const until = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)
   return (
-    <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+    <div className="rounded-xl bg-zinc-50 p-3 sm:p-4 dark:bg-zinc-800/50">
       <p className={muted}>{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+      <p className="mt-1 text-xl font-semibold text-zinc-900 tabular-nums sm:text-2xl dark:text-zinc-100">
         {months.toFixed(1)} <span className="text-base font-normal text-zinc-500">months</span>
         {months >= 12 && <span className="text-base font-normal text-zinc-500"> · ≈ {(months / 12).toFixed(1)} years</span>}
       </p>
@@ -43,9 +43,9 @@ function SpendLimit({ months, total, spend, minimal, currency }: SpendLimitProps
   const limit = Math.max(0, total) / months
   const diff = limit - spend
   return (
-    <div className="rounded-xl bg-violet-50 p-4 dark:bg-violet-950/40">
+    <div className="rounded-xl bg-violet-50 p-3 sm:p-4 dark:bg-violet-950/40">
       <p className={muted}>To last {months} months without salary</p>
-      <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+      <p className="mt-1 text-xl font-semibold text-zinc-900 tabular-nums sm:text-2xl dark:text-zinc-100">
         {format(limit, currency)} <span className="text-base font-normal text-zinc-500">per month at most</span>
       </p>
       <p className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
@@ -140,7 +140,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn, minim
   const optional = <span className="font-normal text-zinc-400">· optional</span>
 
   return (
-    <section className={`${card} grid gap-6 md:grid-cols-2`}>
+    <section className={`${card} grid gap-4 sm:gap-6 md:grid-cols-2`}>
       <form className="flex flex-col gap-4" onSubmit={save}>
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Runway</h2>

@@ -1,6 +1,6 @@
 export const linkButton = 'shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400'
 
-export const card = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800'
+export const card = 'rounded-2xl bg-white p-4 shadow-sm sm:p-5 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800'
 
 export const muted = 'text-sm text-zinc-500 dark:text-zinc-400'
 

@@ -52,7 +52,7 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
 
   return (
     <li className="py-3">
-      <form className="flex flex-wrap items-center gap-3" onSubmit={save}>
+      <form className="flex flex-wrap items-center gap-x-3 gap-y-2" onSubmit={save}>
         <div className="-ml-2 flex flex-col">
           <button type="button" onClick={onMoveUp} disabled={!onMoveUp} aria-label={`Move ${account.name} up`} className={moveButton}>
             <ChevronIcon up />
@@ -77,19 +77,23 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
           </p>
         </div>
-        <KindToggle value={kind} onChange={setKind} />
-        <div className="w-56">
-          <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
-        </div>
-        <button className={button} disabled={!dirty}>Save</button>
+        {/* phones: delete sits on the name line and the controls take a full second line;
+            from sm up everything is one row with delete last */}
         <button
           type="button"
           onClick={remove}
           aria-label={`Delete account ${account.name}`}
-          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 sm:order-last dark:hover:bg-zinc-800"
         >
           <TrashIcon />
         </button>
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
+          <KindToggle value={kind} onChange={setKind} />
+          <div className="min-w-0 flex-1 sm:w-56 sm:flex-none">
+            <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+          </div>
+          <button className={button} disabled={!dirty}>Save</button>
+        </div>
       </form>
       <ErrorText>{error}</ErrorText>
     </li>

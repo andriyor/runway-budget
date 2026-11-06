@@ -88,7 +88,7 @@ export function Balances() {
   return (
     <>
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
         <p className={muted}>USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</p>
       </header>
 
@@ -98,17 +98,18 @@ export function Balances() {
         </p>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      {/* phones: one line per currency; the rate footer only shows from sm up */}
+      <section className="grid gap-2 sm:grid-cols-3 sm:gap-4">
         {currencies.map((c) => (
-          <div key={c} className={`${card} flex flex-col`}>
-            <p className={`flex items-center gap-2 ${muted}`}>
+          <div key={c} className={`${card} flex items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:justify-start`}>
+            <p className={`flex shrink-0 items-center gap-2 ${muted}`}>
               <CurrencyIcon currency={c} /> Total in {c}
             </p>
-            <p className="mt-3 truncate text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+            <p className="min-w-0 truncate text-lg font-semibold text-zinc-900 tabular-nums sm:mt-3 sm:text-2xl dark:text-zinc-100">
               {rates ? format(totalIn(c)!, c) : <Skeleton />}
             </p>
             {rates && (
-              <p className="mt-4 flex items-center gap-1.5 border-t border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
+              <p className="mt-4 hidden items-center gap-1.5 border-t sm:flex border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
                 {c === 'UAH'
                   ? <><BankIcon /> NBU rate · {rates.date}</>
                   : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
