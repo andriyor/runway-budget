@@ -46,6 +46,15 @@ function BankIcon() {
   )
 }
 
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  )
+}
+
 function Skeleton() {
   return <span className="inline-block h-8 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
 }
@@ -132,7 +141,14 @@ function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Accou
   )
 }
 
-type Budget = { monthlySpend: number, currency: Currency, salary: number | null, salaryCurrency: Currency | null }
+type Budget = {
+  monthlySpend: number
+  currency: Currency
+  salary: number | null
+  salaryCurrency: Currency | null
+  reserve: number | null
+  reserveCurrency: Currency | null
+}
 type Convert = (amount: number, from: Currency, to: Currency) => number | undefined
 
 const AVG_DAYS_IN_MONTH = 30.44
@@ -165,12 +181,26 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
   )
 }
 
+const amountString = (n: number | null) => (n === null ? '' : String(n))
+
+// request body for PUT /budget; empty optional amount omits (clears) its pair
+function budgetBody(spend: string, currency: Currency, salary: string, salaryCurrency: Currency, reserve: string, reserveCurrency: Currency) {
+  return {
+    monthlySpend: Number(spend),
+    currency,
+    ...(salary !== '' && { salary: Number(salary), salaryCurrency }),
+    ...(reserve !== '' && { reserve: Number(reserve), reserveCurrency }),
+  }
+}
+
 function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undefined, convert: Convert }) {
   const [saved, setSaved] = useState<Budget | null>(null)
   const [spend, setSpend] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
   const [salary, setSalary] = useState('')
   const [salaryCurrency, setSalaryCurrency] = useState<Currency>('UAH')
+  const [reserve, setReserve] = useState('')
+  const [reserveCurrency, setReserveCurrency] = useState<Currency>('UAH')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -179,38 +209,41 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
       if (b) {
         setSpend(String(b.monthlySpend))
         setCurrency(b.currency)
-        setSalary(b.salary === null ? '' : String(b.salary))
+        setSalary(amountString(b.salary))
         if (b.salaryCurrency) setSalaryCurrency(b.salaryCurrency)
+        setReserve(amountString(b.reserve))
+        if (b.reserveCurrency) setReserveCurrency(b.reserveCurrency)
       }
     }).catch((e) => setError(e.message))
   }, [])
 
+  const body = budgetBody(spend, currency, salary, salaryCurrency, reserve, reserveCurrency)
+
   async function save(e: FormEvent) {
     e.preventDefault()
     try {
-      setSaved(await api<Budget>('/budget', {
-        method: 'PUT',
-        body: JSON.stringify({
-          monthlySpend: Number(spend),
-          currency,
-          // empty salary field clears it
-          ...(salary !== '' && { salary: Number(salary), salaryCurrency }),
-        }),
-      }))
+      setSaved(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(body) }))
       setError('')
     } catch (err) {
       setError((err as Error).message)
     }
   }
 
+  const dirty = !saved || JSON.stringify(body) !== JSON.stringify(budgetBody(
+    String(saved.monthlySpend), saved.currency,
+    amountString(saved.salary), saved.salaryCurrency ?? salaryCurrency,
+    amountString(saved.reserve), saved.reserveCurrency ?? reserveCurrency,
+  ))
+
   const total = saved && totalIn(saved.currency)
-  const salaryInSpendCurrency = saved?.salary != null && saved.salaryCurrency
-    ? convert(saved.salary, saved.salaryCurrency, saved.currency)
-    : undefined
-  const dirty = !saved
-    || Number(spend) !== saved.monthlySpend
-    || currency !== saved.currency
-    || (salary === '' ? saved.salary !== null : Number(salary) !== saved.salary || salaryCurrency !== saved.salaryCurrency)
+  const inSpendCurrency = (amount: number | null, from: Currency | null) =>
+    saved && amount !== null && from ? convert(amount, from, saved.currency) : undefined
+  const salaryInSpendCurrency = inSpendCurrency(saved?.salary ?? null, saved?.salaryCurrency ?? null)
+  const reserved = inSpendCurrency(saved?.reserve ?? null, saved?.reserveCurrency ?? null) ?? 0
+  const available = total != null ? total - reserved : undefined
+
+  const fieldLabel = 'text-sm font-medium text-zinc-700 dark:text-zinc-300'
+  const optional = <span className="font-normal text-zinc-400">· optional</span>
 
   return (
     <section className={`${card} grid gap-6 md:grid-cols-2`}>
@@ -220,14 +253,16 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
           <p className={muted}>How long your savings last.</p>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">I spend per month</span>
+          <span className={fieldLabel}>I spend per month</span>
           <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={spend} onChange={setSpend} currency={currency} onCurrency={setCurrency} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            My salary per month <span className="font-normal text-zinc-400">· optional</span>
-          </span>
+          <span className={fieldLabel}>My salary per month {optional}</span>
           <MoneyInput id="salary" label="Monthly salary" min="0" placeholder="leave empty if none" value={salary} onChange={setSalary} currency={salaryCurrency} onCurrency={setSalaryCurrency} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={fieldLabel}>Untouchable reserve {optional}</span>
+          <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={reserve} onChange={setReserve} currency={reserveCurrency} onCurrency={setReserveCurrency} />
         </label>
         <div>
           <button className={button} disabled={!dirty}>Save</button>
@@ -235,12 +270,20 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
         </div>
       </form>
       <div className="flex flex-col justify-center gap-3">
-        {saved && total !== undefined
+        {saved && available !== undefined
           ? (
             <>
-              <Estimate label="Without salary" total={total!} burn={saved.monthlySpend} currency={saved.currency} />
+              {reserved > 0 && (
+                <p className={`flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
+                  <LockIcon />
+                  <span>{format(reserved, saved.currency)} untouchable</span>
+                  <span>·</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(Math.max(0, available), saved.currency)} available</span>
+                </p>
+              )}
+              <Estimate label="Without salary" total={available} burn={saved.monthlySpend} currency={saved.currency} />
               {salaryInSpendCurrency !== undefined && (
-                <Estimate label="With salary" total={total!} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />
+                <Estimate label="With salary" total={available} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />
               )}
             </>
             )

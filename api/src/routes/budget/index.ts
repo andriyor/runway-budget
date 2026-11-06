@@ -1,15 +1,28 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { budget, currencies, type Currency } from '../../db/schema'
 
-type BudgetInput = { monthlySpend: number, currency: Currency, salary?: number, salaryCurrency?: Currency }
+type BudgetInput = {
+  monthlySpend: number
+  currency: Currency
+  salary?: number
+  salaryCurrency?: Currency
+  reserve?: number
+  reserveCurrency?: Currency
+}
+
+const fromCents = (cents: number | null) => cents === null ? null : cents / 100
+// omitted amount clears the pair
+const toCents = (amount?: number) => amount === undefined ? null : Math.round(amount * 100)
 
 const toDto = (row?: typeof budget.$inferSelect) =>
   row
     ? {
         monthlySpend: row.monthlySpendCents / 100,
         currency: row.currency,
-        salary: row.salaryCents === null ? null : row.salaryCents / 100,
-        salaryCurrency: row.salaryCurrency
+        salary: fromCents(row.salaryCents),
+        salaryCurrency: row.salaryCurrency,
+        reserve: fromCents(row.reserveCents),
+        reserveCurrency: row.reserveCurrency
       }
     : null
 
@@ -29,20 +42,22 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
           monthlySpend: { type: 'number', exclusiveMinimum: 0 },
           currency: { type: 'string', enum: currencies },
           salary: { type: 'number', minimum: 0 },
-          salaryCurrency: { type: 'string', enum: currencies }
+          salaryCurrency: { type: 'string', enum: currencies },
+          reserve: { type: 'number', minimum: 0 },
+          reserveCurrency: { type: 'string', enum: currencies }
         },
-        dependencies: { salary: ['salaryCurrency'] }
+        dependencies: { salary: ['salaryCurrency'], reserve: ['reserveCurrency'] }
       }
     }
   }, async (request) => {
-    const { monthlySpend, currency, salary, salaryCurrency } = request.body
-    const hasSalary = salary !== undefined
+    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency } = request.body
     const values = {
       monthlySpendCents: Math.round(monthlySpend * 100),
       currency,
-      // omitted salary clears it
-      salaryCents: hasSalary ? Math.round(salary * 100) : null,
-      salaryCurrency: hasSalary ? salaryCurrency! : null
+      salaryCents: toCents(salary),
+      salaryCurrency: salary === undefined ? null : salaryCurrency!,
+      reserveCents: toCents(reserve),
+      reserveCurrency: reserve === undefined ? null : reserveCurrency!
     }
     const [row] = await fastify.db.insert(budget)
       .values({ id: 1, ...values })

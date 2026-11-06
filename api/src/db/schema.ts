@@ -22,5 +22,8 @@ export const budget = sqliteTable('budget', {
   currency: text('currency', { enum: currencies }).notNull(),
   // optional; both set or both null
   salaryCents: integer('salary_cents'),
-  salaryCurrency: text('salary_currency', { enum: currencies })
+  salaryCurrency: text('salary_currency', { enum: currencies }),
+  // optional amount that is never spent; excluded from runway
+  reserveCents: integer('reserve_cents'),
+  reserveCurrency: text('reserve_currency', { enum: currencies })
 })
