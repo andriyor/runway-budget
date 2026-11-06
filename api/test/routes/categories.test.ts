@@ -56,7 +56,7 @@ test('categories come from MCC, description rules and merchant overrides', async
   assert.equal((await setOne(999, 'renovation')).statusCode, 404)
 
   const list = (await app.inject({ url: '/categories' })).json()
-  assert.deepEqual(list[0].subcategories[0], { id: 'supermarket', label: 'Супермаркет' })
+  assert.deepEqual(list[0].subcategories[0], { id: 'supermarket', label: 'Супермаркет', essential: true })
   assert.equal(list.find((c: { id: string }) => c.id === 'investments').spending, false)
   assert.deepEqual(list.find((c: { id: string }) => c.id === 'income'), { id: 'income', label: 'Надходження', emoji: '💰', spending: false, subcategories: [] })
 })

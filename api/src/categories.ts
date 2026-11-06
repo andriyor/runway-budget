@@ -4,14 +4,15 @@ import type { Category as CategoryDto } from '@runway-budget/shared'
 // A transaction always gets a leaf: a subcategory, or a category that has none.
 // MCC ranges may overlap; the first leaf in this order wins (salons before generic services).
 type Range = readonly [number, number]
-type Sub = { id: string, label: string, mcc?: readonly Range[] }
+// essential: needed to live (rent, groceries, medicine); the rest could be cut in a lean month
+type Sub = { id: string, label: string, essential?: boolean, mcc?: readonly Range[] }
 type Category = { id: string, label: string, emoji: string, spending?: false, mcc?: readonly Range[], subcategories?: readonly Sub[] }
 
 export const categories = [
   {
     id: 'groceries', label: 'Продукти', emoji: '🛒', subcategories: [
-      { id: 'supermarket', label: 'Супермаркет', mcc: [[5411, 5411]] },
-      { id: 'corner_store', label: 'Магазин біля дому', mcc: [[5422, 5451], [5499, 5499]] },
+      { id: 'supermarket', label: 'Супермаркет', essential: true, mcc: [[5411, 5411]] },
+      { id: 'corner_store', label: 'Магазин біля дому', essential: true, mcc: [[5422, 5451], [5499, 5499]] },
       { id: 'grocery_delivery', label: 'Доставка продуктів' },
       { id: 'alcohol_tobacco', label: 'Алкоголь і тютюн', mcc: [[5921, 5921], [5993, 5993]] }
     ]
@@ -27,26 +28,26 @@ export const categories = [
   {
     id: 'transport', label: 'Транспорт', emoji: '🚕', subcategories: [
       { id: 'taxi', label: 'Таксі', mcc: [[4121, 4121]] },
-      { id: 'public_transport', label: 'Громадський транспорт', mcc: [[4111, 4111]] },
+      { id: 'public_transport', label: 'Громадський транспорт', essential: true, mcc: [[4111, 4111]] },
       { id: 'trains_buses', label: 'Поїзди та автобуси', mcc: [[4011, 4011], [4112, 4112], [4131, 4131]] },
-      { id: 'fuel', label: 'Паливо', mcc: [[5172, 5172], [5541, 5542], [5983, 5983]] },
+      { id: 'fuel', label: 'Паливо', essential: true, mcc: [[5172, 5172], [5541, 5542], [5983, 5983]] },
       { id: 'car_service', label: 'Обслуговування авто', mcc: [[3351, 3500], [5531, 5533], [7512, 7519], [7531, 7549]] },
       { id: 'parking', label: 'Паркування', mcc: [[4784, 4784], [7523, 7523]] }
     ]
   },
   {
     id: 'housing_utilities', label: 'Житло та комуналка', emoji: '🏠', subcategories: [
-      { id: 'rent', label: 'Оренда житла', mcc: [[6513, 6513]] },
-      { id: 'electricity', label: 'Електроенергія' },
-      { id: 'gas_heating', label: 'Газ і опалення' },
-      { id: 'water', label: 'Вода' },
-      { id: 'utility_bills', label: 'Комунальні рахунки', mcc: [[4900, 4900]] }
+      { id: 'rent', label: 'Оренда житла', essential: true, mcc: [[6513, 6513]] },
+      { id: 'electricity', label: 'Електроенергія', essential: true },
+      { id: 'gas_heating', label: 'Газ і опалення', essential: true },
+      { id: 'water', label: 'Вода', essential: true },
+      { id: 'utility_bills', label: 'Комунальні рахунки', essential: true, mcc: [[4900, 4900]] }
     ]
   },
   {
     id: 'telecom_subscriptions', label: 'Зв’язок і підписки', emoji: '📲', subcategories: [
-      { id: 'mobile', label: 'Мобільний зв’язок', mcc: [[4812, 4814]] },
-      { id: 'internet_tv', label: 'Інтернет і ТБ', mcc: [[4816, 4816], [4899, 4899]] },
+      { id: 'mobile', label: 'Мобільний зв’язок', essential: true, mcc: [[4812, 4814]] },
+      { id: 'internet_tv', label: 'Інтернет і ТБ', essential: true, mcc: [[4816, 4816], [4899, 4899]] },
       { id: 'digital_subscriptions', label: 'Цифрові підписки', mcc: [[5734, 5734], [5815, 5815], [5817, 5818], [7372, 7372]] }
     ]
   },
@@ -68,9 +69,9 @@ export const categories = [
   },
   {
     id: 'health_beauty', label: 'Здоров’я і краса', emoji: '💊', subcategories: [
-      { id: 'pharmacy', label: 'Аптека і ліки', mcc: [[5122, 5122], [5912, 5912], [5975, 5976]] },
-      { id: 'doctors', label: 'Лікарі', mcc: [[8011, 8020], [8031, 8099]] },
-      { id: 'dentistry', label: 'Стоматологія', mcc: [[8021, 8021]] },
+      { id: 'pharmacy', label: 'Аптека і ліки', essential: true, mcc: [[5122, 5122], [5912, 5912], [5975, 5976]] },
+      { id: 'doctors', label: 'Лікарі', essential: true, mcc: [[8011, 8020], [8031, 8099]] },
+      { id: 'dentistry', label: 'Стоматологія', essential: true, mcc: [[8021, 8021]] },
       { id: 'cosmetics', label: 'Косметика', mcc: [[5977, 5977]] },
       { id: 'salons_care', label: 'Салони та догляд', mcc: [[7230, 7230], [7297, 7298]] }
     ]
@@ -112,16 +113,16 @@ export const categories = [
   },
   {
     id: 'mandatory_payments', label: 'Обов’язкові платежі', emoji: '🧾', subcategories: [
-      { id: 'loans_interest', label: 'Кредити і відсотки' },
-      { id: 'taxes_fees', label: 'Податки і збори', mcc: [[9211, 9399]] },
-      { id: 'insurance', label: 'Страхування', mcc: [[5960, 5960], [6300, 6399]] },
-      { id: 'bank_fees', label: 'Комісії банку' }
+      { id: 'loans_interest', label: 'Кредити і відсотки', essential: true },
+      { id: 'taxes_fees', label: 'Податки і збори', essential: true, mcc: [[9211, 9399]] },
+      { id: 'insurance', label: 'Страхування', essential: true, mcc: [[5960, 5960], [6300, 6399]] },
+      { id: 'bank_fees', label: 'Комісії банку', essential: true }
     ]
   },
   {
     id: 'pets', label: 'Тварини', emoji: '🐾', subcategories: [
-      { id: 'pet_food_supplies', label: 'Корм і товари', mcc: [[5995, 5995]] },
-      { id: 'vet', label: 'Ветеринар', mcc: [[742, 742]] }
+      { id: 'pet_food_supplies', label: 'Корм і товари', essential: true, mcc: [[5995, 5995]] },
+      { id: 'vet', label: 'Ветеринар', essential: true, mcc: [[742, 742]] }
     ]
   },
   {
@@ -139,7 +140,7 @@ export const categories = [
   { id: 'investments', label: 'Інвестиції', emoji: '📈', spending: false, mcc: [[6211, 6211]] }
 ] as const satisfies readonly Category[]
 
-type Leaf = { id: string, label: string, mcc?: readonly Range[], parent: Category }
+type Leaf = { id: string, label: string, essential?: boolean, mcc?: readonly Range[], parent: Category }
 const leaves: Leaf[] = (categories as readonly Category[]).flatMap((c) =>
   c.subcategories ? c.subcategories.map((s) => ({ ...s, parent: c })) : [{ ...c, parent: c }])
 
@@ -164,10 +165,13 @@ export function categorize (mcc: number, description: string, amount: number, ov
 }
 
 // tree for the UI: every category with its parent-level info and leaves
+// default for a leaf; per-merchant and per-transaction overrides win over it
+export const isEssential = (id: CategoryId) => leaves.find((l) => l.id === id)?.essential ?? false
+
 export const categoryTree: CategoryDto[] = (categories as readonly Category[]).map(({ id, label, emoji, spending, subcategories }) => ({
   id,
   label,
   emoji,
   spending: spending ?? true,
-  subcategories: (subcategories ?? []).map(({ id, label }) => ({ id, label }))
+  subcategories: (subcategories ?? []).map(({ id, label, essential }) => ({ id, label, essential: essential ?? false }))
 }))

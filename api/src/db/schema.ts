@@ -39,13 +39,21 @@ export const transactions = sqliteTable('transactions', {
   // user's category for this transaction only; wins over merchant_categories
   category: text('category', { enum: categoryIds as [string, ...string[]] }),
   // user's free-text note
-  note: text('note')
+  note: text('note'),
+  // user's essential flag for this transaction only; wins over merchant_essentials
+  essential: integer('essential', { mode: 'boolean' })
 })
 
 // user's category for every transaction of a merchant; key is merchantKey(description)
 export const merchantCategories = sqliteTable('merchant_categories', {
   merchant: text('merchant').primaryKey(),
   category: text('category', { enum: categoryIds as [string, ...string[]] }).notNull()
+})
+
+// user's essential flag for every transaction of a merchant; key is merchantKey(description)
+export const merchantEssentials = sqliteTable('merchant_essentials', {
+  merchant: text('merchant').primaryKey(),
+  essential: integer('essential', { mode: 'boolean' }).notNull()
 })
 
 export const goals = sqliteTable('goals', {

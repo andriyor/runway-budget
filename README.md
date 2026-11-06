@@ -25,6 +25,9 @@ and when you reach your goals.
 - **Categories**: transactions are sorted into categories and subcategories automatically from their
   MCC. Correct one transaction or every transaction from a merchant, and mark transfers as income,
   moves between your own accounts or investments so they do not count as spending.
+- **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. «Лише необхідне»
+  shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
+  monthly spending, the essential one as the extreme-saving amount.
 
 ## Stack
 
@@ -108,7 +111,8 @@ integer minor units (cents/kopiykas).
 | `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
-| `PATCH`  | `/transactions/:id` | Set a transaction's note `{ note }`; empty or `null` clears it |
+| `PATCH`  | `/transactions/:id` | Set a transaction's `{ note?, essential? }`; empty note or `null` clears |
+| `PUT`    | `/categories/merchants/essential` | Mark a merchant essential `{ description, essential }`; `null` resets it |
 | `POST`   | `/accounts/mono/sync` | Import 31 days from Monobank ending at `?to=` (unix seconds, default now) |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
@@ -175,6 +179,11 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   (which therefore sees the shown domains). Unmatched merchants show their category's emoji. Add a
   line to the map to cover a new shop.
 - **Transactions are deleted with their account** via an `ON DELETE CASCADE` foreign key.
+- **Essential follows the category, with the same two override levels.** Each subcategory carries an
+  `essential` default in `api/src/categories.ts` (housing, groceries, medicine, mobile and internet,
+  public transport, fuel, mandatory payments, pets). A merchant flag (`merchant_essentials`) and a
+  transaction flag (`transactions.essential`) win over it, independently of the category overrides.
+  The minimal month is the median of essential spending over complete months.
 - **Summaries and filters run in the browser.** The page loads an account's whole transaction list
   and groups it by month, ISO week, category and merchant locally, so month and week boundaries use
   the viewer's time zone and switching filters needs no request. Move filtering to the API with

@@ -5,10 +5,11 @@ import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
 import { Skeleton } from '../components/controls'
 import { api } from '../lib/api'
+import { budgetWithMedian } from '../lib/budget'
 import { format } from '../lib/format'
 import { periodsOf } from '../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../lib/styles'
-import type { Account, Transaction, Category, Leaf } from '../lib/types'
+import type { Account, Budget, Transaction, Category, Leaf } from '../lib/types'
 
 export function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -28,14 +29,18 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<{ id: number, draft: string }>()
   const cancelled = useRef(false)
   const [period, setPeriod] = useState('')
+  // only spending needed to live: the chart's median becomes the minimal month
+  const [essentialOnly, setEssentialOnly] = useState(false)
+  const [notice, setNotice] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
     c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
   // a selection is a category (matches all its subcategories) or a single subcategory
-  const view = `${accountId}|${period}|${category}`
+  const view = `${accountId}|${period}|${category}|${essentialOnly}`
+  const isKept = (t: Transaction) => kept?.id === t.id && kept.view === view
   const inSelection = (t: Transaction) =>
-    t.category === category || leafById.get(t.category)?.parent.id === category || (kept?.id === t.id && kept.view === view)
+    t.category === category || leafById.get(t.category)?.parent.id === category || isKept(t)
   const selectionLabel = (id: string) => {
     const leaf = leafById.get(id)
     if (!leaf) return categories.find((c) => c.id === id)?.label
@@ -84,6 +89,35 @@ export function TransactionsPage() {
   const setOwn = (t: Transaction, category: string | null) => ({ path: `/categories/transactions/${t.id}`, body: { category } })
   const setMerchantCategory = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
 
+  // choice is "t:true", "t:false" or "t:" (reset) for this transaction, "m:…" for its merchant
+  async function changeEssential(t: Transaction, choice: string) {
+    const [scope, value] = choice.split(':')
+    const essential = value === '' ? null : value === 'true'
+    setKept({ id: t.id, view })
+    try {
+      await (scope === 't'
+        ? api(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ essential }) })
+        : api('/categories/merchants/essential', { method: 'PUT', body: JSON.stringify({ description: t.description, essential }) }))
+      setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
+    } catch (err) {
+      setError(`Essential: ${(err as Error).message}`)
+    }
+  }
+
+  // writes the chart's median into Runway (see budgetWithMedian), keeping the rest of the budget
+  async function useMedian(value: number) {
+    const amount = Math.round(value)
+    const currency = account!.currency
+    try {
+      const body = budgetWithMedian(await api<Budget | null>('/budget'), amount, currency, essentialOnly)
+      if (!body) return setError('Set "I spend per month" in Runway first')
+      await api('/budget', { method: 'PUT', body: JSON.stringify(body) })
+      setNotice(`Runway: ${essentialOnly ? 'extreme saving' : 'monthly spending'} set to ${format(amount, currency)} per month`)
+    } catch (err) {
+      setError(`Runway: ${(err as Error).message}`)
+    }
+  }
+
   async function saveNote(t: Transaction, draft: string) {
     setEditing(undefined)
     if (draft.trim() === (t.note ?? '')) return
@@ -101,13 +135,20 @@ export function TransactionsPage() {
   for (const t of list ?? []) for (const [key, label] of periodsOf(t)) periods.set(key, label)
   // keys sort chronologically as text; newest first
   const periodOptions = (prefix: string) => [...periods].filter(([key]) => key.startsWith(prefix)).sort(([a], [b]) => b.localeCompare(a))
-  const shown = period ? list?.filter((t) => periodsOf(t).some(([key]) => key === period)) : list
+  const base = essentialOnly ? list?.filter((t) => t.essential || isKept(t)) : list
+  const shown = period ? base?.filter((t) => periodsOf(t).some(([key]) => key === period)) : base
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
 
   return (
     <>
+      {notice && (
+        <p role="status" className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900">
+          {notice}
+          <button type="button" onClick={() => setNotice('')} className="shrink-0 font-medium hover:underline">OK</button>
+        </p>
+      )}
       {error && (
         <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
           {error}
@@ -140,6 +181,14 @@ export function TransactionsPage() {
           {account && (
             <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
           )}
+          <button
+            type="button"
+            aria-pressed={essentialOnly}
+            onClick={() => setEssentialOnly(!essentialOnly)}
+            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 aria-pressed:bg-emerald-50 aria-pressed:text-emerald-800 aria-pressed:ring-emerald-300 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-800 dark:aria-pressed:bg-emerald-950/40 dark:aria-pressed:text-emerald-300 dark:aria-pressed:ring-emerald-800"
+          >
+            Лише необхідне
+          </button>
           <button className={button} onClick={sync} disabled={syncing}>{syncing ? 'Syncing…' : 'Sync Monobank'}</button>
         </div>
 
@@ -150,7 +199,9 @@ export function TransactionsPage() {
       {account && shown && list!.length > 0 && (
         <>
           <MonthlySpending
-            list={list!}
+            list={base!}
+            essentialOnly={essentialOnly}
+            onUseMedian={!category && !merchant ? useMedian : undefined}
             currency={account.currency}
             leafById={leafById}
             period={period}
@@ -236,7 +287,7 @@ export function TransactionsPage() {
                           setKept({ id: t.id, view })
                           changeCategory(t, [setOwn(t, e.target.value || null)])
                         }}
-                        className="max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
+                        className="field-sizing-content max-w-48 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
                       >
                         <option value="">Автоматично</option>
                         {categories.filter((c) => c.subcategories.length).map((c) => (
@@ -246,6 +297,26 @@ export function TransactionsPage() {
                         ))}
                         <optgroup label="Службові">
                           {categories.filter((c) => !c.subcategories.length).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        </optgroup>
+                      </select>
+                      <select
+                        aria-label={`Essential: ${t.description}`}
+                        value=""
+                        onChange={(e) => changeEssential(t, e.target.value)}
+                        className={`field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100 ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
+                      >
+                        <option value="" disabled hidden>
+                          {t.essential ? '● необхідне' : '○ необов’язкове'}{t.essentialSource !== 'auto' ? ' *' : ''}
+                        </option>
+                        <optgroup label="Лише ця транзакція">
+                          <option value="t:true">Необхідне</option>
+                          <option value="t:false">Необов’язкове</option>
+                          <option value="t:">Як у продавця / категорії</option>
+                        </optgroup>
+                        <optgroup label="Усі від продавця">
+                          <option value="m:true">Необхідне</option>
+                          <option value="m:false">Необов’язкове</option>
+                          <option value="m:">Як у категорії</option>
                         </optgroup>
                       </select>
                       {t.categorySource === 'transaction' && (

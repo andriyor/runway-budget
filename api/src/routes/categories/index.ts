@@ -1,7 +1,7 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { eq } from 'drizzle-orm'
 import { categoryIds, categoryTree, merchantKey, type CategoryId } from '../../categories'
-import { merchantCategories, transactions } from '../../db/schema'
+import { merchantCategories, merchantEssentials, transactions } from '../../db/schema'
 
 const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async () => categoryTree)
@@ -27,6 +27,31 @@ const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
     } else {
       await fastify.db.insert(merchantCategories).values({ merchant, category })
         .onConflictDoUpdate({ target: merchantCategories.merchant, set: { category } })
+    }
+    return reply.code(204).send()
+  })
+
+  // essential: null drops the merchant's flag, back to each transaction's category default
+  fastify.put<{ Body: { description: string, essential: boolean | null } }>('/merchants/essential', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['description', 'essential'],
+        additionalProperties: false,
+        properties: {
+          description: { type: 'string', minLength: 1, maxLength: 1000 },
+          essential: { type: ['boolean', 'null'] }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { description, essential } = request.body
+    const merchant = merchantKey(description)
+    if (essential === null) {
+      await fastify.db.delete(merchantEssentials).where(eq(merchantEssentials.merchant, merchant))
+    } else {
+      await fastify.db.insert(merchantEssentials).values({ merchant, essential })
+        .onConflictDoUpdate({ target: merchantEssentials.merchant, set: { essential } })
     }
     return reply.code(204).send()
   })

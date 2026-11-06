@@ -30,12 +30,16 @@ type MonthlySpendingProps = {
   // selected merchant: the bars show only its spending (within the selected category, if any)
   merchant?: { key: string, name: string }
   onClearMerchant: () => void
+  // list holds only essential spending; the median is then the minimal month
+  essentialOnly?: boolean
+  // store the median in Runway: monthly spending, or the extreme-saving amount with essentialOnly
+  onUseMedian?: (value: number) => void
 }
 
 // Spending per month split by category: the SERIES biggest categories over the whole range keep
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
-export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant }: MonthlySpendingProps) {
+export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
   const [hover, setHover] = useState<{ month: string, series: string }>()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
   const months = new Map<string, Map<string, number>>()
@@ -111,16 +115,22 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   return (
     <section className={`${card} viz`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending per month</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{essentialOnly ? 'Essential spending per month' : 'Spending per month'}</h2>
         {typical !== undefined && (
           <span className={`tabular-nums ${muted}`}>
             Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
             {' '}за місяць · {complete.length} повних міс.
+            {onUseMedian && (
+              <button type="button" onClick={() => onUseMedian(typical)} className="ml-3 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                {essentialOnly ? 'Use as extreme saving in Runway' : 'Use as monthly spending in Runway'}
+              </button>
+            )}
           </span>
         )}
       </div>
       <ul className="-mx-1.5 mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm" aria-label="Legend">
-        {series.map((s) => {
+        {/* an empty "Решта" (fewer categories than colors) is left out */}
+        {series.filter((s) => s.id !== 'rest' || seriesTotal('rest') > 0).map((s) => {
           const content = (
             <>
               <span aria-hidden className="size-2.5 rounded-sm" style={{ background: s.color }} />

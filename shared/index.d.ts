@@ -34,6 +34,10 @@ export type Transaction = {
   category: string
   // which level decided the category
   categorySource: 'transaction' | 'merchant' | 'auto'
+  // needed to live, as opposed to spending that could be cut in a lean month
+  essential: boolean
+  // which level decided essential: the transaction, its merchant, or the category default
+  essentialSource: 'transaction' | 'merchant' | 'auto'
   mccDescription: string | null
   merchantDomain: string | null
   note: string | null
@@ -45,7 +49,8 @@ export type Category = {
   emoji: string
   // false for income, own-account moves and investments
   spending: boolean
-  subcategories: Array<{ id: string, label: string }>
+  // essential: the default for transactions in that subcategory
+  subcategories: Array<{ id: string, label: string, essential: boolean }>
 }
 
 export type Rates = { date: string, rates: Record<Currency, number> }

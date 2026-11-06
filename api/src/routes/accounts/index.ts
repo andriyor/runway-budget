@@ -3,10 +3,10 @@ import type { Account, Transaction } from '@runway-budget/shared'
 import { desc, eq, max, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
-import { categorize, merchantKey, type CategoryId } from '../../categories'
+import { categorize, isEssential, merchantKey, type CategoryId } from '../../categories'
 // merchant domain → lowercase name fragments; the domain is used for the icon
 import merchantKeywords from '../../data/merchants.json'
-import { accounts, accountKinds, currencies, merchantCategories, transactions, type AccountKind, type Currency } from '../../db/schema'
+import { accounts, accountKinds, currencies, merchantCategories, merchantEssentials, transactions, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
 type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
@@ -74,18 +74,24 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       .orderBy(desc(transactions.time), desc(transactions.id))
     const overrides = new Map((await fastify.db.select().from(merchantCategories))
       .map((o) => [o.merchant, o.category as CategoryId]))
-    return rows.map(({ amountCents, category: own, time, ...rest }): Transaction => {
+    const essentials = new Map((await fastify.db.select().from(merchantEssentials)).map((o) => [o.merchant, o.essential]))
+    return rows.map(({ amountCents, category: own, essential: ownEssential, time, ...rest }): Transaction => {
       const key = merchantKey(rest.description)
       const merchant = overrides.get(key)
+      const merchantEssential = essentials.get(key)
+      const category = categorize(rest.mcc, rest.description, amountCents, own ?? merchant)
       return {
         ...rest,
         time: time.toISOString(),
         amount: amountCents / 100,
         // groups a merchant's purchases and refunds, same key as merchant category overrides
         merchant: key,
-        category: categorize(rest.mcc, rest.description, amountCents, own ?? merchant),
+        category,
         // which level decided the category, so the UI can offer to promote or reset it
         categorySource: own ? 'transaction' : merchant ? 'merchant' : 'auto',
+        // needed to live; same three levels as the category, the default comes from the category
+        essential: ownEssential ?? merchantEssential ?? isEssential(category),
+        essentialSource: ownEssential != null ? 'transaction' : merchantEssential != null ? 'merchant' : 'auto',
         mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
         merchantDomain: merchantDomain(rest.description)
       }
