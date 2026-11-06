@@ -5,7 +5,8 @@ type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
 type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
-type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string | null, merchantDomain: string | null }
+type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, mccDescription: string | null, merchantDomain: string | null }
+type Category = { id: string, label: string, emoji: string }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -789,32 +790,8 @@ function Nav({ page }: { page: string }) {
   return <nav className="flex gap-2">{link('#/', 'Balances')}{link('#/transactions', 'Transactions')}</nav>
 }
 
-// [first MCC, last MCC, icon]; first match wins, so specific codes go before ranges
-const mccIcons: Array<[number, number, string]> = [
-  [742, 742, '🐾'], [3000, 3350, '✈️'], [3351, 3500, '🚗'], [3501, 3999, '🏨'],
-  [4111, 4112, '🚆'], [4121, 4121, '🚕'], [4131, 4131, '🚌'], [4215, 4215, '📦'],
-  [4511, 4511, '✈️'], [4722, 4722, '🧳'], [4784, 4784, '🛣️'],
-  [4812, 4814, '📱'], [4816, 4816, '🌐'], [4899, 4899, '📺'], [4900, 4900, '💡'],
-  [4829, 4829, '💸'], [6010, 6010, '💸'], [6011, 6011, '🏧'], [6012, 6012, '💸'], [6051, 6051, '💸'],
-  [6300, 6399, '🛡️'], [6513, 6513, '🏠'], [6538, 6540, '💸'],
-  [5200, 5251, '🔨'], [5262, 5262, '🛍️'], [5300, 5399, '🏬'],
-  [5441, 5441, '🍬'], [5462, 5462, '🥐'], [5411, 5499, '🛒'],
-  [5541, 5542, '⛽'], [5983, 5983, '⛽'],
-  [5611, 5655, '👕'], [5661, 5661, '👟'], [5691, 5699, '👕'],
-  [5712, 5719, '🛋️'], [5732, 5734, '💻'], [5045, 5045, '💻'], [7372, 7372, '💻'],
-  [5812, 5812, '🍽️'], [5813, 5813, '🍸'], [5814, 5814, '🍔'],
-  [5815, 5815, '🎵'], [5816, 5816, '🎮'], [5817, 5818, '📲'],
-  [5912, 5912, '💊'], [5122, 5122, '💊'], [5942, 5943, '📚'], [5945, 5945, '🧸'],
-  [5977, 5977, '💄'], [5992, 5992, '💐'], [5995, 5995, '🐾'],
-  [7230, 7230, '💇'], [7298, 7298, '💆'], [7523, 7523, '🅿️'],
-  [7832, 7832, '🎬'], [7922, 7922, '🎭'], [7997, 7997, '🏋️'], [7941, 7941, '⚽'],
-  [8021, 8021, '🦷'], [8011, 8099, '🩺'], [8211, 8299, '🎓'], [8999, 8999, '💼'],
-  [8398, 8398, '❤️'], [8661, 8661, '❤️'], [9211, 9402, '🏛️'],
-]
-const mccIcon = (mcc: number) => mccIcons.find(([from, to]) => mcc >= from && mcc <= to)?.[2]
-
 // ponytail: favicons via Google's public service, so it sees which merchant domains are shown; proxy through the API if that matters
-function MerchantIcon({ domain, name, mcc }: { domain: string | null, name: string, mcc: number }) {
+function MerchantIcon({ domain, emoji }: { domain: string | null, emoji: string }) {
   const [failed, setFailed] = useState(false)
   if (domain && !failed) {
     return (
@@ -826,28 +803,33 @@ function MerchantIcon({ domain, name, mcc }: { domain: string | null, name: stri
       />
     )
   }
-  const emoji = mccIcon(mcc)
   return (
-    <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 ${emoji ? 'text-lg' : 'text-sm'}`}>
-      {emoji ?? name.replace(/^Скасування\.\s*/, '').trim().charAt(0).toUpperCase()}
+    <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-lg dark:bg-zinc-800">
+      {emoji}
     </span>
   )
 }
 
-// spending only: income and refunds (positive amounts) are left out
-const categoryOf = (t: Transaction) => t.category ?? 'Без категорії'
+// income and moves between own accounts are not spending; refunds (positive amounts) reduce their category
+const notSpending = new Set(['income', 'own'])
 
-type CategorySpendingProps = { list: Transaction[], currency: Currency, selected?: string, onSelect: (category?: string) => void }
+type CategorySpendingProps = {
+  list: Transaction[]
+  currency: Currency
+  categoryById: Map<string, Category>
+  selected?: string
+  onSelect: (category?: string) => void
+}
 
-function CategorySpending({ list, currency, selected, onSelect }: CategorySpendingProps) {
-  const groups = new Map<string, { total: number, mcc: number }>()
+function CategorySpending({ list, currency, categoryById, selected, onSelect }: CategorySpendingProps) {
+  const groups = new Map<string, { total: number }>()
   for (const t of list) {
-    if (t.amount >= 0) continue
-    const key = categoryOf(t)
-    const group = groups.get(key) ?? { total: 0, mcc: t.mcc }
+    if (notSpending.has(t.category)) continue
+    const group = groups.get(t.category) ?? { total: 0 }
     group.total -= t.amount
-    groups.set(key, group)
+    groups.set(t.category, group)
   }
+  for (const [id, g] of groups) if (g.total <= 0) groups.delete(id)
   const rows = [...groups].sort((a, b) => b[1].total - a[1].total)
   const total = rows.reduce((sum, [, g]) => sum + g.total, 0)
   if (total === 0) return null
@@ -871,11 +853,11 @@ function CategorySpending({ list, currency, selected, onSelect }: CategorySpendi
               className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-zinc-50 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800/50 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900"
             >
               <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-base dark:bg-zinc-800">
-                {mccIcon(g.mcc) ?? '•'}
+                {categoryById.get(category)?.emoji}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate text-zinc-900 dark:text-zinc-100" title={category}>{category}</span>
+                  <span className="truncate text-zinc-900 dark:text-zinc-100">{categoryById.get(category)?.label ?? category}</span>
                   <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
                     {format(g.total, currency)}
                     <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(g.total / total)}%</span>
@@ -900,7 +882,9 @@ function TransactionsPage() {
   const [error, setError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [category, setCategory] = useState<string>()
+  const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
+  const categoryById = new Map(categories.map((c) => [c.id, c]))
 
   useEffect(() => {
     api<Account[]>('/accounts')
@@ -909,6 +893,7 @@ function TransactionsPage() {
         setAccountId((all.find((a) => a.monoAccountId) ?? all[0])?.id)
       })
       .catch((e) => setError(e.message))
+    api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
   }, [])
 
   useEffect(() => {
@@ -928,6 +913,16 @@ function TransactionsPage() {
       setError(`Monobank: ${(err as Error).message}`)
     } finally {
       setSyncing(false)
+    }
+  }
+
+  // applies to every transaction of the merchant, so reload the list
+  async function recategorize(t: Transaction, id: string) {
+    try {
+      await api('/categories/merchants', { method: 'PUT', body: JSON.stringify({ description: t.description, category: id }) })
+      setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
+    } catch (err) {
+      setError(`Category: ${(err as Error).message}`)
     }
   }
 
@@ -962,23 +957,33 @@ function TransactionsPage() {
       </section>
       {account && list && list.length > 0 && (
         <>
-          <CategorySpending list={list} currency={account.currency} selected={category} onSelect={setCategory} />
+          <CategorySpending list={list} currency={account.currency} categoryById={categoryById} selected={category} onSelect={setCategory} />
           <section className={card}>
             {category && (
               <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{category}</span>
+                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{categoryById.get(category)?.label}</span>
                 <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
                   Show all
                 </button>
               </div>
             )}
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {(category ? list.filter((t) => categoryOf(t) === category) : list).map((t) => (
+              {(category ? list.filter((t) => t.category === category) : list).map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-3">
-                  <MerchantIcon domain={t.merchantDomain} name={t.description} mcc={t.mcc} />
+                  <MerchantIcon domain={t.merchantDomain} emoji={categoryById.get(t.category)?.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
-                    <p className={`truncate tabular-nums ${muted}`} title={t.category ?? undefined}>{categoryOf(t)} · {dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
+                    <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
+                      <select
+                        aria-label={`Category of ${t.description}`}
+                        value={t.category}
+                        onChange={(e) => recategorize(t, e.target.value)}
+                        className="max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
+                      >
+                        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                      <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>
+                    </p>
                   </div>
                   <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
                     {format(t.amount, account.currency)}

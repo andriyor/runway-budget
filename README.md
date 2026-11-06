@@ -15,7 +15,7 @@ and when you reach your goals.
   surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
   and not counted toward goals.
 - **Monobank sync**: pull the last month of one Monobank card's transactions, set the account balance
-  from them, and browse them on the Transactions page with a category for each MCC.
+  from them, and browse them on the Transactions page grouped into spending categories you can correct per merchant.
 
 ## Stack
 
@@ -89,7 +89,9 @@ integer minor units (cents/kopiykas).
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
-| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with MCC `category` |
+| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `category`, `mccDescription` and `merchantDomain` |
+| `GET`    | `/categories`   | Categories `{ id, label, emoji }`                     |
+| `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `POST`   | `/accounts/mono/sync` | Import the last 31 days from Monobank and update the balance |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
@@ -126,10 +128,19 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   31 days + 1 hour per statement. A sync fetches exactly that window; a too-early sync returns 429.
   Monobank also caps a statement at 500 items, so a busier month would be cut off; paging is not
   implemented.
-- **MCC categories are looked up on read, not stored.** Labels come from the Ukrainian
-  `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
-  (MIT, license in `api/src/data/mcc.LICENSE`), trimmed to an `mcc → label` map. Changing the map
-  relabels every past transaction with no migration.
+- **Own categories instead of raw MCC.** `api/src/categories.ts` holds one table of about a dozen
+  categories, each with its label, emoji and MCC ranges, so related codes (5411 and 5499, the
+  5815–5818 digital goods) land together. The raw MCC is still shown as `mccDescription`, from the
+  Ukrainian `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
+  (MIT, license in `api/src/data/mcc.LICENSE`).
+- **Category is decided on read, in this order:** your merchant override, then the jar rule
+  (`Поповнення «…»` is charity), then the MCC table, else `Інше`. A positive transfer becomes
+  `Надходження` (income). Nothing is stored per transaction, so changing a rule relabels history.
+- **Overrides are per merchant.** `merchant_categories` keys on the lowercased description with the
+  `Скасування. ` prefix stripped, so one correction covers every purchase and refund from that
+  merchant.
+- **Spending is net of refunds.** The summary sums each category's amounts, so a refund lowers the
+  category it belongs to. `Надходження` and `Між своїми рахунками` are not spending and stay out.
 - **Merchant icons come from a hand-kept keyword map.** Monobank sends no logos, only a description
   such as `Apple` or `Сільпо`. `api/src/data/merchants.json` maps a domain to name fragments, matched
   case-insensitively on read; the web app shows that domain's favicon from Google's favicon service

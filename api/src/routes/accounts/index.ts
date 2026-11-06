@@ -1,10 +1,11 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { desc, eq, sql } from 'drizzle-orm'
-// MCC → category, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
-import mccCategories from '../../data/mcc.json'
+// MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
+import mccDescriptions from '../../data/mcc.json'
+import { categorize, merchantKey, type CategoryId } from '../../categories'
 // merchant domain → lowercase name fragments; the domain is used for the icon
 import merchantKeywords from '../../data/merchants.json'
-import { accounts, accountKinds, currencies, transactions, type AccountKind, type Currency } from '../../db/schema'
+import { accounts, accountKinds, currencies, merchantCategories, transactions, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
 type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
@@ -69,10 +70,13 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     const rows = await fastify.db.select().from(transactions)
       .where(eq(transactions.accountId, request.params.id))
       .orderBy(desc(transactions.time), desc(transactions.id))
+    const overrides = new Map((await fastify.db.select().from(merchantCategories))
+      .map((o) => [o.merchant, o.category as CategoryId]))
     return rows.map(({ amountCents, ...rest }) => ({
       ...rest,
       amount: amountCents / 100,
-      category: (mccCategories as Record<string, string>)[rest.mcc] ?? null,
+      category: categorize(rest.mcc, rest.description, amountCents, overrides.get(merchantKey(rest.description))),
+      mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
       merchantDomain: merchantDomain(rest.description)
     }))
   })

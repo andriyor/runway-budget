@@ -71,6 +71,13 @@
       "when": 1793984516312,
       "tag": "0009_mysterious_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793987415372,
+      "tag": "0010_funny_blazing_skull",
+      "breakpoints": true
     }
   ]
 }

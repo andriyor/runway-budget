@@ -1,4 +1,5 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { categoryIds } from '../categories'
 
 export const currencies = ['USD', 'EUR', 'UAH'] as const
 export type Currency = typeof currencies[number]
@@ -32,6 +33,12 @@ export const transactions = sqliteTable('transactions', {
   mcc: integer('mcc').notNull(),
   // account currency, minor units; negative = spending
   amountCents: integer('amount_cents').notNull()
+})
+
+// user's category for every transaction of a merchant; key is merchantKey(description)
+export const merchantCategories = sqliteTable('merchant_categories', {
+  merchant: text('merchant').primaryKey(),
+  category: text('category', { enum: categoryIds as [string, ...string[]] }).notNull()
 })
 
 export const goals = sqliteTable('goals', {
