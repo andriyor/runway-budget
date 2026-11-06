@@ -4,6 +4,20 @@ Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at 
 [National Bank of Ukraine](https://bank.gov.ua) rate, and it estimates how long your savings last
 and when you reach your goals.
 
+![Spending per month and by category](docs/screenshots/transactions.png)
+
+<details>
+<summary>More screenshots</summary>
+
+| | |
+| --- | --- |
+| ![Balances, runway and goals](docs/screenshots/balances.png) | ![A category selected: its monthly trend and subcategories](docs/screenshots/category-focus.png) |
+| ![Spending by merchant and the transaction list](docs/screenshots/merchants-and-list.png) | ![Essential spending only, with its median](docs/screenshots/essential.png) |
+
+</details>
+
+Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
+
 ## Features
 
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
@@ -17,7 +31,8 @@ and when you reach your goals.
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them.
 - **Transactions page**:
-  - a stacked chart of spending per month by category;
+  - a stacked chart of spending per month by category, with a median line over complete months;
+    picking a category or merchant reduces the bars to it to show its trend;
   - spending by category with a drill-down into subcategories;
   - spending by merchant;
   - filters by month or ISO week, category and merchant, all clickable from the charts;
@@ -51,6 +66,23 @@ pnpm dev
 `pnpm dev` starts the API on <http://localhost:3000> and the web app on <http://localhost:5173>.
 The web dev server proxies `/api/*` to the API. The SQLite database `api/data.db` is created and
 migrated on first start; set `DB_FILE` to use another path.
+
+## Demo data
+
+`api/scripts/seed-demo.mjs` builds a separate database with made-up accounts, a budget, goals and a
+year of Monobank-style transactions (public shop names; people, landlord and employer are invented).
+It refuses to overwrite an existing file, so it never touches `api/data.db`. To run the app on it
+next to your own:
+
+```sh
+pnpm --filter api demo:seed /tmp/demo.db
+(cd /tmp && DB_FILE=/tmp/demo.db "$OLDPWD/api/node_modules/.bin/fastify" start -p 3124 "$OLDPWD/api/dist/app.js")
+API_URL=http://localhost:3124 pnpm --filter web exec vite --port 5174
+```
+
+The API is started outside `api/` so it does not load your Monobank token from `api/.env`; build the
+API first (`pnpm build`) so `api/dist` exists. `API_URL` points the web dev server's `/api` proxy at
+any API (default `http://localhost:3000`).
 
 ## Docker
 
@@ -107,8 +139,8 @@ integer minor units (cents/kopiykas).
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
-| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `mccDescription`, `merchantDomain` and `note` |
-| `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label }] }` |
+| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain` and `note` |
+| `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
 | `PATCH`  | `/transactions/:id` | Set a transaction's `{ note?, essential? }`; empty note or `null` clears |
@@ -186,12 +218,18 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   The minimal month is the median of essential spending over complete months.
 - **Summaries and filters run in the browser.** The page loads an account's whole transaction list
   and groups it by month, ISO week, category and merchant locally, so month and week boundaries use
-  the viewer's time zone and switching filters needs no request. Move filtering to the API with
-  `?from&to` once the history grows into several thousand transactions.
+  the viewer's time zone and switching filters needs no request. At ~1,500 transactions grouping
+  takes well under a millisecond; the cost is rendering the full list (one category dropdown per
+  row), so the next step is lighter rows and paging the list, not moving filters to the API.
 - **Monthly chart folds small categories.** It colors the seven biggest categories over the shown
   range and folds the rest into one gray `Решта`, since more hues stop being distinguishable. The
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast
-  in light and dark mode.
+  in light and dark mode. A selected category or merchant replaces the stack with that one series.
+- **Median over complete months.** The chart's median leaves out the running month, which would
+  pull it down, and counts months without spending as zero when a category or merchant is selected.
+  The median, not the average, so one big month barely moves it. Sending it to Runway goes through
+  `web/src/lib/budget.ts`, which rebuilds the whole budget body because `PUT /budget` clears any
+  field it is not given.
 - **Shared package is types only.** `shared/index.d.ts` declares the response shapes (`Account`,
   `Transaction`, `Category`, `Budget`, `Goal`, `Rates`) and the `Currency`/`AccountKind` unions. The
   API types its response mappers with them and the web reads them, so a changed field fails to

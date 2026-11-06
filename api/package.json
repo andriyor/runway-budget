@@ -15,7 +15,8 @@
     "watch:ts": "tsc -w",
     "db:generate": "drizzle-kit generate",
     "dev": "pnpm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"pnpm:watch:ts\" \"pnpm:dev:start\"",
-    "dev:start": "fastify start --ignore-watch='.ts$ data.db' -w -l info -P dist/app.js"
+    "dev:start": "fastify start --ignore-watch='.ts$ data.db' -w -l info -P dist/app.js",
+    "demo:seed": "node scripts/seed-demo.mjs"
   },
   "keywords": [],
   "author": "",
