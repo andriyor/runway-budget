@@ -7,7 +7,8 @@ import { Skeleton } from '../components/controls'
 import { api } from '../lib/api'
 import { budgetWithMedian } from '../lib/budget'
 import { format } from '../lib/format'
-import { periodsOf } from '../lib/periods'
+import { PHONE } from '../lib/media'
+import { monthKey, periodsOf, quarterOf } from '../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../lib/types'
 
@@ -74,7 +75,13 @@ export function TransactionsPage() {
 
   useEffect(() => {
     if (accountId === undefined) return
-    api<Transaction[]>(`/accounts/${accountId}/transactions`).then(setList).catch((e) => setError(e.message))
+    api<Transaction[]>(`/accounts/${accountId}/transactions`)
+      .then((loaded) => {
+        setList(loaded)
+        // phones open on the latest quarter with data; a year at once is too much for a small screen
+        if (loaded.length && matchMedia(PHONE).matches) setPeriod(quarterOf(monthKey(loaded[0].time)))
+      })
+      .catch((e) => setError(e.message))
   }, [accountId])
 
   async function sync() {
@@ -218,6 +225,9 @@ export function TransactionsPage() {
             <option value="">Увесь час</option>
             <optgroup label="Місяць">
               {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </optgroup>
+            <optgroup label="Квартал">
+              {periodOptions('q:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </optgroup>
             <optgroup label="Тиждень">
               {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}

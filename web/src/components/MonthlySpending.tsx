@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
-import { monthKey } from '../lib/periods'
+import { usePhone } from '../lib/media'
+import { monthKey, quarterLabel, quarterMonths, quarterOf } from '../lib/periods'
 import { card, muted } from '../lib/styles'
 import type { Currency, Transaction, Leaf } from '../lib/types'
 
@@ -41,6 +42,7 @@ type MonthlySpendingProps = {
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
 export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
   const [hover, setHover] = useState<{ month: string, series: string }>()
+  const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
   const months = new Map<string, Map<string, number>>()
   const totals = new Map<string, number>()
@@ -96,14 +98,25 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         return { month, segments: value > 0 ? [{ ...focus, value }] : [], total: value }
       })
     : breakdown
-  const max = Math.max(...columns.map((c) => c.total))
   // the current month is still running, so it would pull the median down
   const complete = columns.filter((c) => c.month !== thisMonth)
   const typical = complete.length ? median(complete.map((c) => c.total)) : undefined
+  // the median always covers every complete month; bars, legend totals and tooltip use the shown ones
+  // the selected quarter, or the quarter of the selected month; none for all time or a week
+  const quarter = period.startsWith('q:') ? period : period.startsWith('m:') ? quarterOf(period.slice(2)) : undefined
+  const inQuarter = (q: string | undefined, month: string) => q !== undefined && quarterMonths(q).includes(month)
+  // phones show one quarter, since a year of bars is too thin to read: that one, or the latest with data
+  const latest = columns.at(-1)?.month
+  const phoneQuarter = quarter ?? (latest ? quarterOf(latest) : undefined)
+  const pick = <T extends { month: string }>(all: T[]) => (phone ? all.filter((c) => inQuarter(phoneQuarter, c.month)) : all)
+  const shown = pick(columns)
+  const shownBreakdown = pick(breakdown)
+  // the scale includes the median so its line stays inside the plot
+  const max = Math.max(...shown.map((c) => c.total), typical ?? 0)
   if (!(Math.max(...breakdown.map((c) => c.total)) > 0)) return null
-  const seriesTotal = (id: string) => breakdown.reduce((sum, c) => sum + (c.segments.find((s) => s.id === id)?.value ?? 0), 0)
+  const seriesTotal = (id: string) => shownBreakdown.reduce((sum, c) => sum + (c.segments.find((s) => s.id === id)?.value ?? 0), 0)
   const label = (month: string) => shortMonth.format(new Date(`${month}-01T00:00:00`))
-  const active = hover && columns.find((c) => c.month === hover.month)
+  const active = hover && shown.find((c) => c.month === hover.month)
   const activeSegment = active?.segments.find((s) => s.id === hover!.series)
   // the whole month's spending, also while a single category is shown
   const monthTotal = active && breakdown.find((c) => c.month === active.month)!.total
@@ -119,7 +132,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         {typical !== undefined && (
           <span className={`tabular-nums ${muted}`}>
             Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
-            {' '}за місяць · {complete.length} повних міс.
+            {' '}за місяць · {complete.length} повних міс.{phone && phoneQuarter && ` · показано ${quarterLabel(phoneQuarter)}`}
             {onUseMedian && (
               <button type="button" onClick={() => onUseMedian(typical)} className="ml-3 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
                 {essentialOnly ? 'Use as extreme saving in Runway' : 'Use as monthly spending in Runway'}
@@ -129,8 +142,8 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         )}
       </div>
       <ul className="-mx-1.5 mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm" aria-label="Legend">
-        {/* an empty "Решта" (fewer categories than colors) is left out */}
-        {series.filter((s) => s.id !== 'rest' || seriesTotal('rest') > 0).map((s) => {
+        {/* categories with nothing in the shown months are left out, unless selected */}
+        {series.filter((s) => seriesTotal(s.id) > 0 || s.id === selected).map((s) => {
           const content = (
             <>
               <span aria-hidden className="size-2.5 rounded-sm" style={{ background: s.color }} />
@@ -152,7 +165,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             <button type="button" aria-pressed onClick={() => (merchant ? onClearMerchant() : onSelect(undefined))} className={legendButton}>
               <span aria-hidden className="size-2.5 rounded-sm" style={{ background: focus.color }} />
               <span className="text-zinc-700 dark:text-zinc-300">{focus.label}</span>
-              <span className={`tabular-nums ${muted}`}>{format(columns.reduce((sum, c) => sum + c.total, 0), currency)}</span>
+              <span className={`tabular-nums ${muted}`}>{format(shown.reduce((sum, c) => sum + c.total, 0), currency)}</span>
             </button>
           </li>
         )}
@@ -168,13 +181,13 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
               </span>
             </div>
           )}
-          {columns.map((c) => (
+          {shown.map((c) => (
             <div key={c.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
               <button
                 type="button"
                 tabIndex={-1}
                 onClick={() => pickMonth(c.month)}
-                className="mb-1 hidden cursor-pointer text-xs font-medium text-zinc-700 tabular-nums hover:text-zinc-950 sm:block dark:text-zinc-300 dark:hover:text-white"
+                className="mb-1 cursor-pointer text-xs font-medium text-zinc-700 tabular-nums hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
               >
                 {wholeMoney(c.total, currency)}
               </button>
@@ -197,11 +210,12 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
           ))}
         </div>
         <div className="mt-1.5 flex gap-3">
-          {columns.map((c) => (
+          {shown.map((c) => (
             <button
               key={c.month}
               type="button"
-              aria-pressed={period === `m:${c.month}`}
+              // a picked month, or every month of a picked quarter
+              aria-pressed={period === `m:${c.month}` || (period.startsWith('q:') && inQuarter(period, c.month))}
               onClick={() => pickMonth(c.month)}
               className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
             >
@@ -215,7 +229,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
           <div
             role="tooltip"
             className="pointer-events-none absolute top-0 z-10 w-max max-w-56 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
-            style={{ left: `clamp(7rem, ${((columns.indexOf(active) + 0.5) / columns.length) * 100}%, calc(100% - 7rem))` }}
+            style={{ left: `clamp(7rem, ${((shown.indexOf(active) + 0.5) / shown.length) * 100}%, calc(100% - 7rem))` }}
           >
             <p className={muted}>{label(active.month)} · {format(monthTotal!, currency)}</p>
             <p className="mt-1 flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">

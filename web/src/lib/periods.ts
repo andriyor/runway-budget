@@ -17,7 +17,19 @@ const monthName = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numer
 
 const shortDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 
-// month and week keys a transaction belongs to, with a label for each, in local time
+// quarter of a month key: "2026-10" → "q:2026-4"
+export const quarterOf = (month: string) => `q:${month.slice(0, 4)}-${Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1}`
+
+// "q:2026-4" → "4-й квартал 2026"
+export const quarterLabel = (quarter: string) => `${quarter.slice(7)}-й квартал ${quarter.slice(2, 6)}`
+
+// month keys of a quarter key: "q:2026-4" → ["2026-10", "2026-11", "2026-12"]
+export const quarterMonths = (quarter: string) => {
+  const [year, q] = quarter.slice(2).split('-').map(Number)
+  return [1, 2, 3].map((i) => `${year}-${String((q - 1) * 3 + i).padStart(2, '0')}`)
+}
+
+// month, quarter and week keys a transaction belongs to, with a label for each, in local time
 export function periodsOf(t: Transaction): Array<[string, string]> {
   const date = new Date(t.time)
   const { year, week } = isoWeek(date)
@@ -25,6 +37,7 @@ export function periodsOf(t: Transaction): Array<[string, string]> {
   const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
   return [
     [`m:${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, monthName.format(date)],
+    [quarterOf(monthKey(t.time)), quarterLabel(quarterOf(monthKey(t.time)))],
     [`w:${year}-${String(week).padStart(2, '0')}`, `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
   ]
 }
