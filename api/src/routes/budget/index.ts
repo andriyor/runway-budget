@@ -10,6 +10,7 @@ type BudgetInput = {
   reserveCurrency?: Currency
   minimalSpend?: number
   minimalSpendCurrency?: Currency
+  targetMonths?: number
 }
 
 const fromCents = (cents: number | null) => cents === null ? null : cents / 100
@@ -26,7 +27,8 @@ const toDto = (row?: typeof budget.$inferSelect) =>
         reserve: fromCents(row.reserveCents),
         reserveCurrency: row.reserveCurrency,
         minimalSpend: fromCents(row.minimalSpendCents),
-        minimalSpendCurrency: row.minimalSpendCurrency
+        minimalSpendCurrency: row.minimalSpendCurrency,
+        targetMonths: row.targetMonths
       }
     : null
 
@@ -50,7 +52,8 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
           reserve: { type: 'number', minimum: 0 },
           reserveCurrency: { type: 'string', enum: currencies },
           minimalSpend: { type: 'number', exclusiveMinimum: 0 },
-          minimalSpendCurrency: { type: 'string', enum: currencies }
+          minimalSpendCurrency: { type: 'string', enum: currencies },
+          targetMonths: { type: 'integer', minimum: 1 }
         },
         dependencies: {
           salary: ['salaryCurrency'],
@@ -60,7 +63,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
   }, async (request) => {
-    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency, minimalSpend, minimalSpendCurrency } = request.body
+    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency, minimalSpend, minimalSpendCurrency, targetMonths } = request.body
     const values = {
       monthlySpendCents: Math.round(monthlySpend * 100),
       currency,
@@ -69,7 +72,8 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
       reserveCents: toCents(reserve),
       reserveCurrency: reserve === undefined ? null : reserveCurrency!,
       minimalSpendCents: toCents(minimalSpend),
-      minimalSpendCurrency: minimalSpend === undefined ? null : minimalSpendCurrency!
+      minimalSpendCurrency: minimalSpend === undefined ? null : minimalSpendCurrency!,
+      targetMonths: targetMonths ?? null
     }
     const [row] = await fastify.db.insert(budget)
       .values({ id: 1, ...values })

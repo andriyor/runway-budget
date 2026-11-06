@@ -1,0 +1,1 @@
+ALTER TABLE `budget` ADD `target_months` integer;

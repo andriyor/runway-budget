@@ -40,5 +40,7 @@ export const budget = sqliteTable('budget', {
   reserveCurrency: text('reserve_currency', { enum: currencies }),
   // optional extreme-saving monthly spend, expected below monthlySpend
   minimalSpendCents: integer('minimal_spend_cents'),
-  minimalSpendCurrency: text('minimal_spend_currency', { enum: currencies })
+  minimalSpendCurrency: text('minimal_spend_currency', { enum: currencies }),
+  // optional months to live without salary; drives the max monthly spend
+  targetMonths: integer('target_months')
 })

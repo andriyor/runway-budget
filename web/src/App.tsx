@@ -122,6 +122,14 @@ function ChevronIcon({ up }: { up?: boolean }) {
   )
 }
 
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7ZM4 10h16M8 3v4M16 3v4" />
+    </svg>
+  )
+}
+
 function TrendDownIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -278,6 +286,7 @@ type Budget = {
   reserveCurrency: Currency | null
   minimalSpend: number | null
   minimalSpendCurrency: Currency | null
+  targetMonths: number | null
 }
 type Convert = (amount: number, from: Currency, to: Currency) => number | undefined
 
@@ -311,6 +320,28 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
   )
 }
 
+type SpendLimitProps = { months: number, total: number, spend: number, minimal: number | undefined, currency: Currency }
+
+// the most you can spend per month to make savings last `months` without salary
+function SpendLimit({ months, total, spend, minimal, currency }: SpendLimitProps) {
+  const limit = Math.max(0, total) / months
+  const diff = limit - spend
+  return (
+    <div className="rounded-xl bg-violet-50 p-4 dark:bg-violet-950/40">
+      <p className={muted}>To last {months} months without salary</p>
+      <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+        {format(limit, currency)} <span className="text-base font-normal text-zinc-500">per month at most</span>
+      </p>
+      <p className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+        {diff >= 0 ? `${format(diff, currency)} more than you spend now` : `cut ${format(-diff, currency)} from your usual spending`}
+      </p>
+      {minimal !== undefined && limit < minimal && (
+        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">Below your extreme-saving budget, likely not realistic.</p>
+      )}
+    </div>
+  )
+}
+
 const amountString = (n: number | null) => (n === null ? '' : String(n))
 
 // amounts as typed in the inputs; '' means not set
@@ -323,6 +354,7 @@ type BudgetForm = {
   reserveCurrency: Currency
   minimal: string
   minimalCurrency: Currency
+  months: string
 }
 
 const toForm = (b: Budget | null, fallback: Currency = 'UAH'): BudgetForm => ({
@@ -334,6 +366,7 @@ const toForm = (b: Budget | null, fallback: Currency = 'UAH'): BudgetForm => ({
   reserveCurrency: b?.reserveCurrency ?? fallback,
   minimal: amountString(b?.minimalSpend ?? null),
   minimalCurrency: b?.minimalSpendCurrency ?? fallback,
+  months: amountString(b?.targetMonths ?? null),
 })
 
 // request body for PUT /budget; empty optional amount omits (clears) its pair
@@ -344,6 +377,7 @@ function budgetBody(f: BudgetForm) {
     ...(f.salary !== '' && { salary: Number(f.salary), salaryCurrency: f.salaryCurrency }),
     ...(f.reserve !== '' && { reserve: Number(f.reserve), reserveCurrency: f.reserveCurrency }),
     ...(f.minimal !== '' && { minimalSpend: Number(f.minimal), minimalSpendCurrency: f.minimalCurrency }),
+    ...(f.months !== '' && { targetMonths: Number(f.months) }),
   }
 }
 
@@ -412,6 +446,22 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn, minimalIn }:
           <span className={fieldLabel}><span className="text-amber-500"><LockIcon /></span> Untouchable reserve {optional}</span>
           <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={form.reserve} onChange={field('reserve')} currency={form.reserveCurrency} onCurrency={field('reserveCurrency')} />
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={fieldLabel}><span className="text-violet-600"><CalendarIcon /></span> Live without salary for {optional}</span>
+          <div className={`flex items-center ${inputBox}`}>
+            <input
+              id="months"
+              type="number"
+              step="1"
+              min="1"
+              placeholder="months, shows how much you can spend"
+              value={form.months}
+              onChange={(e) => field('months')(e.target.value)}
+              className="w-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+            />
+            <span className="px-3 text-sm text-zinc-500">months</span>
+          </div>
+        </label>
         <div>
           <button className={button} disabled={!dirty}>Save</button>
           <ErrorText>{error}</ErrorText>
@@ -437,6 +487,9 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn, minimalIn }:
                     <p className="text-sm text-amber-700 dark:text-amber-400">Extreme saving is not below your usual spending.</p>
                   )}
                 </>
+              )}
+              {saved.targetMonths !== null && (
+                <SpendLimit months={saved.targetMonths} total={available} spend={saved.monthlySpend} minimal={minimalInSpendCurrency} currency={saved.currency} />
               )}
               {salaryInSpendCurrency !== undefined && (
                 <Estimate label="With salary" total={available} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />

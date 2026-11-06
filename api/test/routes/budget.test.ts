@@ -5,7 +5,7 @@ import { build } from '../helper'
 test('budget is empty, then set and overwritten', async (t) => {
   const app = await build(t)
   const put = (payload: object) => app.inject({ method: 'PUT', url: '/budget', payload })
-  const none = { salary: null, salaryCurrency: null, reserve: null, reserveCurrency: null, minimalSpend: null, minimalSpendCurrency: null }
+  const none = { salary: null, salaryCurrency: null, reserve: null, reserveCurrency: null, minimalSpend: null, minimalSpendCurrency: null, targetMonths: null }
 
   assert.equal((await app.inject({ url: '/budget' })).json(), null)
 
@@ -23,7 +23,8 @@ test('budget is empty, then set and overwritten', async (t) => {
     reserve: 3000,
     reserveCurrency: 'EUR',
     minimalSpend: 15000,
-    minimalSpendCurrency: 'UAH'
+    minimalSpendCurrency: 'UAH',
+    targetMonths: 12
   }
   assert.deepEqual((await put(fullBody)).json(), fullBody)
 
@@ -32,4 +33,6 @@ test('budget is empty, then set and overwritten', async (t) => {
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', reserve: 100 })).statusCode, 400)
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', minimalSpend: 100 })).statusCode, 400)
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', minimalSpend: 0, minimalSpendCurrency: 'UAH' })).statusCode, 400)
+  assert.equal((await put({ monthlySpend: 1, currency: 'UAH', targetMonths: 0 })).statusCode, 400)
+  assert.equal((await put({ monthlySpend: 1, currency: 'UAH', targetMonths: 1.5 })).statusCode, 400)
 })

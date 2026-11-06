@@ -9,7 +9,8 @@ and when you reach your goals.
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
 - **Runway**: enter monthly spending, an optional salary, an optional extreme-saving budget and an optional untouchable reserve, and see
-  how many months your savings last with and without salary.
+  how many months your savings last with and without salary. Enter how many months you want to live
+  without salary to see the most you can spend per month.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (salary minus spending).
 
