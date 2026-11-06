@@ -1,11 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 const currencies = ['USD', 'EUR', 'UAH'] as const
 type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
 type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
-type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, categorySource: 'transaction' | 'merchant' | 'auto', mccDescription: string | null, merchantDomain: string | null }
+type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, categorySource: 'transaction' | 'merchant' | 'auto', mccDescription: string | null, merchantDomain: string | null, note: string | null }
 type Category = { id: string, label: string, emoji: string, spending: boolean, subcategories: Array<{ id: string, label: string }> }
 // what a transaction's category id points at: a subcategory, or a category without subcategories
 type Leaf = { id: string, label: string, parent: Category }
@@ -925,6 +925,9 @@ function TransactionsPage() {
   // the transaction just recategorized stays in the filtered view it was changed in,
   // so its "усім від продавця" link is still reachable; another filter drops it
   const [kept, setKept] = useState<{ id: number, view: string }>()
+  // the note being edited; Enter or leaving the field saves, Escape cancels
+  const [editing, setEditing] = useState<{ id: number, draft: string }>()
+  const cancelled = useRef(false)
   const [period, setPeriod] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
@@ -981,6 +984,17 @@ function TransactionsPage() {
   }
   const setOwn = (t: Transaction, category: string | null) => ({ path: `/categories/transactions/${t.id}`, body: { category } })
   const setMerchant = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
+
+  async function saveNote(t: Transaction, draft: string) {
+    setEditing(undefined)
+    if (draft.trim() === (t.note ?? '')) return
+    try {
+      const { note } = await api<{ note: string | null }>(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ note: draft }) })
+      setList((all) => all?.map((x) => (x.id === t.id ? { ...x, note } : x)))
+    } catch (err) {
+      setError(`Note: ${(err as Error).message}`)
+    }
+  }
 
   const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -1071,6 +1085,32 @@ function TransactionsPage() {
                   <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
+                    {editing?.id === t.id ? (
+                      <input
+                        autoFocus
+                        maxLength={1000}
+                        aria-label={`Note for ${t.description}`}
+                        placeholder="Нотатка"
+                        value={editing.draft}
+                        onChange={(e) => setEditing({ id: t.id, draft: e.target.value })}
+                        onBlur={() => (cancelled.current ? setEditing(undefined) : saveNote(t, editing.draft))}
+                        onFocus={() => { cancelled.current = false }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') cancelled.current = true
+                          if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
+                        }}
+                        className={`my-0.5 w-full px-2 py-1 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+                      />
+                    ) : t.note && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing({ id: t.id, draft: t.note ?? '' })}
+                        title="Змінити нотатку"
+                        className="block max-w-full truncate text-left text-sm text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                      >
+                        {t.note}
+                      </button>
+                    )}
                     <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
                       <select
                         aria-label={`Category of ${t.description}`}
@@ -1100,6 +1140,11 @@ function TransactionsPage() {
                       {t.categorySource === 'merchant' && (
                         <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchant(t, null)])}>
                           скинути для продавця
+                        </button>
+                      )}
+                      {!t.note && editing?.id !== t.id && (
+                        <button type="button" className={linkButton} onClick={() => setEditing({ id: t.id, draft: '' })}>
+                          + нотатка
                         </button>
                       )}
                       <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>

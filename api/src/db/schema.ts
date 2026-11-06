@@ -34,7 +34,9 @@ export const transactions = sqliteTable('transactions', {
   // account currency, minor units; negative = spending
   amountCents: integer('amount_cents').notNull(),
   // user's category for this transaction only; wins over merchant_categories
-  category: text('category', { enum: categoryIds as [string, ...string[]] })
+  category: text('category', { enum: categoryIds as [string, ...string[]] }),
+  // user's free-text note
+  note: text('note')
 })
 
 // user's category for every transaction of a merchant; key is merchantKey(description)

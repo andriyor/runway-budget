@@ -93,6 +93,7 @@ integer minor units (cents/kopiykas).
 | `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
+| `PATCH`  | `/transactions/:id` | Set a transaction's note `{ note }`; empty or `null` clears it |
 | `POST`   | `/accounts/mono/sync` | Import 31 days from Monobank ending at `?to=` (unix seconds, default now) |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
