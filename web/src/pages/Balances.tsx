@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AccountRow } from '../components/AccountRow'
 import { Allocation } from '../components/Allocation'
+import { BalanceHistory } from '../components/BalanceHistory'
 import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
 import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
@@ -118,6 +119,8 @@ export function Balances() {
           </div>
         ))}
       </section>
+
+      <BalanceHistory accounts={accounts} convert={convert} currency={budget?.currency ?? 'UAH'} />
 
       <Allocation accounts={accounts} convert={convert} />
 
