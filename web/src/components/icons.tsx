@@ -115,3 +115,13 @@ export function ListIcon() {
     </svg>
   )
 }
+
+export function SyncIcon({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`size-4 ${spinning ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 12a8 8 0 0 1-14.3 4.9" />
+      <path d="M4 12a8 8 0 0 1 14.3-4.9" />
+      <path d="M18 3v4h-4M6 21v-4h4" />
+    </svg>
+  )
+}

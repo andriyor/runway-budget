@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CategorySpending } from '../components/CategorySpending'
 import { MerchantIcon } from '../components/MerchantIcon'
+import { SyncIcon } from '../components/icons'
 import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
 import { Skeleton } from '../components/controls'
@@ -234,7 +235,10 @@ export function TransactionsPage() {
             </optgroup>
           </select>
           {account && (
-            <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+            <p className="flex flex-col leading-tight">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
+              <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+            </p>
           )}
           <button
             type="button"
@@ -244,7 +248,11 @@ export function TransactionsPage() {
           >
             Лише необхідне
           </button>
-          <button className={button} onClick={sync} disabled={syncing}>{syncing ? 'Syncing…' : 'Sync Monobank'}</button>
+          {/* icon only on phones, the name stays for screen readers and as a tooltip */}
+          <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
+            <SyncIcon spinning={syncing} />
+            <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
+          </button>
         </div>
 
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
