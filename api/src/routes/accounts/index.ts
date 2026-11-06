@@ -72,14 +72,18 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       .orderBy(desc(transactions.time), desc(transactions.id))
     const overrides = new Map((await fastify.db.select().from(merchantCategories))
       .map((o) => [o.merchant, o.category as CategoryId]))
-    return rows.map(({ amountCents, ...rest }) => ({
-      ...rest,
-      amount: amountCents / 100,
-      category: categorize(rest.mcc, rest.description, amountCents,
-        (rest.category as CategoryId | null) ?? overrides.get(merchantKey(rest.description))),
-      mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
-      merchantDomain: merchantDomain(rest.description)
-    }))
+    return rows.map(({ amountCents, category: own, ...rest }) => {
+      const merchant = overrides.get(merchantKey(rest.description))
+      return {
+        ...rest,
+        amount: amountCents / 100,
+        category: categorize(rest.mcc, rest.description, amountCents, own ?? merchant),
+        // which level decided the category, so the UI can offer to promote or reset it
+        categorySource: own ? 'transaction' : merchant ? 'merchant' : 'auto',
+        mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
+        merchantDomain: merchantDomain(rest.description)
+      }
+    })
   })
 
   // pulls 31 days of the MONO_ACCOUNT statement ending at `to` (unix seconds, default now); safe to repeat

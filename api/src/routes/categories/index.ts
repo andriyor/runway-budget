@@ -1,10 +1,10 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { eq } from 'drizzle-orm'
-import { categories, categoryIds, merchantKey, type CategoryId } from '../../categories'
+import { categoryIds, categoryTree, merchantKey, type CategoryId } from '../../categories'
 import { merchantCategories, transactions } from '../../db/schema'
 
 const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/', async () => categories.map(({ id, label, emoji }) => ({ id, label, emoji })))
+  fastify.get('/', async () => categoryTree)
 
   // category: null drops the override and goes back to the automatic one
   fastify.put<{ Body: { description: string, category: CategoryId | null } }>('/merchants', {

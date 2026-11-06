@@ -5,8 +5,10 @@ type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
 type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
-type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, mccDescription: string | null, merchantDomain: string | null }
-type Category = { id: string, label: string, emoji: string }
+type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, categorySource: 'transaction' | 'merchant' | 'auto', mccDescription: string | null, merchantDomain: string | null }
+type Category = { id: string, label: string, emoji: string, spending: boolean, subcategories: Array<{ id: string, label: string }> }
+// what a transaction's category id points at: a subcategory, or a category without subcategories
+type Leaf = { id: string, label: string, parent: Category }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -27,6 +29,7 @@ const formatRate = (rate: number) =>
 const symbols: Record<Currency, string> = { USD: '$', EUR: '€', UAH: '₴' }
 const iconColors: Record<Currency, string> = { USD: 'bg-emerald-600', EUR: 'bg-blue-600', UAH: 'bg-amber-600' }
 
+const linkButton = 'shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400'
 const card = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800'
 const muted = 'text-sm text-zinc-500 dark:text-zinc-400'
 const inputBox = 'rounded-lg bg-white ring-1 ring-inset ring-zinc-300 focus-within:ring-2 focus-within:ring-indigo-500 dark:bg-zinc-950 dark:ring-zinc-700'
@@ -810,30 +813,59 @@ function MerchantIcon({ domain, emoji }: { domain: string | null, emoji: string 
   )
 }
 
-// income and moves between own accounts are not spending; refunds (positive amounts) reduce their category
-const notSpending = new Set(['income', 'own'])
-
 type CategorySpendingProps = {
   list: Transaction[]
   currency: Currency
-  categoryById: Map<string, Category>
+  leafById: Map<string, Leaf>
   selected?: string
   onSelect: (category?: string) => void
 }
 
-function CategorySpending({ list, currency, categoryById, selected, onSelect }: CategorySpendingProps) {
-  const groups = new Map<string, { total: number }>()
+// Totals per category, and per subcategory for the one that is open. Categories marked not spending
+// (income, own-account moves) stay out; refunds (positive amounts) reduce their category.
+function CategorySpending({ list, currency, leafById, selected, onSelect }: CategorySpendingProps) {
+  const parents = new Map([...leafById.values()].map((l) => [l.parent.id, l.parent]))
+  const byParent = new Map<string, number>()
+  const byLeaf = new Map<string, number>()
   for (const t of list) {
-    if (notSpending.has(t.category)) continue
-    const group = groups.get(t.category) ?? { total: 0 }
-    group.total -= t.amount
-    groups.set(t.category, group)
+    const parent = leafById.get(t.category)?.parent
+    if (!parent?.spending) continue
+    byParent.set(parent.id, (byParent.get(parent.id) ?? 0) - t.amount)
+    byLeaf.set(t.category, (byLeaf.get(t.category) ?? 0) - t.amount)
   }
-  for (const [id, g] of groups) if (g.total <= 0) groups.delete(id)
-  const rows = [...groups].sort((a, b) => b[1].total - a[1].total)
-  const total = rows.reduce((sum, [, g]) => sum + g.total, 0)
+  const rows = [...byParent].filter(([, sum]) => sum > 0).sort((a, b) => b[1] - a[1])
+  const total = rows.reduce((sum, [, x]) => sum + x, 0)
   if (total === 0) return null
   const day = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' })
+  // the open category: the selected one, or the parent of a selected subcategory
+  const open = selected && (leafById.get(selected)?.parent.id ?? selected)
+
+  const row = (id: string, label: string, emoji: string | undefined, sum: number, max: number, onClick: () => void, sub = false) => (
+    <li key={id} className={sub ? 'ml-11' : undefined}>
+      <button
+        type="button"
+        aria-pressed={selected === id}
+        onClick={onClick}
+        className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-zinc-50 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800/50 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900"
+      >
+        {emoji && (
+          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-base dark:bg-zinc-800">{emoji}</span>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className={`truncate ${sub ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-900 dark:text-zinc-100'}`}>{label}</span>
+            <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+              {format(sum, currency)}
+              <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(sum / total)}%</span>
+            </span>
+          </div>
+          <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className={`h-full rounded-full ${sub ? 'bg-indigo-300 dark:bg-indigo-400' : 'bg-indigo-500'}`} style={{ width: `${(sum / max) * 100}%` }} />
+          </div>
+        </div>
+      </button>
+    </li>
+  )
 
   return (
     <section className={card}>
@@ -844,32 +876,16 @@ function CategorySpending({ list, currency, categoryById, selected, onSelect }: 
         </span>
       </div>
       <ul className="mt-3 flex flex-col gap-3">
-        {rows.map(([category, g]) => (
-          <li key={category}>
-            <button
-              type="button"
-              aria-pressed={selected === category}
-              onClick={() => onSelect(selected === category ? undefined : category)}
-              className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-zinc-50 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800/50 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900"
-            >
-              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-base dark:bg-zinc-800">
-                {categoryById.get(category)?.emoji}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate text-zinc-900 dark:text-zinc-100">{categoryById.get(category)?.label ?? category}</span>
-                  <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
-                    {format(g.total, currency)}
-                    <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(g.total / total)}%</span>
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(g.total / rows[0][1].total) * 100}%` }} />
-                </div>
-              </div>
-            </button>
-          </li>
-        ))}
+        {rows.flatMap(([id, sum]) => {
+          const parent = parents.get(id)!
+          const subs = id === open
+            ? parent.subcategories.map((sc) => [sc, byLeaf.get(sc.id) ?? 0] as const).filter(([, x]) => x > 0).sort((a, b) => b[1] - a[1])
+            : []
+          return [
+            row(id, parent.label, parent.emoji, sum, rows[0][1], () => onSelect(selected === id ? undefined : id)),
+            ...subs.map(([sc, x]) => row(sc.id, sc.label, undefined, x, subs[0][1], () => onSelect(selected === sc.id ? id : sc.id), true)),
+          ]
+        })}
       </ul>
     </section>
   )
@@ -909,7 +925,15 @@ function TransactionsPage() {
   const [period, setPeriod] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
-  const categoryById = new Map(categories.map((c) => [c.id, c]))
+  const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
+    c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
+  // a selection is a category (matches all its subcategories) or a single subcategory
+  const inSelection = (t: Transaction) => t.category === category || leafById.get(t.category)?.parent.id === category
+  const selectionLabel = (id: string) => {
+    const leaf = leafById.get(id)
+    if (!leaf) return categories.find((c) => c.id === id)?.label
+    return leaf.id === leaf.parent.id ? leaf.label : `${leaf.parent.label} › ${leaf.label}`
+  }
 
   useEffect(() => {
     api<Account[]>('/accounts')
@@ -941,20 +965,17 @@ function TransactionsPage() {
     }
   }
 
-  // choice is "t:<id>" for this transaction or "m:<id>" for the whole merchant; an empty id resets that level.
-  // A merchant change touches other rows, so reload the list either way.
-  async function recategorize(t: Transaction, choice: string) {
-    const [scope, id] = choice.split(':')
-    const category = id || null
+  // A merchant change touches other rows, so reload the list after any change
+  async function changeCategory(t: Transaction, steps: Array<{ path: string, body: object }>) {
     try {
-      await (scope === 't'
-        ? api(`/categories/transactions/${t.id}`, { method: 'PUT', body: JSON.stringify({ category }) })
-        : api('/categories/merchants', { method: 'PUT', body: JSON.stringify({ description: t.description, category }) }))
+      for (const { path, body } of steps) await api(path, { method: 'PUT', body: JSON.stringify(body) })
       setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
     } catch (err) {
       setError(`Category: ${(err as Error).message}`)
     }
   }
+  const setOwn = (t: Transaction, category: string | null) => ({ path: `/categories/transactions/${t.id}`, body: { category } })
+  const setMerchant = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
 
   const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -1007,11 +1028,11 @@ function TransactionsPage() {
       </section>
       {account && shown && list!.length > 0 && (
         <>
-          <CategorySpending list={shown} currency={account.currency} categoryById={categoryById} selected={category} onSelect={setCategory} />
+          <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={setCategory} />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-3">
-                <span className="truncate text-zinc-700 dark:text-zinc-300">{category ? categoryById.get(category)?.label : 'All transactions'}</span>
+                <span className="truncate text-zinc-700 dark:text-zinc-300">{category ? selectionLabel(category) : 'All transactions'}</span>
                 {category && (
                   <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
                     Show all
@@ -1038,29 +1059,41 @@ function TransactionsPage() {
             </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
-              {(category ? shown.filter((t) => t.category === category) : shown)
+              {(category ? shown.filter(inSelection) : shown)
                 .toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
                 .map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-3">
-                  <MerchantIcon domain={t.merchantDomain} emoji={categoryById.get(t.category)?.emoji ?? ''} />
+                  <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
                     <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
                       <select
                         aria-label={`Category of ${t.description}`}
-                        value={`t:${t.category}`}
-                        onChange={(e) => recategorize(t, e.target.value)}
+                        value={t.category}
+                        title={selectionLabel(t.category)}
+                        onChange={(e) => changeCategory(t, [setOwn(t, e.target.value || null)])}
                         className="max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
                       >
-                        <optgroup label="Лише ця транзакція">
-                          {categories.map((c) => <option key={c.id} value={`t:${c.id}`}>{c.label}</option>)}
-                          <option value="t:">Автоматично</option>
-                        </optgroup>
-                        <optgroup label="Усі від продавця">
-                          {categories.map((c) => <option key={c.id} value={`m:${c.id}`}>{c.label}</option>)}
-                          <option value="m:">Автоматично</option>
+                        <option value="">Автоматично</option>
+                        {categories.filter((c) => c.subcategories.length).map((c) => (
+                          <optgroup key={c.id} label={`${c.emoji} ${c.label}`}>
+                            {c.subcategories.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
+                          </optgroup>
+                        ))}
+                        <optgroup label="Службові">
+                          {categories.filter((c) => !c.subcategories.length).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                         </optgroup>
                       </select>
+                      {t.categorySource === 'transaction' && (
+                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchant(t, t.category), setOwn(t, null)])}>
+                          усім від продавця
+                        </button>
+                      )}
+                      {t.categorySource === 'merchant' && (
+                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchant(t, null)])}>
+                          скинути для продавця
+                        </button>
+                      )}
                       <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>
                     </p>
                   </div>

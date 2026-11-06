@@ -85,6 +85,13 @@
       "when": 1793990083150,
       "tag": "0011_concerned_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793991614041,
+      "tag": "0012_remap_categories",
+      "breakpoints": true
     }
   ]
 }

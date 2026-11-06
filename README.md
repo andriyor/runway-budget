@@ -90,7 +90,7 @@ integer minor units (cents/kopiykas).
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
 | `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `category`, `mccDescription` and `merchantDomain` |
-| `GET`    | `/categories`   | Categories `{ id, label, emoji }`                     |
+| `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
 | `POST`   | `/accounts/mono/sync` | Import 31 days from Monobank ending at `?to=` (unix seconds, default now) |
@@ -129,14 +129,18 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   31 days + 1 hour per statement. A sync fetches exactly that window; a too-early sync returns 429.
   Monobank also caps a statement at 500 items, so a busier month would be cut off; paging is not
   implemented.
-- **Own categories instead of raw MCC.** `api/src/categories.ts` holds one table of about a dozen
-  categories, each with its label, emoji and MCC ranges, so related codes (5411 and 5499, the
-  5815–5818 digital goods) land together. The raw MCC is still shown as `mccDescription`, from the
+- **Two-level categories instead of raw MCC.** `api/src/categories.ts` holds one tree: 16 spending
+  categories with subcategories (Продукти › Супермаркет, …), plus service categories without
+  subcategories: `Перекази` (spending), `Надходження` and `Між своїми рахунками` (not spending). MCC
+  ranges sit on subcategories; where they overlap, the first in table order wins. A transaction and
+  every stored override always hold a leaf id (a subcategory, or a category without any), and the
+  web groups leaves under their parent. Some subcategories (food delivery, electricity, loans) have
+  no MCC of their own and only fill through overrides. The raw MCC is still shown as `mccDescription`, from the
   Ukrainian `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
   (MIT, license in `api/src/data/mcc.LICENSE`).
 - **Category is decided on read, in this order:** the transaction's own category, then your
-  merchant override, then the jar rule (`Поповнення «…»` is charity), then the MCC table, else
-  `Інше`. A positive transfer becomes `Надходження` (income). Only your explicit choices are stored,
+  merchant override, then the jar rule (`Поповнення «…»` is `ЗСУ і фонди`), then the MCC table,
+  else `Інше › Інші витрати`. A positive transfer becomes `Надходження` (income). Only your explicit choices are stored,
   so changing a rule relabels the rest of history.
 - **Two levels of override.** `transactions.category` fixes a single purchase (a Bluetti from
   Rozetka) without moving the merchant. `merchant_categories` keys on the lowercased description with the
