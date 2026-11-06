@@ -14,6 +14,8 @@ and when you reach your goals.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
   and not counted toward goals.
+- **Monobank sync**: pull the last month of one Monobank card's transactions, set the account balance
+  from them, and browse them on the Transactions page with a category for each MCC.
 
 ## Stack
 
@@ -44,6 +46,19 @@ docker compose up -d --build
 ```
 
 Serves the app on <http://localhost:8080>. The SQLite database is kept in the `data` volume.
+`api/.env` is passed to the API container when it exists.
+
+## Monobank
+
+Create a personal token at <https://api.monobank.ua> and put it in `api/.env` (git-ignored, loaded
+by the API on start):
+
+```sh
+MONO_TOKEN=...
+MONO_ACCOUNT=...   # card account id from /personal/client-info
+```
+
+Then press **Sync Monobank** on the Transactions page.
 
 ## Scripts
 
@@ -74,6 +89,8 @@ integer minor units (cents/kopiykas).
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
+| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with MCC `category` |
+| `POST`   | `/accounts/mono/sync` | Import the last 31 days from Monobank and update the balance |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
 | `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
@@ -94,9 +111,31 @@ integer minor units (cents/kopiykas).
 
 Estimates assume flat spending and salary, and ignore interest and inflation.
 
+## Technical decisions
+
+- **Monobank account is linked by id.** The account stores `mono_account_id`, so every sync updates
+  the same account instead of creating a new one. Its currency comes from `client-info` when it is
+  first created.
+- **Sync is idempotent.** Each transaction keeps Monobank's own `id` under a unique index, and
+  inserts skip ones already stored, so syncing twice never duplicates anything.
+- **Balance excludes the credit limit.** Monobank's balance includes the bank's money, so the balance
+  is the latest transaction's balance minus `creditLimit` from `client-info`.
+- **Transactions store the account-currency amount.** A foreign purchase is saved as what it cost
+  in the card's currency (`amount`), not the original operation amount.
+- **One request per sync window.** Monobank allows one call per minute per endpoint and up to
+  31 days + 1 hour per statement. A sync fetches exactly that window; a too-early sync returns 429.
+  Monobank also caps a statement at 500 items, so a busier month would be cut off; paging is not
+  implemented.
+- **MCC categories are looked up on read, not stored.** Labels come from the Ukrainian
+  `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
+  (MIT, license in `api/src/data/mcc.LICENSE`), trimmed to an `mcc → label` map. Changing the map
+  relabels every past transaction with no migration.
+- **Transactions are deleted with their account** via an `ON DELETE CASCADE` foreign key.
+- **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
+
 ## TODO
 
-- [ ] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
+- [x] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
 - [x] Delete and rename accounts
 - [ ] Balance history over time
 - [ ] Goals in priority order (reach one after another instead of each on its own)

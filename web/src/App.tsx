@@ -5,7 +5,7 @@ type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
 type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
-type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number }
+type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string | null }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -860,7 +860,7 @@ function TransactionsPage() {
               <li key={t.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
-                  <p className={`tabular-nums ${muted}`}>{dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
+                  <p className={`truncate tabular-nums ${muted}`} title={t.category ?? undefined}>{t.category ?? 'Без категорії'} · {dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
                 </div>
                 <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
                   {format(t.amount, account.currency)}

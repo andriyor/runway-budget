@@ -108,7 +108,8 @@ test('sync Monobank statement into one account', async (t) => {
   assert.equal((await app.inject({ url: '/accounts' })).json().length, 1)
 
   const list = (await app.inject({ url: `/accounts/${first.json().account.id}/transactions` })).json()
-  assert.deepEqual(list.map((x: { externalId: string, amount: number }) => [x.externalId, x.amount]), [['b', -95], ['a', 1100]])
+  assert.deepEqual(list.map((x: { externalId: string, amount: number, category: string }) => [x.externalId, x.amount, x.category]),
+    [['b', -95, 'Ресторани швидкого харчування'], ['a', 1100, 'Банківський переказ грошових доручень / Грошові перекази']])
 
   fetchMock.mock.mockImplementation(async () => new Response('', { status: 429 }))
   assert.equal((await app.inject({ method: 'POST', url: '/accounts/mono/sync' })).statusCode, 429)
