@@ -21,12 +21,15 @@ type MonthlySpendingProps = {
   // selected category or subcategory: the bars show only it
   selected?: string
   onSelect: (category?: string) => void
+  // selected merchant: the bars show only its spending (within the selected category, if any)
+  merchant?: { key: string, name: string }
+  onClearMerchant: () => void
 }
 
 // Spending per month split by category: the SERIES biggest categories over the whole range keep
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
-// With a category selected, each bar holds only that category, rescaled to show its trend.
-export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect }: MonthlySpendingProps) {
+// With a category or merchant selected, each bar holds only that, rescaled to show its trend.
+export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant }: MonthlySpendingProps) {
   const [hover, setHover] = useState<{ month: string, series: string }>()
   const months = new Map<string, Map<string, number>>()
   const totals = new Map<string, number>()
@@ -53,19 +56,26 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
     return { month, segments, total: segments.reduce((sum, s) => sum + s.value, 0) }
   })
 
-  // focus: the selected category (or subcategory) alone, on the same months, in its legend color
+  // focus: the selected category (or subcategory) and/or merchant alone, on the same months,
+  // colored like the category it belongs to in the legend
   const selectedLeaf = selected ? leafById.get(selected) : undefined
   const selectedParent = selectedLeaf?.parent ?? (selected ? parents.get(selected) : undefined)
-  const focus = selected && selectedParent && {
-    id: selected,
-    label: selectedLeaf && selectedLeaf.id !== selectedParent.id ? `${selectedParent.label} › ${selectedLeaf.label}` : selectedParent.label,
-    color: series.find((x) => x.id === selectedParent.id)?.color ?? 'var(--series-rest)',
+  const merchantPurchase = merchant && list.find((t) => t.merchant === merchant.key && t.amount < 0)
+  const colorParent = selectedParent ?? (merchantPurchase ? leafById.get(merchantPurchase.category)?.parent : undefined)
+  const categoryLabel = selectedParent &&
+    (selectedLeaf && selectedLeaf.id !== selectedParent.id ? `${selectedParent.label} › ${selectedLeaf.label}` : selectedParent.label)
+  const focus = (selectedParent || merchant) && {
+    id: merchant ? `merchant:${merchant.key}` : selected!,
+    label: [merchant?.name, categoryLabel].filter(Boolean).join(' · '),
+    color: series.find((x) => x.id === colorParent?.id)?.color ?? 'var(--series-rest)',
   }
   const focusByMonth = new Map<string, number>()
   if (focus) {
     for (const t of list) {
       const parent = leafById.get(t.category)?.parent
-      if (!parent?.spending || (t.category !== selected && parent.id !== selected)) continue
+      if (!parent?.spending) continue
+      if (selectedParent && t.category !== selected && parent.id !== selected) continue
+      if (merchant && t.merchant !== merchant.key) continue
       focusByMonth.set(monthKey(t.time), (focusByMonth.get(monthKey(t.time)) ?? 0) - t.amount)
     }
   }
@@ -111,7 +121,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         })}
         {focus && !series.some((s) => s.id === focus.id) && (
           <li>
-            <button type="button" aria-pressed onClick={() => onSelect(undefined)} className={legendButton}>
+            <button type="button" aria-pressed onClick={() => (merchant ? onClearMerchant() : onSelect(undefined))} className={legendButton}>
               <span aria-hidden className="size-2.5 rounded-sm" style={{ background: focus.color }} />
               <span className="text-zinc-700 dark:text-zinc-300">{focus.label}</span>
               <span className={`tabular-nums ${muted}`}>{format(columns.reduce((sum, c) => sum + c.total, 0), currency)}</span>

@@ -154,9 +154,11 @@ export function TransactionsPage() {
             currency={account.currency}
             leafById={leafById}
             period={period}
-            onPick={(p) => { setPeriod(p); setMerchant(undefined) }}
+            onPick={setPeriod}
             selected={category}
             onSelect={pickCategory}
+            merchant={merchant ? { key: merchant, name: merchantName || merchant } : undefined}
+            onClearMerchant={() => setMerchant(undefined)}
           />
           <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
           <MerchantSpending list={inCategory!} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
