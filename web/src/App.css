@@ -1,0 +1,53 @@
+main {
+  text-align: left;
+  padding: 24px;
+  color: var(--text-h);
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.totals div {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.totals strong {
+  font-size: 1.4em;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.row .name {
+  min-width: 160px;
+  font-weight: 600;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 4px 8px;
+}
+
+.muted,
+small {
+  color: var(--text);
+}
+
+.error {
+  color: #d33;
+}
