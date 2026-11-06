@@ -229,8 +229,10 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 - **Summaries and filters run in the browser.** The page loads an account's whole transaction list
   and groups it by month, ISO week, category and merchant locally, so month and week boundaries use
   the viewer's time zone and switching filters needs no request. At ~1,500 transactions grouping
-  takes well under a millisecond; the cost is rendering the full list (one category dropdown per
-  row), so the next step is lighter rows and paging the list, not moving filters to the API.
+  takes well under a millisecond; what cost time was rendering. The list therefore shows 100 rows at
+  a time («Показати ще» for more), and a row's category and essential flag are plain buttons that
+  swap in their dropdown only when clicked. That took a year of transactions from 153k page
+  elements (108k dropdown options) and ~1.4 s per filter change to 1.8k elements and ~40 ms.
 - **Monthly chart folds small categories.** It colors the seven biggest categories over the shown
   range and folds the rest into one gray `Решта`, since more hues stop being distinguishable. The
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast

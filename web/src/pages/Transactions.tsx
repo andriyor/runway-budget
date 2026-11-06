@@ -11,6 +11,16 @@ import { periodsOf } from '../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../lib/types'
 
+const PAGE = 100
+
+// opens a dropdown that was just put in place of its button; the click still counts as user activation
+const openPicker = (el: HTMLSelectElement | null) => {
+  if (!el || el.dataset.opened) return
+  el.dataset.opened = '1'
+  el.focus()
+  try { el.showPicker() } catch { /* unsupported: focused, opens on the next click or key */ }
+}
+
 export function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState<number>()
@@ -28,6 +38,11 @@ export function TransactionsPage() {
   // the note being edited; Enter or leaving the field saves, Escape cancels
   const [editing, setEditing] = useState<{ id: number, draft: string }>()
   const cancelled = useRef(false)
+  // the one row whose category or essential dropdown is open; other rows show plain buttons,
+  // since a dropdown per row meant ~100k <option>s for a year of transactions
+  const [picking, setPicking] = useState<{ id: number, kind: 'category' | 'essential' }>()
+  // rows rendered; the summaries above always use every transaction
+  const [limit, setLimit] = useState(PAGE)
   const [period, setPeriod] = useState('')
   // only spending needed to live: the chart's median becomes the minimal month
   const [essentialOnly, setEssentialOnly] = useState(false)
@@ -130,6 +145,35 @@ export function TransactionsPage() {
   }
 
   const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
+  const rowPicker = 'shrink-0 cursor-pointer truncate rounded hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100'
+  const essentialLabel = (t: Transaction) => `${t.essential ? '● необхідне' : '○ необов’язкове'}${t.essentialSource !== 'auto' ? ' *' : ''}`
+  const categoryOptions = (
+    <>
+      <option value="">Автоматично</option>
+      {categories.filter((c) => c.subcategories.length).map((c) => (
+        <optgroup key={c.id} label={`${c.emoji} ${c.label}`}>
+          {c.subcategories.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
+        </optgroup>
+      ))}
+      <optgroup label="Службові">
+        {categories.filter((c) => !c.subcategories.length).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </optgroup>
+    </>
+  )
+  const essentialOptions = (
+    <>
+      <optgroup label="Лише ця транзакція">
+        <option value="t:true">Необхідне</option>
+        <option value="t:false">Необов’язкове</option>
+        <option value="t:">Як у продавця / категорії</option>
+      </optgroup>
+      <optgroup label="Усі від продавця">
+        <option value="m:true">Необхідне</option>
+        <option value="m:false">Необов’язкове</option>
+        <option value="m:">Як у категорії</option>
+      </optgroup>
+    </>
+  )
 
   const periods = new Map<string, string>()
   for (const t of list ?? []) for (const [key, label] of periodsOf(t)) periods.set(key, label)
@@ -140,6 +184,7 @@ export function TransactionsPage() {
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
+  const sorted = (listed ?? []).toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
 
   return (
     <>
@@ -245,9 +290,7 @@ export function TransactionsPage() {
             </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
-              {listed!
-                .toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
-                .map((t) => (
+              {sorted.slice(0, limit).map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-3">
                   <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
@@ -279,46 +322,54 @@ export function TransactionsPage() {
                       </button>
                     )}
                     <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
-                      <select
-                        aria-label={`Category of ${t.description}`}
-                        value={t.category}
-                        title={selectionLabel(t.category)}
-                        onChange={(e) => {
-                          setKept({ id: t.id, view })
-                          changeCategory(t, [setOwn(t, e.target.value || null)])
-                        }}
-                        className="field-sizing-content max-w-48 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
-                      >
-                        <option value="">Автоматично</option>
-                        {categories.filter((c) => c.subcategories.length).map((c) => (
-                          <optgroup key={c.id} label={`${c.emoji} ${c.label}`}>
-                            {c.subcategories.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
-                          </optgroup>
-                        ))}
-                        <optgroup label="Службові">
-                          {categories.filter((c) => !c.subcategories.length).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                        </optgroup>
-                      </select>
-                      <select
-                        aria-label={`Essential: ${t.description}`}
-                        value=""
-                        onChange={(e) => changeEssential(t, e.target.value)}
-                        className={`field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100 ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
-                      >
-                        <option value="" disabled hidden>
-                          {t.essential ? '● необхідне' : '○ необов’язкове'}{t.essentialSource !== 'auto' ? ' *' : ''}
-                        </option>
-                        <optgroup label="Лише ця транзакція">
-                          <option value="t:true">Необхідне</option>
-                          <option value="t:false">Необов’язкове</option>
-                          <option value="t:">Як у продавця / категорії</option>
-                        </optgroup>
-                        <optgroup label="Усі від продавця">
-                          <option value="m:true">Необхідне</option>
-                          <option value="m:false">Необов’язкове</option>
-                          <option value="m:">Як у категорії</option>
-                        </optgroup>
-                      </select>
+                      {picking?.id === t.id && picking.kind === 'category' ? (
+                        <select
+                          ref={openPicker}
+                          aria-label={`Category of ${t.description}`}
+                          value={t.category}
+                          onBlur={() => setPicking(undefined)}
+                          onChange={(e) => {
+                            setPicking(undefined)
+                            setKept({ id: t.id, view })
+                            changeCategory(t, [setOwn(t, e.target.value || null)])
+                          }}
+                          className="field-sizing-content max-w-48 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
+                        >
+                          {categoryOptions}
+                        </select>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
+                          title={selectionLabel(t.category)}
+                          onClick={() => setPicking({ id: t.id, kind: 'category' })}
+                          className={rowPicker}
+                        >
+                          {leafById.get(t.category)?.label ?? t.category} <span aria-hidden>▾</span>
+                        </button>
+                      )}
+                      {picking?.id === t.id && picking.kind === 'essential' ? (
+                        <select
+                          ref={openPicker}
+                          aria-label={`Essential: ${t.description}`}
+                          value=""
+                          onBlur={() => setPicking(undefined)}
+                          onChange={(e) => { setPicking(undefined); changeEssential(t, e.target.value) }}
+                          className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
+                        >
+                          <option value="" disabled hidden>{essentialLabel(t)}</option>
+                          {essentialOptions}
+                        </select>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
+                          onClick={() => setPicking({ id: t.id, kind: 'essential' })}
+                          className={`${rowPicker} ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
+                        >
+                          {essentialLabel(t)} <span aria-hidden>▾</span>
+                        </button>
+                      )}
                       {t.categorySource === 'transaction' && (
                         <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchantCategory(t, t.category), setOwn(t, null)])}>
                           усім від продавця
@@ -343,6 +394,11 @@ export function TransactionsPage() {
                 </li>
               ))}
             </ul>
+            {sorted.length > limit && (
+              <button type="button" onClick={() => setLimit(limit + PAGE)} className={`mt-3 text-sm ${linkButton}`}>
+                Показати ще {Math.min(PAGE, sorted.length - limit)} (показано {limit} з {sorted.length})
+              </button>
+            )}
           </section>
         </>
       )}
