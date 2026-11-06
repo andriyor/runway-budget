@@ -56,6 +56,14 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!row) return reply.notFound()
     return toDto(row)
   })
+
+  fastify.delete<{ Params: { id: number } }>('/:id', {
+    schema: { params: { type: 'object', properties: { id: { type: 'integer' } } } }
+  }, async (request, reply) => {
+    const [row] = await fastify.db.delete(accounts).where(eq(accounts.id, request.params.id)).returning()
+    if (!row) return reply.notFound()
+    return reply.code(204).send()
+  })
 }
 
 export default accountsRoutes

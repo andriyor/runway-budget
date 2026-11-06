@@ -11,7 +11,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: init?.body ? { 'content-type': 'application/json' } : undefined,
   })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.message ?? res.statusText)
-  return res.json()
+  return res.status === 204 ? (undefined as T) : res.json()
 }
 
 const format = (amount: number, currency: Currency) =>
@@ -120,20 +120,33 @@ function MoneyInput({ id, label, value, onChange, currency, onCurrency, required
   )
 }
 
-function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Account) => void }) {
+type AccountRowProps = { account: Account, onSaved: (a: Account) => void, onDeleted: (id: number) => void }
+
+function AccountRow({ account, onSaved, onDeleted }: AccountRowProps) {
+  const [name, setName] = useState(account.name)
   const [balance, setBalance] = useState(String(account.balance))
   const [currency, setCurrency] = useState(account.currency)
   const [error, setError] = useState('')
-  const dirty = Number(balance) !== account.balance || currency !== account.currency
+  const dirty = name.trim() !== account.name || Number(balance) !== account.balance || currency !== account.currency
 
   async function save(e: FormEvent) {
     e.preventDefault()
     try {
       onSaved(await api<Account>(`/accounts/${account.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ balance: Number(balance), currency }),
+        body: JSON.stringify({ name: name.trim(), balance: Number(balance), currency }),
       }))
       setError('')
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function remove() {
+    if (!confirm(`Delete account "${account.name}"? Its balance will no longer be counted.`)) return
+    try {
+      await api(`/accounts/${account.id}`, { method: 'DELETE' })
+      onDeleted(account.id)
     } catch (err) {
       setError((err as Error).message)
     }
@@ -144,7 +157,16 @@ function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Accou
       <form className="flex flex-wrap items-center gap-3" onSubmit={save}>
         <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
         <div className="min-w-32 flex-1">
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">{account.name}</p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            maxLength={100}
+            pattern=".*\S.*"
+            aria-label="Account name"
+            title="Click to rename"
+            className="-mx-1.5 w-full rounded-md bg-transparent px-1.5 py-0.5 font-medium text-zinc-900 outline-none hover:bg-zinc-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-950"
+          />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
           </p>
@@ -153,6 +175,14 @@ function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Accou
           <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
         </div>
         <button className={button} disabled={!dirty}>Save</button>
+        <button
+          type="button"
+          onClick={remove}
+          aria-label={`Delete account ${account.name}`}
+          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+        >
+          <TrashIcon />
+        </button>
       </form>
       <ErrorText>{error}</ErrorText>
     </li>
@@ -352,8 +382,7 @@ function Goals({ availableIn, netIn }: GoalsProps) {
   async function remove(goal: Goal) {
     if (!confirm(`Delete goal "${goal.name}"?`)) return
     try {
-      const res = await fetch(`/api/goals/${goal.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(res.statusText)
+      await api(`/goals/${goal.id}`, { method: 'DELETE' })
       setGoals((list) => list.filter((g) => g.id !== goal.id))
     } catch (err) {
       setError((err as Error).message)
@@ -480,6 +509,7 @@ export default function App() {
     }
   }
 
+  const removeAccount = (id: number) => setAccounts((list) => list.filter((a) => a.id !== id))
   const replace = (updated: Account) =>
     setAccounts((list) => list.map((a) => (a.id === updated.id ? updated : a)))
 
@@ -543,7 +573,7 @@ export default function App() {
           <span className={muted}>{accounts.length}</span>
         </div>
         <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
-          {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} />)}
+          {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} onDeleted={removeAccount} />)}
         </ul>
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
 

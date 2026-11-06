@@ -31,3 +31,17 @@ test('create, list and update accounts', async (t) => {
   const missing = await app.inject({ method: 'PATCH', url: '/accounts/999', payload: { balance: 1 } })
   assert.equal(missing.statusCode, 404)
 })
+
+test('rename and delete account', async (t) => {
+  const app = await build(t)
+  const { id } = (await app.inject({ method: 'POST', url: '/accounts', payload: { name: 'Old', currency: 'EUR', balance: 5 } })).json()
+
+  const renamed = await app.inject({ method: 'PATCH', url: `/accounts/${id}`, payload: { name: 'New' } })
+  assert.equal(renamed.json().name, 'New')
+  assert.equal(renamed.json().balance, 5)
+  assert.equal((await app.inject({ method: 'PATCH', url: `/accounts/${id}`, payload: { name: '' } })).statusCode, 400)
+
+  assert.equal((await app.inject({ method: 'DELETE', url: `/accounts/${id}` })).statusCode, 204)
+  assert.deepEqual((await app.inject({ url: '/accounts' })).json(), [])
+  assert.equal((await app.inject({ method: 'DELETE', url: `/accounts/${id}` })).statusCode, 404)
+})

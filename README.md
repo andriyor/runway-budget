@@ -6,7 +6,7 @@ and when you reach your goals.
 
 ## Features
 
-- **Accounts**: add accounts in USD, EUR or UAH and update their balances.
+- **Accounts**: add accounts in USD, EUR or UAH, update their balances, rename or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
 - **Runway**: enter monthly spending, an optional salary and an optional untouchable reserve, and see
   how many months your savings last with and without salary.
@@ -66,6 +66,7 @@ integer minor units (cents/kopiykas).
 | `GET`    | `/accounts`     | List accounts                                         |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance }`          |
 | `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`           |
+| `DELETE` | `/accounts/:id` | Delete account                                        |
 | `GET`    | `/budget`       | Monthly spend, salary and reserve, or `null`          |
 | `PUT`    | `/budget`       | Set `{ monthlySpend, currency, salary?, salaryCurrency?, reserve?, reserveCurrency? }` |
 | `GET`    | `/goals`        | List goals                                            |
@@ -85,7 +86,7 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 ## TODO
 
 - [ ] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
-- [ ] Delete and rename accounts
+- [x] Delete and rename accounts
 - [ ] Balance history over time
 - [ ] Goals in priority order (reach one after another instead of each on its own)
 - [ ] Shared package for types used by both `api` and `web`
