@@ -3,7 +3,7 @@ import { AccountRow } from '../components/AccountRow'
 import { Allocation } from '../components/Allocation'
 import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
-import { KindToggle, Skeleton, MoneyInput } from '../components/controls'
+import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
 import { CurrencyIcon, BankIcon } from '../components/icons'
 import { api } from '../lib/api'
 import { format, formatRate, symbols } from '../lib/format'
@@ -87,9 +87,9 @@ export function Balances() {
 
   return (
     <>
-      <header>
+      <header className="flex items-center gap-2">
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
-        <p className={muted}>USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</p>
+        <InfoTip label="About balances">USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</InfoTip>
       </header>
 
       {error && (

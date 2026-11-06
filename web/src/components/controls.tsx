@@ -1,3 +1,5 @@
+import { useId, useState, type ReactNode } from 'react'
+import { InfoIcon } from './icons'
 import { kindIcons, kindLabels } from '../lib/display'
 import { inputBox } from '../lib/styles'
 import { currencies, type Currency, accountKinds, type AccountKind } from '../lib/types'
@@ -73,5 +75,40 @@ export function MoneyInput({ id, label, value, onChange, currency, onCurrency, r
         {currencies.map((c) => <option key={c}>{c}</option>)}
       </select>
     </div>
+  )
+}
+
+// ⓘ with a short explanation: shown while a mouse hovers, toggled by click, tap or Enter, closed by Esc
+// or leaving. Driven by state only: touch screens report a tapped button as hovered and focused,
+// so CSS :hover/:focus would keep it open after a second tap.
+export function InfoTip({ label, children }: { label: string, children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <span
+      className="relative inline-flex"
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setOpen(true) }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setOpen(false) }}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={id}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
+        className="rounded-full text-zinc-400 hover:text-zinc-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-200"
+      >
+        <InfoIcon />
+      </button>
+      <span
+        role="tooltip"
+        id={id}
+        className={`absolute top-full left-0 z-20 mt-2 w-64 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-zinc-700 ${open ? 'block' : 'hidden'}`}
+      >
+        {children}
+      </span>
+    </span>
   )
 }
