@@ -1,4 +1,4 @@
-# oreh-money
+# Runway Budget
 
 Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at the official
 [National Bank of Ukraine](https://bank.gov.ua) rate, and it estimates how long your savings last

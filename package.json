@@ -1,5 +1,5 @@
 {
-  "name": "oreh-money",
+  "name": "runway-budget",
   "private": true,
   "scripts": {
     "dev": "pnpm -r --parallel dev",
