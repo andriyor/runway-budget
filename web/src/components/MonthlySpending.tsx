@@ -174,7 +174,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
                 type="button"
                 tabIndex={-1}
                 onClick={() => pickMonth(c.month)}
-                className="mb-1 cursor-pointer text-xs font-medium text-zinc-700 tabular-nums hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                className="mb-1 hidden cursor-pointer text-xs font-medium text-zinc-700 tabular-nums hover:text-zinc-950 sm:block dark:text-zinc-300 dark:hover:text-white"
               >
                 {wholeMoney(c.total, currency)}
               </button>

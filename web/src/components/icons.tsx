@@ -97,3 +97,21 @@ export function InfoIcon() {
     </svg>
   )
 }
+
+export function WalletIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7a2 2 0 0 1 2-2h11v4" />
+      <rect x="4" y="9" width="16" height="10" rx="2" />
+      <path d="M16 14h.01" />
+    </svg>
+  )
+}
+
+export function ListIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+    </svg>
+  )
+}

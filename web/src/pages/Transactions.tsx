@@ -321,7 +321,7 @@ export function TransactionsPage() {
                         {t.note}
                       </button>
                     )}
-                    <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
+                    <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
                       {picking?.id === t.id && picking.kind === 'category' ? (
                         <select
                           ref={openPicker}
