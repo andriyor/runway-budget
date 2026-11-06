@@ -8,7 +8,7 @@ export type AccountKind = typeof accountKinds[number]
 
 export type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
 
-export type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string, categorySource: 'transaction' | 'merchant' | 'auto', mccDescription: string | null, merchantDomain: string | null, note: string | null }
+export type Transaction = { id: number, accountId: number, externalId: string, time: string, description: string, mcc: number, amount: number, merchant: string, category: string, categorySource: 'transaction' | 'merchant' | 'auto', mccDescription: string | null, merchantDomain: string | null, note: string | null }
 
 export type Category = { id: string, label: string, emoji: string, spending: boolean, subcategories: Array<{ id: string, label: string }> }
 

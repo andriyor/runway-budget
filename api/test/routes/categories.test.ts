@@ -49,6 +49,8 @@ test('categories come from MCC, description rules and merchant overrides', async
   assert.deepEqual([byId('4').category, byId('4').categorySource], ['renovation', 'merchant'])
   assert.deepEqual([byId('5').category, byId('5').categorySource], ['pharmacy', 'transaction'])
   assert.equal(byId('0').categorySource, 'auto')
+  // a refund shares its purchase's merchant key
+  assert.deepEqual([byId('4').merchant, byId('5').merchant], ['rozetka', 'rozetka'])
   assert.equal((await setOne(refund.id, null)).statusCode, 204)
   assert.equal((await categoryOf())[5], 'renovation')
   assert.equal((await setOne(999, 'renovation')).statusCode, 404)

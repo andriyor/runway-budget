@@ -73,10 +73,13 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     const overrides = new Map((await fastify.db.select().from(merchantCategories))
       .map((o) => [o.merchant, o.category as CategoryId]))
     return rows.map(({ amountCents, category: own, ...rest }) => {
-      const merchant = overrides.get(merchantKey(rest.description))
+      const key = merchantKey(rest.description)
+      const merchant = overrides.get(key)
       return {
         ...rest,
         amount: amountCents / 100,
+        // groups a merchant's purchases and refunds, same key as merchant category overrides
+        merchant: key,
         category: categorize(rest.mcc, rest.description, amountCents, own ?? merchant),
         // which level decided the category, so the UI can offer to promote or reset it
         categorySource: own ? 'transaction' : merchant ? 'merchant' : 'auto',

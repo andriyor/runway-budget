@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CategorySpending } from '../components/CategorySpending'
 import { MerchantIcon } from '../components/MerchantIcon'
+import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
 import { Skeleton } from '../components/controls'
 import { api } from '../lib/api'
@@ -16,6 +17,9 @@ export function TransactionsPage() {
   const [error, setError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [category, setCategory] = useState<string>()
+  // merchant key from the API; cleared whenever the category, period or account changes
+  const [merchant, setMerchant] = useState<string>()
+  const pickCategory = (c?: string) => { setCategory(c); setMerchant(undefined) }
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
   // the transaction just recategorized stays in the filtered view it was changed in,
   // so its "усім від продавця" link is still reachable; another filter drops it
@@ -78,7 +82,7 @@ export function TransactionsPage() {
     }
   }
   const setOwn = (t: Transaction, category: string | null) => ({ path: `/categories/transactions/${t.id}`, body: { category } })
-  const setMerchant = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
+  const setMerchantCategory = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
 
   async function saveNote(t: Transaction, draft: string) {
     setEditing(undefined)
@@ -98,6 +102,9 @@ export function TransactionsPage() {
   // keys sort chronologically as text; newest first
   const periodOptions = (prefix: string) => [...periods].filter(([key]) => key.startsWith(prefix)).sort(([a], [b]) => b.localeCompare(a))
   const shown = period ? list?.filter((t) => periodsOf(t).some(([key]) => key === period)) : list
+  const inCategory = category ? shown?.filter(inSelection) : shown
+  const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
+  const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
 
   return (
     <>
@@ -111,7 +118,7 @@ export function TransactionsPage() {
           <select
             aria-label="Account"
             value={accountId ?? ''}
-            onChange={(e) => { setList(undefined); setCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
+            onChange={(e) => { setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
             className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
           >
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
@@ -119,7 +126,7 @@ export function TransactionsPage() {
           <select
             aria-label="Period"
             value={period}
-            onChange={(e) => { setCategory(undefined); setPeriod(e.target.value) }}
+            onChange={(e) => { pickCategory(undefined); setPeriod(e.target.value) }}
             className={`min-w-40 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
           >
             <option value="">Увесь час</option>
@@ -142,14 +149,17 @@ export function TransactionsPage() {
       </section>
       {account && shown && list!.length > 0 && (
         <>
-          <MonthlySpending list={list!} currency={account.currency} leafById={leafById} period={period} onPick={(p, c) => { setPeriod(p); setCategory(c) }} />
-          <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={setCategory} />
+          <MonthlySpending list={list!} currency={account.currency} leafById={leafById} period={period} onPick={(p, c) => { setPeriod(p); pickCategory(c) }} />
+          <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
+          <MerchantSpending list={inCategory!} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-3">
-                <span className="truncate text-zinc-700 dark:text-zinc-300">{category ? selectionLabel(category) : 'All transactions'}</span>
-                {category && (
-                  <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                <span className="truncate text-zinc-700 dark:text-zinc-300">
+                  {[category && selectionLabel(category), merchant && merchantName].filter(Boolean).join(' · ') || 'All transactions'}
+                </span>
+                {(category || merchant) && (
+                  <button type="button" onClick={() => pickCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
                     Show all
                   </button>
                 )}
@@ -174,7 +184,7 @@ export function TransactionsPage() {
             </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
-              {(category ? shown.filter(inSelection) : shown)
+              {listed!
                 .toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
                 .map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-3">
@@ -229,12 +239,12 @@ export function TransactionsPage() {
                         </optgroup>
                       </select>
                       {t.categorySource === 'transaction' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchant(t, t.category), setOwn(t, null)])}>
+                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchantCategory(t, t.category), setOwn(t, null)])}>
                           усім від продавця
                         </button>
                       )}
                       {t.categorySource === 'merchant' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchant(t, null)])}>
+                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchantCategory(t, null)])}>
                           скинути для продавця
                         </button>
                       )}
