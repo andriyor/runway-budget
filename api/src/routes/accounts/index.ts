@@ -1,11 +1,12 @@
 import { type FastifyPluginAsync } from 'fastify'
 import type { Account, Transaction } from '@runway-budget/shared'
-import { desc, eq, max, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
 import { categorize, isEssential, merchantKey, type CategoryId } from '../../categories'
 // merchant domain → lowercase name fragments; the domain is used for the icon
 import merchantKeywords from '../../data/merchants.json'
+import { syncMono } from '../../mono'
 import { accounts, accountKinds, currencies, merchantCategories, merchantEssentials, transactions, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
@@ -15,19 +16,12 @@ const toDto = ({ balanceCents, position: _position, updatedAt, ...rest }: Accoun
   ({ ...rest, updatedAt: updatedAt.toISOString(), balance: balanceCents / 100 })
 const toCents = (balance: number) => Math.round(balance * 100)
 
-const MONO_URL = 'https://api.monobank.ua/personal'
-// statement allows at most 31 days + 1 hour per request
-const MONTH_S = 31 * 24 * 60 * 60
-// ISO 4217 numeric codes
-const monoCurrencies: Record<number, Currency> = { 980: 'UAH', 840: 'USD', 978: 'EUR' }
-type ClientInfo = { accounts: Array<{ id: string, creditLimit: number, currencyCode: number }> }
 const merchants = Object.entries(merchantKeywords as Record<string, string[]>)
 const merchantDomain = (description: string) => {
   const text = description.toLowerCase()
   return merchants.find(([, keywords]) => keywords.some((k) => text.includes(k)))?.[0] ?? null
 }
 
-type StatementItem = { id: string, time: number, description: string, mcc: number, amount: number, balance: number }
 
 const inputProps = {
   name: { type: 'string', minLength: 1, maxLength: 100 },
@@ -101,58 +95,9 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
   // pulls 31 days of the MONO_ACCOUNT statement ending at `to` (unix seconds, default now); safe to repeat
   fastify.post<{ Querystring: { to?: number } }>('/mono/sync', {
     schema: { querystring: { type: 'object', additionalProperties: false, properties: { to: { type: 'integer', minimum: 0 } } } }
-  }, async (request, reply) => {
-    const { MONO_TOKEN: token, MONO_ACCOUNT: monoAccountId } = process.env
-    if (!token || !monoAccountId) return reply.internalServerError('MONO_TOKEN and MONO_ACCOUNT must be set')
-
-    // both endpoints allow one call per minute
-    const get = async (path: string) => {
-      const res = await fetch(`${MONO_URL}${path}`, { headers: { 'X-Token': token } })
-      if (res.status === 429) throw fastify.httpErrors.tooManyRequests('Monobank allows one sync per minute')
-      if (!res.ok) {
-        request.log.warn({ path, status: res.status, body: await res.text() }, 'Monobank request failed')
-        throw fastify.httpErrors.badGateway(`Monobank responded ${res.status}`)
-      }
-      return res.json()
-    }
-    const info = await get('/client-info') as ClientInfo
-    const card = info.accounts.find((x) => x.id === monoAccountId)
-    if (!card) return reply.badRequest('MONO_ACCOUNT not found in Monobank client info')
-    const currency = monoCurrencies[card.currencyCode]
-    if (!currency) return reply.badRequest(`Unsupported Monobank currency ${card.currencyCode}`)
-
-    const to = request.query.to ?? Math.floor(Date.now() / 1000)
-    // ponytail: Monobank caps a statement at 500 items; page by `to` if a month ever exceeds that
-    const items = await get(`/statement/${monoAccountId}/${to - MONTH_S}/${to}`) as StatementItem[]
-
-    const account = fastify.db.transaction((tx) => {
-      let row = tx.select().from(accounts).where(eq(accounts.monoAccountId, monoAccountId)).get() ??
-        tx.insert(accounts).values({
-          name: 'Monobank',
-          currency,
-          balanceCents: 0,
-          monoAccountId,
-          position: sql`(select coalesce(max(${accounts.position}), -1) + 1 from ${accounts})`
-        }).returning().get()
-
-      if (items.length > 0) {
-        const stored = tx.select({ latest: max(transactions.time) }).from(transactions).where(eq(transactions.accountId, row.id)).get()
-        tx.insert(transactions).values(items.map((i) => ({
-          accountId: row.id,
-          externalId: i.id,
-          time: new Date(i.time * 1000),
-          description: i.description,
-          mcc: i.mcc,
-          amountCents: i.amount
-        }))).onConflictDoNothing().run()
-        const latest = items.reduce((a, b) => (b.time > a.time ? b : a))
-        // an older window must not roll the balance back
-        // statement balance includes the bank's credit limit; keep only own money
-        if (!stored?.latest || latest.time * 1000 >= stored.latest.getTime()) row = tx.update(accounts).set({ balanceCents: latest.balance - card.creditLimit }).where(eq(accounts.id, row.id)).returning().get()
-      }
-      return row
-    })
-    return { account: toDto(account), fetched: items.length }
+  }, async (request) => {
+    const { account, fetched } = await syncMono(fastify, request.log, request.query.to)
+    return { account: toDto(account), fetched }
   })
 
   // body is every account id in the desired order

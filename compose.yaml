@@ -4,6 +4,9 @@ services:
     env_file:
       - path: api/.env
         required: false
+    environment:
+      # local time for the twice-daily Monobank sync (09:00 and 21:00)
+      TZ: Europe/Kyiv
     volumes:
       - data:/data
     restart: unless-stopped

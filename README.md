@@ -29,7 +29,7 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
   surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
   and not counted toward goals.
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
-  balance from them.
+  balance from them, on demand and automatically at 09:00 and 21:00.
 - **Transactions page**:
   - a stacked chart of spending per month by category, with a median line over complete months;
     picking a category or merchant reduces the bars to it to show its trend;
@@ -91,7 +91,9 @@ docker compose up -d --build
 ```
 
 Serves the app on <http://localhost:8080>. The SQLite database is kept in the `data` volume.
-`api/.env` is passed to the API container when it exists.
+`api/.env` is passed to the API container when it exists. The API container runs in
+`TZ=Europe/Kyiv` so the Monobank sync happens at local 09:00 and 21:00; change `TZ` in
+`compose.yaml` for another time zone.
 
 ## Monobank
 
@@ -103,8 +105,10 @@ MONO_TOKEN=...
 MONO_ACCOUNT=...   # card account id from /personal/client-info
 ```
 
-Then press **Sync Monobank** on the Transactions page. It fetches the last 31 days; to fill in older
-history, call the sync endpoint once per earlier 31-day window, a minute apart (Monobank's rate limit):
+With these set, the API syncs on its own at 09:00 and 21:00 local time; press **Sync Monobank** on
+the Transactions page to sync right away. Each sync fetches the last 31 days. To fill in older
+history, call the sync endpoint once per earlier 31-day window, a minute apart (Monobank's rate
+limit):
 
 ```sh
 curl -X POST "localhost:3000/accounts/mono/sync?to=$(date -v-31d +%s)"
@@ -120,6 +124,7 @@ Run from the repository root:
 | `pnpm build` | Build both apps                       |
 | `pnpm test`  | Type-check and run API tests (in-memory SQLite); does not touch `dist` |
 | `pnpm lint`  | Lint the web app with oxlint          |
+| `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data)) |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
 
@@ -216,6 +221,11 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   public transport, fuel, mandatory payments, pets). A merchant flag (`merchant_essentials`) and a
   transaction flag (`transactions.essential`) win over it, independently of the category overrides.
   The minimal month is the median of essential spending over complete months.
+- **Scheduled sync runs in the API process.** `api/src/plugins/mono-schedule.ts` sets a timer for the
+  next 09:00 or 21:00 local, so it works the same under `pnpm dev` and Docker without a cron. Fixed
+  times rather than "every 12 hours from start", because dev restarts the server on every change and
+  Monobank allows one statement request per minute. Each run re-reads 31 days, so a run missed while
+  the server was down loses nothing. The route and the schedule share `api/src/mono.ts`.
 - **Summaries and filters run in the browser.** The page loads an account's whole transaction list
   and groups it by month, ISO week, category and merchant locally, so month and week boundaries use
   the viewer's time zone and switching filters needs no request. At ~1,500 transactions grouping
