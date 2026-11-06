@@ -21,7 +21,7 @@ const formatRate = (rate: number) =>
   new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(rate)
 
 const symbols: Record<Currency, string> = { USD: '$', EUR: '€', UAH: '₴' }
-const iconColors: Record<Currency, string> = { USD: 'bg-emerald-600', EUR: 'bg-blue-600', UAH: 'bg-amber-500' }
+const iconColors: Record<Currency, string> = { USD: 'bg-emerald-600', EUR: 'bg-blue-600', UAH: 'bg-amber-600' }
 
 const card = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800'
 const muted = 'text-sm text-zinc-500 dark:text-zinc-400'
@@ -502,6 +502,57 @@ function Goals({ availableIn, netIn }: GoalsProps) {
   )
 }
 
+function Allocation({ accounts, convert }: { accounts: Account[], convert: Convert }) {
+  const byCurrency = currencies
+    .map((c) => {
+      const own = accounts.filter((a) => a.currency === c)
+      const sum = own.reduce((total, a) => total + a.balance, 0)
+      return { currency: c, count: own.length, sum, uah: convert(sum, c, 'UAH') }
+    })
+    .filter((row) => row.count > 0)
+  const totalUah = byCurrency.reduce((total, row) => total + (row.uah ?? 0), 0)
+  if (byCurrency.length === 0) return null
+  const rows = byCurrency.map((row) => {
+    const share = row.uah === undefined || totalUah <= 0 ? undefined : row.uah / totalUah
+    return { ...row, share, percent: share === undefined ? undefined : Math.round(share * 1000) / 10 }
+  })
+
+  return (
+    <section className={card}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">By currency</h2>
+        <span className={muted}>share of total at NBU rate</span>
+      </div>
+      <div className="mt-4 flex h-3 gap-0.5" role="img" aria-label={rows.map((r) => `${r.currency} ${r.percent ?? '?'}%`).join(', ')}>
+        {rows.map(({ currency, share, percent }) => (
+          <div
+            key={currency}
+            title={`${currency}: ${percent}% of total`}
+            className={`h-full rounded-[4px] transition-[flex-grow] ${iconColors[currency]}`}
+            style={{ flexGrow: Math.max(0, share ?? 0), flexBasis: 0 }}
+          />
+        ))}
+      </div>
+      <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+        {rows.map(({ currency, count, sum, percent }) => (
+          <li key={currency} className="flex items-start gap-2">
+            <CurrencyIcon currency={currency} />
+            <div className="min-w-0">
+              <p className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+                {currency}
+                {percent !== undefined && <span className="ml-1.5 font-semibold">{percent}%</span>}
+              </p>
+              <p className={`truncate tabular-nums ${muted}`}>
+                {format(sum, currency)} · {count} {count === 1 ? 'account' : 'accounts'}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
@@ -598,6 +649,8 @@ export default function App() {
           </div>
         ))}
       </section>
+
+      <Allocation accounts={accounts} convert={convert} />
 
       {budget !== undefined && (
         <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} />
