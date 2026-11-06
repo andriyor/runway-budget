@@ -209,50 +209,65 @@ export function TransactionsPage() {
       )}
       <section className={card}>
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            aria-label="Account"
-            value={accountId ?? ''}
-            onChange={(e) => { setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
-            className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
-          >
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
-          </select>
-          <select
-            aria-label="Period"
-            value={period}
-            onChange={(e) => { pickCategory(undefined); setPeriod(e.target.value) }}
-            className={`min-w-40 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
-          >
-            <option value="">Увесь час</option>
-            <optgroup label="Місяць">
-              {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </optgroup>
-            <optgroup label="Квартал">
-              {periodOptions('q:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </optgroup>
-            <optgroup label="Тиждень">
-              {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </optgroup>
-          </select>
-          {account && (
-            <p className="flex flex-col leading-tight">
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
-              <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
-            </p>
-          )}
-          <button
-            type="button"
-            aria-pressed={essentialOnly}
-            onClick={() => setEssentialOnly(!essentialOnly)}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 aria-pressed:bg-emerald-50 aria-pressed:text-emerald-800 aria-pressed:ring-emerald-300 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-800 dark:aria-pressed:bg-emerald-950/40 dark:aria-pressed:text-emerald-300 dark:aria-pressed:ring-emerald-800"
-          >
-            Лише необхідне
-          </button>
-          {/* icon only on phones, the name stays for screen readers and as a tooltip */}
-          <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
-            <SyncIcon spinning={syncing} />
-            <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
-          </button>
+          {/* what is shown: account, period and which spending */}
+          <div className="flex min-w-0 flex-1 basis-96 flex-wrap items-center gap-2 sm:gap-3">
+            <select
+              aria-label="Account"
+              value={accountId ?? ''}
+              onChange={(e) => { setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
+              className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none max-sm:basis-full dark:text-zinc-100 ${inputBox}`}
+            >
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+            </select>
+            <select
+              aria-label="Period"
+              value={period}
+              onChange={(e) => { pickCategory(undefined); setPeriod(e.target.value) }}
+              className={`min-w-0 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none sm:w-52 sm:flex-none dark:text-zinc-100 ${inputBox}`}
+            >
+              <option value="">Увесь час</option>
+              <optgroup label="Місяць">
+                {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </optgroup>
+              <optgroup label="Квартал">
+                {periodOptions('q:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </optgroup>
+              <optgroup label="Тиждень">
+                {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </optgroup>
+            </select>
+            <div role="group" aria-label="Spending shown" className="inline-flex shrink-0 rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-800">
+              {([false, true] as const).map((only) => (
+                <button
+                  key={String(only)}
+                  type="button"
+                  aria-pressed={essentialOnly === only}
+                  onClick={() => setEssentialOnly(only)}
+                  className={`rounded-md px-2.5 py-1.5 font-medium ${
+                    essentialOnly === only
+                      ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  {only ? 'Необхідні' : <>Усі<span className="max-sm:sr-only"> витрати</span></>}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* the account itself: its balance and syncing it */}
+          <div className="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
+            {account && (
+              <p className="flex flex-col leading-tight">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
+                <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+              </p>
+            )}
+            {/* icon only on phones, the name stays for screen readers and as a tooltip */}
+            <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
+              <SyncIcon spinning={syncing} />
+              <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
+            </button>
+          </div>
         </div>
 
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
