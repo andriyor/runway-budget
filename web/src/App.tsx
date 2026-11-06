@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import './App.css'
 
 const currencies = ['USD', 'EUR', 'UAH'] as const
 type Currency = typeof currencies[number]
@@ -18,15 +17,28 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 const format = (amount: number, currency: Currency) =>
   new Intl.NumberFormat('uk-UA', { style: 'currency', currency }).format(amount)
 
-const symbols: Record<Currency, string> = { USD: '$', EUR: '€', UAH: '₴' }
+const formatRate = (rate: number) =>
+  new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(rate)
 
-function CurrencyIcon({ currency }: { currency: Currency }) {
-  return <span className={`cur-icon cur-${currency}`} aria-hidden="true">{symbols[currency]}</span>
+const symbols: Record<Currency, string> = { USD: '$', EUR: '€', UAH: '₴' }
+const iconColors: Record<Currency, string> = { USD: 'bg-emerald-600', EUR: 'bg-blue-600', UAH: 'bg-amber-500' }
+
+const card = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800'
+const muted = 'text-sm text-zinc-500 dark:text-zinc-400'
+const inputBox = 'rounded-lg bg-white ring-1 ring-inset ring-zinc-300 focus-within:ring-2 focus-within:ring-indigo-500 dark:bg-zinc-950 dark:ring-zinc-700'
+const button = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-600'
+
+function CurrencyIcon({ currency, className = 'size-6 text-xs' }: { currency: Currency, className?: string }) {
+  return (
+    <span className={`inline-grid shrink-0 place-items-center rounded-full font-bold text-white ${iconColors[currency]} ${className}`} aria-hidden="true">
+      {symbols[currency]}
+    </span>
+  )
 }
 
 function BankIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5 12 4l9 5.5" />
       <path d="M5.5 10v7.5M10 10v7.5M14 10v7.5M18.5 10v7.5" />
       <path d="M3 20h18" />
@@ -34,14 +46,50 @@ function BankIcon() {
   )
 }
 
-const formatRate = (rate: number) =>
-  new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(rate)
+function Skeleton() {
+  return <span className="inline-block h-8 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
+}
 
-function CurrencySelect({ value, onChange }: { value: Currency, onChange: (c: Currency) => void }) {
+function ErrorText({ children }: { children: string }) {
+  return children ? <p role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">{children}</p> : null
+}
+
+type MoneyInputProps = {
+  id?: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  currency: Currency
+  onCurrency: (c: Currency) => void
+  required?: boolean
+  min?: string
+  placeholder?: string
+}
+
+function MoneyInput({ id, label, value, onChange, currency, onCurrency, required, min, placeholder }: MoneyInputProps) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value as Currency)} aria-label="Currency">
-      {currencies.map((c) => <option key={c}>{c}</option>)}
-    </select>
+    <div className={`flex ${inputBox}`}>
+      <input
+        id={id}
+        type="number"
+        step="0.01"
+        min={min}
+        required={required}
+        placeholder={placeholder}
+        aria-label={id ? undefined : label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+      />
+      <select
+        value={currency}
+        onChange={(e) => onCurrency(e.target.value as Currency)}
+        aria-label={`${label} currency`}
+        className="rounded-r-lg border-l border-zinc-200 bg-transparent px-2 text-sm font-medium text-zinc-700 outline-none dark:border-zinc-700 dark:text-zinc-200"
+      >
+        {currencies.map((c) => <option key={c}>{c}</option>)}
+      </select>
+    </div>
   )
 }
 
@@ -65,13 +113,22 @@ function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Accou
   }
 
   return (
-    <form className="row" onSubmit={save}>
-      <span className="name">{account.name}</span>
-      <input type="number" step="0.01" required value={balance} onChange={(e) => setBalance(e.target.value)} aria-label={`${account.name} balance`} />
-      <CurrencySelect value={currency} onChange={setCurrency} />
-      <button disabled={!dirty}>Save</button>
-      <small>{error || `updated ${new Date(account.updatedAt).toLocaleString('uk-UA')}`}</small>
-    </form>
+    <li className="py-3">
+      <form className="flex flex-wrap items-center gap-3" onSubmit={save}>
+        <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
+        <div className="min-w-32 flex-1">
+          <p className="font-medium text-zinc-900 dark:text-zinc-100">{account.name}</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
+          </p>
+        </div>
+        <div className="w-56">
+          <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+        </div>
+        <button className={button} disabled={!dirty}>Save</button>
+      </form>
+      <ErrorText>{error}</ErrorText>
+    </li>
   )
 }
 
@@ -81,22 +138,30 @@ type Convert = (amount: number, from: Currency, to: Currency) => number | undefi
 const AVG_DAYS_IN_MONTH = 30.44
 
 function Estimate({ label, total, burn, currency }: { label: string, total: number, burn: number, currency: Currency }) {
+  const [now] = useState(Date.now)
   if (burn <= 0) {
     return (
-      <p className="runway-result">
-        {label}: <strong>no end</strong>
-        <span className="muted"> · you save {format(-burn, currency)} per month</span>
-      </p>
+      <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40">
+        <p className={muted}>{label}</p>
+        <p className="mt-1 text-2xl font-semibold text-emerald-700 dark:text-emerald-400">No end</p>
+        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">+{format(-burn, currency)} saved per month</p>
+      </div>
     )
   }
   const months = Math.max(0, total / burn)
-  const until = new Date(Date.now() + months * AVG_DAYS_IN_MONTH * 864e5)
+  const until = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)
   return (
-    <p className="runway-result">
-      {label}: <strong>{months.toFixed(1)} months</strong>
-      {months >= 12 && <> (≈ {(months / 12).toFixed(1)} years)</>}
-      <span className="muted"> · until {until.toLocaleDateString('uk-UA')} · −{format(burn, currency)} per month</span>
-    </p>
+    <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+      <p className={muted}>{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+        {months.toFixed(1)} <span className="text-base font-normal text-zinc-500">months</span>
+        {months >= 12 && <span className="text-base font-normal text-zinc-500"> · ≈ {(months / 12).toFixed(1)} years</span>}
+      </p>
+      <p className="mt-1 text-sm tabular-nums">
+        <span className="text-zinc-500 dark:text-zinc-400">until {until.toLocaleDateString('uk-UA')} · </span>
+        <span className="text-rose-600 dark:text-rose-400">−{format(burn, currency)} per month</span>
+      </p>
+    </div>
   )
 }
 
@@ -148,30 +213,43 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
     || (salary === '' ? saved.salary !== null : Number(salary) !== saved.salary || salaryCurrency !== saved.salaryCurrency)
 
   return (
-    <section className="runway">
-      <form onSubmit={save}>
-        <div className="row">
-          <label htmlFor="spend">I spend per month</label>
-          <input id="spend" type="number" step="0.01" min="0.01" required value={spend} onChange={(e) => setSpend(e.target.value)} />
-          <CurrencySelect value={currency} onChange={setCurrency} />
+    <section className={`${card} grid gap-6 md:grid-cols-2`}>
+      <form className="flex flex-col gap-4" onSubmit={save}>
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Runway</h2>
+          <p className={muted}>How long your savings last.</p>
         </div>
-        <div className="row">
-          <label htmlFor="salary">My salary per month</label>
-          <input id="salary" type="number" step="0.01" min="0" placeholder="optional" value={salary} onChange={(e) => setSalary(e.target.value)} />
-          <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} />
-          <button disabled={!dirty}>Save</button>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">I spend per month</span>
+          <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={spend} onChange={setSpend} currency={currency} onCurrency={setCurrency} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            My salary per month <span className="font-normal text-zinc-400">· optional</span>
+          </span>
+          <MoneyInput id="salary" label="Monthly salary" min="0" placeholder="leave empty if none" value={salary} onChange={setSalary} currency={salaryCurrency} onCurrency={setSalaryCurrency} />
+        </label>
+        <div>
+          <button className={button} disabled={!dirty}>Save</button>
+          <ErrorText>{error}</ErrorText>
         </div>
       </form>
-      {error && <p role="alert" className="error">{error}</p>}
-      {saved && total !== undefined && (
-        <>
-          <Estimate label="Without salary" total={total!} burn={saved.monthlySpend} currency={saved.currency} />
-          {salaryInSpendCurrency !== undefined && (
-            <Estimate label="With salary" total={total!} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />
-          )}
-        </>
-      )}
-      {!saved && <p className="muted">Set your monthly spending to see how long your savings last.</p>}
+      <div className="flex flex-col justify-center gap-3">
+        {saved && total !== undefined
+          ? (
+            <>
+              <Estimate label="Without salary" total={total!} burn={saved.monthlySpend} currency={saved.currency} />
+              {salaryInSpendCurrency !== undefined && (
+                <Estimate label="With salary" total={total!} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />
+              )}
+            </>
+            )
+          : (
+            <div className="rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+              <p className={muted}>Set your monthly spending to see how long your savings last.</p>
+            </div>
+            )}
+      </div>
     </section>
   )
 }
@@ -214,40 +292,66 @@ export default function App() {
     rates && accounts.reduce((sum, a) => sum + convert(a.balance, a.currency, target)!, 0)
 
   return (
-    <main>
-      <h1>Balances</h1>
-      {error && <p role="alert" className="error">{error}</p>}
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
+        <p className={muted}>USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</p>
+      </header>
 
-      <section className="totals">
+      {error && (
+        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
+          {error}
+        </p>
+      )}
+
+      <section className="grid gap-4 sm:grid-cols-3">
         {currencies.map((c) => (
-          <div key={c}>
-            <small className="label"><CurrencyIcon currency={c} /> Total in {c}</small>
-            <strong>{rates ? format(totalIn(c)!, c) : '…'}</strong>
+          <div key={c} className={`${card} flex flex-col`}>
+            <p className={`flex items-center gap-2 ${muted}`}>
+              <CurrencyIcon currency={c} /> Total in {c}
+            </p>
+            <p className="mt-3 truncate text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+              {rates ? format(totalIn(c)!, c) : <Skeleton />}
+            </p>
             {rates && (
-              <small className="rate">
+              <p className="mt-4 flex items-center gap-1.5 border-t border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
                 {c === 'UAH'
                   ? <><BankIcon /> NBU rate · {rates.date}</>
                   : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
-              </small>
+              </p>
             )}
           </div>
         ))}
       </section>
 
-      <h2>Runway</h2>
       <Runway totalIn={totalIn} convert={convert} />
 
-      <h2>Accounts</h2>
-      {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} />)}
-      {accounts.length === 0 && <p className="muted">No accounts yet.</p>}
+      <section className={card}>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Accounts</h2>
+          <span className={muted}>{accounts.length}</span>
+        </div>
+        <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
+          {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} />)}
+        </ul>
+        {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
 
-      <h2>Add account</h2>
-      <form className="row" onSubmit={add}>
-        <input placeholder="Name" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
-        <input type="number" step="0.01" placeholder="Balance" required value={balance} onChange={(e) => setBalance(e.target.value)} aria-label="Balance" />
-        <CurrencySelect value={currency} onChange={setCurrency} />
-        <button>Add</button>
-      </form>
+        <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
+          <input
+            placeholder="Account name"
+            required
+            maxLength={100}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="Account name"
+            className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
+          />
+          <div className="w-56">
+            <MoneyInput label="Balance" required placeholder="Balance" value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+          </div>
+          <button className={button}>Add account</button>
+        </form>
+      </section>
     </main>
   )
 }
