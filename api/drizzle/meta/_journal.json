@@ -64,6 +64,13 @@
       "when": 1793967643988,
       "tag": "0008_milky_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793984516312,
+      "tag": "0009_mysterious_blizzard",
+      "breakpoints": true
     }
   ]
 }

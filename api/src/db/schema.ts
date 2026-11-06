@@ -14,10 +14,24 @@ export const accounts = sqliteTable('accounts', {
   balanceCents: integer('balance_cents').notNull(),
   // display order, ascending; ties fall back to id
   position: integer('position').notNull().default(0),
+  // set for accounts synced from Monobank
+  monoAccountId: text('mono_account_id').unique(),
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdateFn(() => new Date())
+})
+
+export const transactions = sqliteTable('transactions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  accountId: integer('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  // bank's own transaction id, keeps re-syncs idempotent
+  externalId: text('external_id').notNull().unique(),
+  time: integer('time', { mode: 'timestamp' }).notNull(),
+  description: text('description').notNull(),
+  mcc: integer('mcc').notNull(),
+  // account currency, minor units; negative = spending
+  amountCents: integer('amount_cents').notNull()
 })
 
 export const goals = sqliteTable('goals', {

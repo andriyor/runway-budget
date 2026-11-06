@@ -81,3 +81,39 @@ test('reorder accounts', async (t) => {
   const partial = await app.inject({ method: 'PUT', url: '/accounts/order', payload: { ids: [a.id, b.id] } })
   assert.equal(partial.statusCode, 400)
 })
+
+test('sync Monobank statement into one account', async (t) => {
+  const app = await build(t)
+  process.env.MONO_TOKEN = 'token'
+  process.env.MONO_ACCOUNT = 'acc1'
+  t.after(() => { delete process.env.MONO_TOKEN; delete process.env.MONO_ACCOUNT })
+
+  const statement = [
+    { id: 'b', time: 1_700_000_200, description: 'Coffee', mcc: 5814, amount: -9500, balance: 100500 },
+    { id: 'a', time: 1_700_000_100, description: 'Salary', mcc: 4829, amount: 110000, balance: 110000 }
+  ]
+  const info = { accounts: [{ id: 'other', creditLimit: 0, currencyCode: 840 }, { id: 'acc1', creditLimit: 50000, currencyCode: 980 }] }
+  const fetchMock = t.mock.method(globalThis, 'fetch', async (url: string) =>
+    Response.json(url.endsWith('/client-info') ? info : statement))
+
+  const first = await app.inject({ method: 'POST', url: '/accounts/mono/sync' })
+  assert.equal(first.statusCode, 200)
+  // 1005 statement balance minus 500 credit limit
+  assert.equal(first.json().account.balance, 505)
+  assert.equal(first.json().account.currency, 'UAH')
+  assert.match(String(fetchMock.mock.calls[1].arguments[0]), /\/personal\/statement\/acc1\/\d+\/\d+$/)
+
+  // re-sync does not duplicate transactions or accounts
+  await app.inject({ method: 'POST', url: '/accounts/mono/sync' })
+  assert.equal((await app.inject({ url: '/accounts' })).json().length, 1)
+
+  const list = (await app.inject({ url: `/accounts/${first.json().account.id}/transactions` })).json()
+  assert.deepEqual(list.map((x: { externalId: string, amount: number }) => [x.externalId, x.amount]), [['b', -95], ['a', 1100]])
+
+  fetchMock.mock.mockImplementation(async () => new Response('', { status: 429 }))
+  assert.equal((await app.inject({ method: 'POST', url: '/accounts/mono/sync' })).statusCode, 429)
+
+  // deleting the account removes its transactions
+  await app.inject({ method: 'DELETE', url: `/accounts/${first.json().account.id}` })
+  assert.deepEqual((await app.inject({ url: `/accounts/${first.json().account.id}/transactions` })).json(), [])
+})

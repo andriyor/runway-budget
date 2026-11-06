@@ -14,6 +14,8 @@ const app: FastifyPluginAsync<AppOptions> = async (
   opts
 ): Promise<void> => {
   // Place here your custom code!
+  // local secrets such as MONO_TOKEN; absent in Docker, where env comes from compose
+  try { process.loadEnvFile() } catch {}
 
   // Do not touch the following lines
 

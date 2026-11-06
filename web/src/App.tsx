@@ -4,7 +4,8 @@ const currencies = ['USD', 'EUR', 'UAH'] as const
 type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
-type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string }
+type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
+type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -775,7 +776,121 @@ function Allocation({ accounts, convert }: { accounts: Account[], convert: Conve
   )
 }
 
+function Nav({ page }: { page: string }) {
+  const link = (href: string, label: string) => (
+    <a
+      href={href}
+      aria-current={page === href ? 'page' : undefined}
+      className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 aria-[current=page]:bg-zinc-900 aria-[current=page]:text-white dark:text-zinc-300 dark:hover:bg-zinc-800 dark:aria-[current=page]:bg-zinc-100 dark:aria-[current=page]:text-zinc-900"
+    >
+      {label}
+    </a>
+  )
+  return <nav className="flex gap-2">{link('#/', 'Balances')}{link('#/transactions', 'Transactions')}</nav>
+}
+
+function TransactionsPage() {
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [accountId, setAccountId] = useState<number>()
+  const [list, setList] = useState<Transaction[]>()
+  const [error, setError] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const account = accounts.find((a) => a.id === accountId)
+
+  useEffect(() => {
+    api<Account[]>('/accounts')
+      .then((all) => {
+        setAccounts(all)
+        setAccountId((all.find((a) => a.monoAccountId) ?? all[0])?.id)
+      })
+      .catch((e) => setError(e.message))
+  }, [])
+
+  useEffect(() => {
+    if (accountId === undefined) return
+    api<Transaction[]>(`/accounts/${accountId}/transactions`).then(setList).catch((e) => setError(e.message))
+  }, [accountId])
+
+  async function sync() {
+    setSyncing(true)
+    try {
+      const { account: synced } = await api<{ account: Account }>('/accounts/mono/sync', { method: 'POST' })
+      setAccounts((all) => (all.some((a) => a.id === synced.id) ? all.map((a) => (a.id === synced.id ? synced : a)) : [...all, synced]))
+      setList(await api<Transaction[]>(`/accounts/${synced.id}/transactions`))
+      setAccountId(synced.id)
+      setError('')
+    } catch (err) {
+      setError(`Monobank: ${(err as Error).message}`)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
+
+  return (
+    <>
+      {error && (
+        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
+          {error}
+        </p>
+      )}
+      <section className={card}>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            aria-label="Account"
+            value={accountId ?? ''}
+            onChange={(e) => { setList(undefined); setAccountId(Number(e.target.value)) }}
+            className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+          >
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+          </select>
+          {account && (
+            <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+          )}
+          <button className={button} onClick={sync} disabled={syncing}>{syncing ? 'Syncing…' : 'Sync Monobank'}</button>
+        </div>
+
+        {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
+        {account && !list && <div className="mt-4"><Skeleton /></div>}
+        {account && list?.length === 0 && <p className={`py-6 text-center ${muted}`}>No transactions for this account.</p>}
+        {account && list && list.length > 0 && (
+          <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
+            {list.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
+                  <p className={`tabular-nums ${muted}`}>{dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
+                </div>
+                <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                  {format(t.amount, account.currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  )
+}
+
 export default function App() {
+  const [page, setPage] = useState(location.hash || '#/')
+  useEffect(() => {
+    const onHash = () => setPage(location.hash || '#/')
+    addEventListener('hashchange', onHash)
+    return () => removeEventListener('hashchange', onHash)
+  }, [])
+
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
+      <Nav page={page} />
+      {page === '#/transactions' ? <TransactionsPage /> : <Balances />}
+    </main>
+  )
+}
+
+function Balances() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
   const [error, setError] = useState('')
@@ -851,7 +966,7 @@ export default function App() {
     budget && rates ? (salaryIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
+    <>
       <header>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
         <p className={muted}>USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</p>
@@ -927,6 +1042,6 @@ export default function App() {
           <button className={button}>Add account</button>
         </form>
       </section>
-    </main>
+    </>
   )
 }
