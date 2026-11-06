@@ -8,6 +8,8 @@ type BudgetInput = {
   salaryCurrency?: Currency
   reserve?: number
   reserveCurrency?: Currency
+  minimalSpend?: number
+  minimalSpendCurrency?: Currency
 }
 
 const fromCents = (cents: number | null) => cents === null ? null : cents / 100
@@ -22,7 +24,9 @@ const toDto = (row?: typeof budget.$inferSelect) =>
         salary: fromCents(row.salaryCents),
         salaryCurrency: row.salaryCurrency,
         reserve: fromCents(row.reserveCents),
-        reserveCurrency: row.reserveCurrency
+        reserveCurrency: row.reserveCurrency,
+        minimalSpend: fromCents(row.minimalSpendCents),
+        minimalSpendCurrency: row.minimalSpendCurrency
       }
     : null
 
@@ -44,20 +48,28 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
           salary: { type: 'number', minimum: 0 },
           salaryCurrency: { type: 'string', enum: currencies },
           reserve: { type: 'number', minimum: 0 },
-          reserveCurrency: { type: 'string', enum: currencies }
+          reserveCurrency: { type: 'string', enum: currencies },
+          minimalSpend: { type: 'number', exclusiveMinimum: 0 },
+          minimalSpendCurrency: { type: 'string', enum: currencies }
         },
-        dependencies: { salary: ['salaryCurrency'], reserve: ['reserveCurrency'] }
+        dependencies: {
+          salary: ['salaryCurrency'],
+          reserve: ['reserveCurrency'],
+          minimalSpend: ['minimalSpendCurrency']
+        }
       }
     }
   }, async (request) => {
-    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency } = request.body
+    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency, minimalSpend, minimalSpendCurrency } = request.body
     const values = {
       monthlySpendCents: Math.round(monthlySpend * 100),
       currency,
       salaryCents: toCents(salary),
       salaryCurrency: salary === undefined ? null : salaryCurrency!,
       reserveCents: toCents(reserve),
-      reserveCurrency: reserve === undefined ? null : reserveCurrency!
+      reserveCurrency: reserve === undefined ? null : reserveCurrency!,
+      minimalSpendCents: toCents(minimalSpend),
+      minimalSpendCurrency: minimalSpend === undefined ? null : minimalSpendCurrency!
     }
     const [row] = await fastify.db.insert(budget)
       .values({ id: 1, ...values })

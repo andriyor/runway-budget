@@ -37,5 +37,8 @@ export const budget = sqliteTable('budget', {
   salaryCurrency: text('salary_currency', { enum: currencies }),
   // optional amount that is never spent; excluded from runway
   reserveCents: integer('reserve_cents'),
-  reserveCurrency: text('reserve_currency', { enum: currencies })
+  reserveCurrency: text('reserve_currency', { enum: currencies }),
+  // optional extreme-saving monthly spend, expected below monthlySpend
+  minimalSpendCents: integer('minimal_spend_cents'),
+  minimalSpendCurrency: text('minimal_spend_currency', { enum: currencies })
 })

@@ -50,6 +50,13 @@
       "when": 1793965641806,
       "tag": "0006_chubby_micromacro",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793966085156,
+      "tag": "0007_minor_omega_flight",
+      "breakpoints": true
     }
   ]
 }

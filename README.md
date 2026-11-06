@@ -8,7 +8,7 @@ and when you reach your goals.
 
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
-- **Runway**: enter monthly spending, an optional salary and an optional untouchable reserve, and see
+- **Runway**: enter monthly spending, an optional salary, an optional extreme-saving budget and an optional untouchable reserve, and see
   how many months your savings last with and without salary.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (salary minus spending).
@@ -69,7 +69,7 @@ integer minor units (cents/kopiykas).
 | `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
 | `DELETE` | `/accounts/:id` | Delete account                                        |
 | `GET`    | `/budget`       | Monthly spend, salary and reserve, or `null`          |
-| `PUT`    | `/budget`       | Set `{ monthlySpend, currency, salary?, salaryCurrency?, reserve?, reserveCurrency? }` |
+| `PUT`    | `/budget`       | Set `{ monthlySpend, currency, salary?, salaryCurrency?, reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency? }` |
 | `GET`    | `/goals`        | List goals                                            |
 | `POST`   | `/goals`        | Create goal `{ name, target, currency }`              |
 | `DELETE` | `/goals/:id`    | Delete goal                                           |

@@ -122,6 +122,15 @@ function ChevronIcon({ up }: { up?: boolean }) {
   )
 }
 
+function TrendDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 7 6 6 4-4 8 8" />
+      <path d="M15 17h6v-6" />
+    </svg>
+  )
+}
+
 function Skeleton() {
   return <span className="inline-block h-8 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
 }
@@ -267,6 +276,8 @@ type Budget = {
   salaryCurrency: Currency | null
   reserve: number | null
   reserveCurrency: Currency | null
+  minimalSpend: number | null
+  minimalSpendCurrency: Currency | null
 }
 type Convert = (amount: number, from: Currency, to: Currency) => number | undefined
 
@@ -302,13 +313,37 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
 
 const amountString = (n: number | null) => (n === null ? '' : String(n))
 
+// amounts as typed in the inputs; '' means not set
+type BudgetForm = {
+  spend: string
+  currency: Currency
+  salary: string
+  salaryCurrency: Currency
+  reserve: string
+  reserveCurrency: Currency
+  minimal: string
+  minimalCurrency: Currency
+}
+
+const toForm = (b: Budget | null, fallback: Currency = 'UAH'): BudgetForm => ({
+  spend: b ? String(b.monthlySpend) : '',
+  currency: b?.currency ?? fallback,
+  salary: amountString(b?.salary ?? null),
+  salaryCurrency: b?.salaryCurrency ?? fallback,
+  reserve: amountString(b?.reserve ?? null),
+  reserveCurrency: b?.reserveCurrency ?? fallback,
+  minimal: amountString(b?.minimalSpend ?? null),
+  minimalCurrency: b?.minimalSpendCurrency ?? fallback,
+})
+
 // request body for PUT /budget; empty optional amount omits (clears) its pair
-function budgetBody(spend: string, currency: Currency, salary: string, salaryCurrency: Currency, reserve: string, reserveCurrency: Currency) {
+function budgetBody(f: BudgetForm) {
   return {
-    monthlySpend: Number(spend),
-    currency,
-    ...(salary !== '' && { salary: Number(salary), salaryCurrency }),
-    ...(reserve !== '' && { reserve: Number(reserve), reserveCurrency }),
+    monthlySpend: Number(f.spend),
+    currency: f.currency,
+    ...(f.salary !== '' && { salary: Number(f.salary), salaryCurrency: f.salaryCurrency }),
+    ...(f.reserve !== '' && { reserve: Number(f.reserve), reserveCurrency: f.reserveCurrency }),
+    ...(f.minimal !== '' && { minimalSpend: Number(f.minimal), minimalSpendCurrency: f.minimalCurrency }),
   }
 }
 
@@ -318,18 +353,15 @@ type RunwayProps = {
   availableIn: (c: Currency) => number | undefined
   reserveIn: (c: Currency) => number
   salaryIn: (c: Currency) => number | undefined
+  minimalIn: (c: Currency) => number | undefined
 }
 
-function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProps) {
-  const [spend, setSpend] = useState(saved ? String(saved.monthlySpend) : '')
-  const [currency, setCurrency] = useState<Currency>(saved?.currency ?? 'UAH')
-  const [salary, setSalary] = useState(amountString(saved?.salary ?? null))
-  const [salaryCurrency, setSalaryCurrency] = useState<Currency>(saved?.salaryCurrency ?? 'UAH')
-  const [reserve, setReserve] = useState(amountString(saved?.reserve ?? null))
-  const [reserveCurrency, setReserveCurrency] = useState<Currency>(saved?.reserveCurrency ?? 'UAH')
+function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn, minimalIn }: RunwayProps) {
+  const [form, setForm] = useState(() => toForm(saved))
   const [error, setError] = useState('')
+  const field = <K extends keyof BudgetForm>(key: K) => (value: BudgetForm[K]) => setForm((f) => ({ ...f, [key]: value }))
 
-  const body = budgetBody(spend, currency, salary, salaryCurrency, reserve, reserveCurrency)
+  const body = budgetBody(form)
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -341,15 +373,18 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProp
     }
   }
 
-  const dirty = !saved || JSON.stringify(body) !== JSON.stringify(budgetBody(
-    String(saved.monthlySpend), saved.currency,
-    amountString(saved.salary), saved.salaryCurrency ?? salaryCurrency,
-    amountString(saved.reserve), saved.reserveCurrency ?? reserveCurrency,
-  ))
+  // unset optional currencies fall back to the form's, so they don't count as changes
+  const dirty = !saved || JSON.stringify(body) !== JSON.stringify(budgetBody({
+    ...toForm(saved),
+    salaryCurrency: saved.salaryCurrency ?? form.salaryCurrency,
+    reserveCurrency: saved.reserveCurrency ?? form.reserveCurrency,
+    minimalCurrency: saved.minimalSpendCurrency ?? form.minimalCurrency,
+  }))
 
   const available = saved ? availableIn(saved.currency) : undefined
   const reserved = saved ? reserveIn(saved.currency) : 0
   const salaryInSpendCurrency = saved ? salaryIn(saved.currency) : undefined
+  const minimalInSpendCurrency = saved ? minimalIn(saved.currency) : undefined
 
   const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
@@ -363,15 +398,19 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProp
         </div>
         <label className="flex flex-col gap-1.5">
           <span className={fieldLabel}><span className="text-rose-500"><BagIcon /></span> I spend per month</span>
-          <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={spend} onChange={setSpend} currency={currency} onCurrency={setCurrency} />
+          <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={form.spend} onChange={field('spend')} currency={form.currency} onCurrency={field('currency')} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={fieldLabel}><span className="text-sky-600"><TrendDownIcon /></span> Extreme saving per month {optional}</span>
+          <MoneyInput id="minimal" label="Extreme saving per month" min="0.01" placeholder="bare minimum, less than usual" value={form.minimal} onChange={field('minimal')} currency={form.minimalCurrency} onCurrency={field('minimalCurrency')} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={fieldLabel}><span className="text-emerald-600"><BriefcaseIcon /></span> My salary per month {optional}</span>
-          <MoneyInput id="salary" label="Monthly salary" min="0" placeholder="leave empty if none" value={salary} onChange={setSalary} currency={salaryCurrency} onCurrency={setSalaryCurrency} />
+          <MoneyInput id="salary" label="Monthly salary" min="0" placeholder="leave empty if none" value={form.salary} onChange={field('salary')} currency={form.salaryCurrency} onCurrency={field('salaryCurrency')} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={fieldLabel}><span className="text-amber-500"><LockIcon /></span> Untouchable reserve {optional}</span>
-          <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={reserve} onChange={setReserve} currency={reserveCurrency} onCurrency={setReserveCurrency} />
+          <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={form.reserve} onChange={field('reserve')} currency={form.reserveCurrency} onCurrency={field('reserveCurrency')} />
         </label>
         <div>
           <button className={button} disabled={!dirty}>Save</button>
@@ -391,6 +430,14 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProp
                 </p>
               )}
               <Estimate label="Without salary" total={available} burn={saved.monthlySpend} currency={saved.currency} />
+              {minimalInSpendCurrency !== undefined && (
+                <>
+                  <Estimate label="Extreme saving, without salary" total={available} burn={minimalInSpendCurrency} currency={saved.currency} />
+                  {minimalInSpendCurrency >= saved.monthlySpend && (
+                    <p className="text-sm text-amber-700 dark:text-amber-400">Extreme saving is not below your usual spending.</p>
+                  )}
+                </>
+              )}
               {salaryInSpendCurrency !== undefined && (
                 <Estimate label="With salary" total={available} burn={saved.monthlySpend - salaryInSpendCurrency} currency={saved.currency} />
               )}
@@ -720,6 +767,7 @@ export default function App() {
     amount != null && from ? convert(amount, from, to) : undefined
   const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
   const salaryIn = (c: Currency) => fromBudget(budget?.salary, budget?.salaryCurrency, c)
+  const minimalIn = (c: Currency) => fromBudget(budget?.minimalSpend, budget?.minimalSpendCurrency, c)
   const availableIn = (c: Currency) => {
     const total = totalIn(c)
     return total === undefined ? undefined : total - reserveIn(c)
@@ -763,7 +811,7 @@ export default function App() {
       <Allocation accounts={accounts} convert={convert} />
 
       {budget !== undefined && (
-        <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} />
+        <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} minimalIn={minimalIn} />
       )}
 
       <Goals availableIn={availableIn} netIn={netIn} />
