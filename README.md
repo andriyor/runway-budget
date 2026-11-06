@@ -35,13 +35,15 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
     picking a category or merchant reduces the bars to it to show its trend;
   - spending by category with a drill-down into subcategories;
   - spending by merchant;
-  - filters by month or ISO week, category and merchant, all clickable from the charts;
+  - filters by month, quarter or ISO week, category and merchant, all clickable from the charts;
   - sorting by date or amount and a note on any transaction.
+- **Phones**: a bottom tab bar, compact balance cards and account rows, and a Transactions page that
+  opens on the latest quarter, with the monthly chart showing that quarter.
 - **Categories**: transactions are sorted into categories and subcategories automatically from their
   MCC. Correct one transaction or every transaction from a merchant, and mark transfers as income,
   moves between your own accounts or investments so they do not count as spending.
-- **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. «Лише необхідне»
-  shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
+- **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. The
+  «Усі витрати | Необхідні» switch shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
   monthly spending, the essential one as the extreme-saving amount.
 
 ## Stack
@@ -248,6 +250,10 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   compile on both sides. Imports are type-only, so nothing is built or shipped: it is a dev
   dependency and the API image runs without it. Runtime lists (currencies, account kinds) stay in
   each app, checked with `AllOf<Union, typeof list>` so a missing or unknown member fails to compile.
+- **Phone layout is the same components below Tailwind's `sm` breakpoint.** Layout differences are
+  `sm:`/`max-sm:` classes; the two behaviors that need JavaScript (opening on the latest quarter,
+  and the chart showing one quarter) read the same breakpoint from `web/src/lib/media.ts`. On a
+  phone the chart's median still covers every complete month, not only the quarter shown.
 - **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
 - **Web layout:** `web/src/pages/` for the two pages, `components/` for their parts, `lib/` for
   types, API calls, formatting and shared class names.
