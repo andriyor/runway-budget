@@ -875,6 +875,29 @@ function CategorySpending({ list, currency, categoryById, selected, onSelect }: 
   )
 }
 
+// ISO 8601 week: weeks start on Monday, week 1 holds the year's first Thursday
+function isoWeek(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+  const year = d.getUTCFullYear()
+  return { year, week: Math.ceil(((d.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7) }
+}
+
+const monthName = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' })
+const shortDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
+
+// month and week keys a transaction belongs to, with a label for each, in local time
+function periodsOf(t: Transaction): Array<[string, string]> {
+  const date = new Date(t.time)
+  const { year, week } = isoWeek(date)
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() || 7) - 1))
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
+  return [
+    [`m:${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, monthName.format(date)],
+    [`w:${year}-${String(week).padStart(2, '0')}`, `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
+  ]
+}
+
 function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState<number>()
@@ -882,6 +905,8 @@ function TransactionsPage() {
   const [error, setError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [category, setCategory] = useState<string>()
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
+  const [period, setPeriod] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
   const categoryById = new Map(categories.map((c) => [c.id, c]))
@@ -928,6 +953,12 @@ function TransactionsPage() {
 
   const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
 
+  const periods = new Map<string, string>()
+  for (const t of list ?? []) for (const [key, label] of periodsOf(t)) periods.set(key, label)
+  // keys sort chronologically as text; newest first
+  const periodOptions = (prefix: string) => [...periods].filter(([key]) => key.startsWith(prefix)).sort(([a], [b]) => b.localeCompare(a))
+  const shown = period ? list?.filter((t) => periodsOf(t).some(([key]) => key === period)) : list
+
   return (
     <>
       {error && (
@@ -940,10 +971,24 @@ function TransactionsPage() {
           <select
             aria-label="Account"
             value={accountId ?? ''}
-            onChange={(e) => { setList(undefined); setCategory(undefined); setAccountId(Number(e.target.value)) }}
+            onChange={(e) => { setList(undefined); setCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
             className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
           >
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+          </select>
+          <select
+            aria-label="Period"
+            value={period}
+            onChange={(e) => { setCategory(undefined); setPeriod(e.target.value) }}
+            className={`min-w-40 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+          >
+            <option value="">Увесь час</option>
+            <optgroup label="Місяць">
+              {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </optgroup>
+            <optgroup label="Тиждень">
+              {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </optgroup>
           </select>
           {account && (
             <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
@@ -955,20 +1000,42 @@ function TransactionsPage() {
         {account && !list && <div className="mt-4"><Skeleton /></div>}
         {account && list?.length === 0 && <p className={`py-6 text-center ${muted}`}>No transactions for this account.</p>}
       </section>
-      {account && list && list.length > 0 && (
+      {account && shown && list!.length > 0 && (
         <>
-          <CategorySpending list={list} currency={account.currency} categoryById={categoryById} selected={category} onSelect={setCategory} />
+          <CategorySpending list={shown} currency={account.currency} categoryById={categoryById} selected={category} onSelect={setCategory} />
           <section className={card}>
-            {category && (
-              <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{categoryById.get(category)?.label}</span>
-                <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                  Show all
-                </button>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="truncate text-zinc-700 dark:text-zinc-300">{category ? categoryById.get(category)?.label : 'All transactions'}</span>
+                {category && (
+                  <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                    Show all
+                  </button>
+                )}
+              </span>
+              <div role="group" aria-label="Sort by" className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                {(['date', 'amount'] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={sortBy === key}
+                    onClick={() => setSortBy(key)}
+                    className={`rounded-md px-2.5 py-1 font-medium ${
+                      sortBy === key
+                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
+                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    {key === 'date' ? 'Date' : 'Amount'}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {(category ? list.filter((t) => t.category === category) : list).map((t) => (
+              {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
+              {(category ? shown.filter((t) => t.category === category) : shown)
+                .toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
+                .map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-3">
                   <MerchantIcon domain={t.merchantDomain} emoji={categoryById.get(t.category)?.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
