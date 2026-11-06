@@ -6,6 +6,12 @@ import type { Currency, Transaction, Leaf } from '../lib/types'
 
 const SERIES = 7
 
+const median = (values: number[]) => {
+  const sorted = values.toSorted((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
 const shortMonth = new Intl.DateTimeFormat('uk-UA', { month: 'short', year: 'numeric' })
 // month name alone, for the axis where the year sits on its own line
 const monthOnly = new Intl.DateTimeFormat('uk-UA', { month: 'short' })
@@ -31,6 +37,7 @@ type MonthlySpendingProps = {
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
 export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant }: MonthlySpendingProps) {
   const [hover, setHover] = useState<{ month: string, series: string }>()
+  const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
   const months = new Map<string, Map<string, number>>()
   const totals = new Map<string, number>()
   for (const t of list) {
@@ -86,6 +93,9 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
       })
     : breakdown
   const max = Math.max(...columns.map((c) => c.total))
+  // the current month is still running, so it would pull the median down
+  const complete = columns.filter((c) => c.month !== thisMonth)
+  const typical = complete.length ? median(complete.map((c) => c.total)) : undefined
   if (!(Math.max(...breakdown.map((c) => c.total)) > 0)) return null
   const seriesTotal = (id: string) => breakdown.reduce((sum, c) => sum + (c.segments.find((s) => s.id === id)?.value ?? 0), 0)
   const label = (month: string) => shortMonth.format(new Date(`${month}-01T00:00:00`))
@@ -100,7 +110,15 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
   return (
     <section className={`${card} viz`}>
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending per month</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending per month</h2>
+        {typical !== undefined && (
+          <span className={`tabular-nums ${muted}`}>
+            Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
+            {' '}за місяць · {complete.length} повних міс.
+          </span>
+        )}
+      </div>
       <ul className="-mx-1.5 mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm" aria-label="Legend">
         {series.map((s) => {
           const content = (
@@ -131,7 +149,15 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
       </ul>
 
       <div className="relative mt-5" onMouseLeave={() => setHover(undefined)}>
-        <div className="flex h-56 items-end gap-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="relative flex h-56 items-end gap-3 border-b border-zinc-200 dark:border-zinc-800">
+          {typical !== undefined && typical > 0 && (
+            // bars use 85% of the plot height at most, so the line sits on the same scale
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-zinc-500 dark:border-zinc-400" style={{ bottom: `${(typical / max) * 85}%` }}>
+              <span className="absolute -top-2.5 right-0 rounded bg-white px-1 text-[0.65rem] font-medium text-zinc-600 tabular-nums dark:bg-zinc-900 dark:text-zinc-300">
+                медіана {wholeMoney(typical, currency)}
+              </span>
+            </div>
+          )}
           {columns.map((c) => (
             <div key={c.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
               <button
