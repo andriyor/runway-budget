@@ -22,6 +22,41 @@ main {
   font-size: 1.4em;
 }
 
+.totals .label,
+.totals .rate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.totals .rate {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.totals .rate svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.cur-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cur-USD { background: #15803d; }
+.cur-EUR { background: #1d4ed8; }
+.cur-UAH { background: #ca8a04; }
+
 .row {
   display: flex;
   flex-wrap: wrap;

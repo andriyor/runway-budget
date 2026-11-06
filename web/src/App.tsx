@@ -18,6 +18,25 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 const format = (amount: number, currency: Currency) =>
   new Intl.NumberFormat('uk-UA', { style: 'currency', currency }).format(amount)
 
+const symbols: Record<Currency, string> = { USD: '$', EUR: '€', UAH: '₴' }
+
+function CurrencyIcon({ currency }: { currency: Currency }) {
+  return <span className={`cur-icon cur-${currency}`} aria-hidden="true">{symbols[currency]}</span>
+}
+
+function BankIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5 12 4l9 5.5" />
+      <path d="M5.5 10v7.5M10 10v7.5M14 10v7.5M18.5 10v7.5" />
+      <path d="M3 20h18" />
+    </svg>
+  )
+}
+
+const formatRate = (rate: number) =>
+  new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(rate)
+
 function CurrencySelect({ value, onChange }: { value: Currency, onChange: (c: Currency) => void }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value as Currency)} aria-label="Currency">
@@ -100,16 +119,18 @@ export default function App() {
       <section className="totals">
         {currencies.map((c) => (
           <div key={c}>
-            <small>Total in {c}</small>
+            <small className="label"><CurrencyIcon currency={c} /> Total in {c}</small>
             <strong>{rates ? format(totalIn(c)!, c) : '…'}</strong>
+            {rates && (
+              <small className="rate">
+                {c === 'UAH'
+                  ? <><BankIcon /> NBU rate · {rates.date}</>
+                  : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
+              </small>
+            )}
           </div>
         ))}
       </section>
-      {rates && (
-        <p className="muted">
-          NBU rates on {rates.date}: 1 USD = {rates.rates.USD} UAH, 1 EUR = {rates.rates.EUR} UAH
-        </p>
-      )}
 
       <h2>Accounts</h2>
       {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} />)}
