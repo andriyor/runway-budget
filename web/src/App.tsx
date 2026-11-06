@@ -834,12 +834,72 @@ function MerchantIcon({ domain, name, mcc }: { domain: string | null, name: stri
   )
 }
 
+// spending only: income and refunds (positive amounts) are left out
+const categoryOf = (t: Transaction) => t.category ?? 'Без категорії'
+
+type CategorySpendingProps = { list: Transaction[], currency: Currency, selected?: string, onSelect: (category?: string) => void }
+
+function CategorySpending({ list, currency, selected, onSelect }: CategorySpendingProps) {
+  const groups = new Map<string, { total: number, mcc: number }>()
+  for (const t of list) {
+    if (t.amount >= 0) continue
+    const key = categoryOf(t)
+    const group = groups.get(key) ?? { total: 0, mcc: t.mcc }
+    group.total -= t.amount
+    groups.set(key, group)
+  }
+  const rows = [...groups].sort((a, b) => b[1].total - a[1].total)
+  const total = rows.reduce((sum, [, g]) => sum + g.total, 0)
+  if (total === 0) return null
+  const day = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' })
+
+  return (
+    <section className={card}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by category</h2>
+        <span className={`tabular-nums ${muted}`}>
+          {day.format(new Date(list.at(-1)!.time))} – {day.format(new Date(list[0].time))} · {format(total, currency)}
+        </span>
+      </div>
+      <ul className="mt-3 flex flex-col gap-3">
+        {rows.map(([category, g]) => (
+          <li key={category}>
+            <button
+              type="button"
+              aria-pressed={selected === category}
+              onClick={() => onSelect(selected === category ? undefined : category)}
+              className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-zinc-50 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800/50 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900"
+            >
+              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-base dark:bg-zinc-800">
+                {mccIcon(g.mcc) ?? '•'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="truncate text-zinc-900 dark:text-zinc-100" title={category}>{category}</span>
+                  <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+                    {format(g.total, currency)}
+                    <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(g.total / total)}%</span>
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(g.total / rows[0][1].total) * 100}%` }} />
+                </div>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState<number>()
   const [list, setList] = useState<Transaction[]>()
   const [error, setError] = useState('')
   const [syncing, setSyncing] = useState(false)
+  const [category, setCategory] = useState<string>()
   const account = accounts.find((a) => a.id === accountId)
 
   useEffect(() => {
@@ -885,7 +945,7 @@ function TransactionsPage() {
           <select
             aria-label="Account"
             value={accountId ?? ''}
-            onChange={(e) => { setList(undefined); setAccountId(Number(e.target.value)) }}
+            onChange={(e) => { setList(undefined); setCategory(undefined); setAccountId(Number(e.target.value)) }}
             className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
           >
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
@@ -899,23 +959,36 @@ function TransactionsPage() {
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
         {account && !list && <div className="mt-4"><Skeleton /></div>}
         {account && list?.length === 0 && <p className={`py-6 text-center ${muted}`}>No transactions for this account.</p>}
-        {account && list && list.length > 0 && (
-          <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
-            {list.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 py-3">
-                <MerchantIcon domain={t.merchantDomain} name={t.description} mcc={t.mcc} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
-                  <p className={`truncate tabular-nums ${muted}`} title={t.category ?? undefined}>{t.category ?? 'Без категорії'} · {dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
-                </div>
-                <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                  {format(t.amount, account.currency)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
+      {account && list && list.length > 0 && (
+        <>
+          <CategorySpending list={list} currency={account.currency} selected={category} onSelect={setCategory} />
+          <section className={card}>
+            {category && (
+              <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{category}</span>
+                <button type="button" onClick={() => setCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                  Show all
+                </button>
+              </div>
+            )}
+            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {(category ? list.filter((t) => categoryOf(t) === category) : list).map((t) => (
+                <li key={t.id} className="flex items-center gap-3 py-3">
+                  <MerchantIcon domain={t.merchantDomain} name={t.description} mcc={t.mcc} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
+                    <p className={`truncate tabular-nums ${muted}`} title={t.category ?? undefined}>{categoryOf(t)} · {dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
+                  </div>
+                  <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                    {format(t.amount, account.currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
     </>
   )
 }
