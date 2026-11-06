@@ -19,5 +19,8 @@ export const accounts = sqliteTable('accounts', {
 export const budget = sqliteTable('budget', {
   id: integer('id').primaryKey(),
   monthlySpendCents: integer('monthly_spend_cents').notNull(),
-  currency: text('currency', { enum: currencies }).notNull()
+  currency: text('currency', { enum: currencies }).notNull(),
+  // optional; both set or both null
+  salaryCents: integer('salary_cents'),
+  salaryCurrency: text('salary_currency', { enum: currencies })
 })
