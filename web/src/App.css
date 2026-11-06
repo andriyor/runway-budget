@@ -57,6 +57,24 @@ main {
 .cur-EUR { background: #1d4ed8; }
 .cur-UAH { background: #ca8a04; }
 
+.runway {
+  padding: 4px 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.runway .row {
+  border-bottom: none;
+}
+
+.runway-result {
+  margin: 4px 0 0;
+}
+
+.runway-result strong {
+  font-size: 1.4em;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

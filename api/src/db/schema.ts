@@ -14,3 +14,10 @@ export const accounts = sqliteTable('accounts', {
     .$defaultFn(() => new Date())
     .$onUpdateFn(() => new Date())
 })
+
+// single row (id = 1): how much is spent per month, used for runway
+export const budget = sqliteTable('budget', {
+  id: integer('id').primaryKey(),
+  monthlySpendCents: integer('monthly_spend_cents').notNull(),
+  currency: text('currency', { enum: currencies }).notNull()
+})

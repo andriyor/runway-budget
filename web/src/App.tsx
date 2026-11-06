@@ -75,6 +75,65 @@ function AccountRow({ account, onSaved }: { account: Account, onSaved: (a: Accou
   )
 }
 
+type Budget = { monthlySpend: number, currency: Currency }
+
+const AVG_DAYS_IN_MONTH = 30.44
+
+function Runway({ totalIn }: { totalIn: (c: Currency) => number | undefined }) {
+  const [saved, setSaved] = useState<Budget | null>(null)
+  const [spend, setSpend] = useState('')
+  const [currency, setCurrency] = useState<Currency>('UAH')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api<Budget | null>('/budget').then((b) => {
+      setSaved(b)
+      if (b) {
+        setSpend(String(b.monthlySpend))
+        setCurrency(b.currency)
+      }
+    }).catch((e) => setError(e.message))
+  }, [])
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    try {
+      setSaved(await api<Budget>('/budget', {
+        method: 'PUT',
+        body: JSON.stringify({ monthlySpend: Number(spend), currency }),
+      }))
+      setError('')
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const total = saved && totalIn(saved.currency)
+  const months = saved && total !== undefined ? Math.max(0, total! / saved.monthlySpend) : undefined
+  const until = months !== undefined && new Date(Date.now() + months * AVG_DAYS_IN_MONTH * 864e5)
+  const dirty = !saved || Number(spend) !== saved.monthlySpend || currency !== saved.currency
+
+  return (
+    <section className="runway">
+      <form className="row" onSubmit={save}>
+        <label htmlFor="spend">I spend per month</label>
+        <input id="spend" type="number" step="0.01" min="0.01" required value={spend} onChange={(e) => setSpend(e.target.value)} />
+        <CurrencySelect value={currency} onChange={setCurrency} />
+        <button disabled={!dirty}>Save</button>
+      </form>
+      {error && <p role="alert" className="error">{error}</p>}
+      {months !== undefined && (
+        <p className="runway-result">
+          Without salary you can live <strong>{months.toFixed(1)} months</strong>
+          {months >= 12 && <> (≈ {(months / 12).toFixed(1)} years)</>}
+          {until && <span className="muted"> · until {until.toLocaleDateString('uk-UA')}</span>}
+        </p>
+      )}
+      {!saved && <p className="muted">Set your monthly spending to see how long your savings last.</p>}
+    </section>
+  )
+}
+
 export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
@@ -131,6 +190,9 @@ export default function App() {
           </div>
         ))}
       </section>
+
+      <h2>Runway</h2>
+      <Runway totalIn={totalIn} />
 
       <h2>Accounts</h2>
       {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} />)}
