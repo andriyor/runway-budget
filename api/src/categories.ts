@@ -132,7 +132,9 @@ export const categories = [
   // service categories outside the spending list
   { id: 'transfers', label: 'Перекази', emoji: '💸', mcc: [[4829, 4829], [6010, 6012], [6051, 6051], [6538, 6540]] },
   { id: 'income', label: 'Надходження', emoji: '💰', spending: false },
-  { id: 'own', label: 'Між своїми рахунками', emoji: '🔁', spending: false }
+  { id: 'own', label: 'Між своїми рахунками', emoji: '🔁', spending: false },
+  // money set aside, not spent: broker top-ups, bonds, deposits
+  { id: 'investments', label: 'Інвестиції', emoji: '📈', spending: false, mcc: [[6211, 6211]] }
 ] as const satisfies readonly Category[]
 
 type Leaf = { id: string, label: string, mcc?: readonly Range[], parent: Category }

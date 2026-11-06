@@ -131,7 +131,8 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   implemented.
 - **Two-level categories instead of raw MCC.** `api/src/categories.ts` holds one tree: 16 spending
   categories with subcategories (Продукти › Супермаркет, …), plus service categories without
-  subcategories: `Перекази` (spending), `Надходження` and `Між своїми рахунками` (not spending). MCC
+  subcategories: `Перекази` (spending), `Надходження`, `Між своїми рахунками` and `Інвестиції`
+  (not spending). MCC
   ranges sit on subcategories; where they overlap, the first in table order wins. A transaction and
   every stored override always hold a leaf id (a subcategory, or a category without any), and the
   web groups leaves under their parent. Some subcategories (food delivery, electricity, loans) have

@@ -18,18 +18,19 @@ test('categories come from MCC, description rules and merchant overrides', async
   add('Скасування. Rozetka', 5262, 500)
   add('Невідомо', 1, -600)
   add('Агенція нерухомості', 6513, -700)
+  add('Interactive Brokers', 6211, -800)
 
   const categoryOf = async () => Object.fromEntries((await app.inject({ url: `/accounts/${account.id}/transactions` })).json()
     .map((x: { externalId: string, category: string }) => [x.externalId, x.category]))
 
-  assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'transfers', 3: 'income', 4: 'marketplaces', 5: 'marketplaces', 6: 'other_expenses', 7: 'rent' })
+  assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'transfers', 3: 'income', 4: 'marketplaces', 5: 'marketplaces', 6: 'other_expenses', 7: 'rent', 8: 'investments' })
 
   // an override covers the merchant's refunds too
   const set = (description: string, category: string | null) =>
     app.inject({ method: 'PUT', url: '/categories/merchants', payload: { description, category } })
   assert.equal((await set('ROZETKA', 'renovation')).statusCode, 204)
   assert.equal((await set('Іван Петренко', 'own')).statusCode, 204)
-  assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'own', 3: 'income', 4: 'renovation', 5: 'renovation', 6: 'other_expenses', 7: 'rent' })
+  assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'own', 3: 'income', 4: 'renovation', 5: 'renovation', 6: 'other_expenses', 7: 'rent', 8: 'investments' })
 
   assert.equal((await set('Rozetka', null)).statusCode, 204)
   assert.equal((await categoryOf())[4], 'marketplaces')
@@ -54,5 +55,6 @@ test('categories come from MCC, description rules and merchant overrides', async
 
   const list = (await app.inject({ url: '/categories' })).json()
   assert.deepEqual(list[0].subcategories[0], { id: 'supermarket', label: 'Супермаркет' })
+  assert.equal(list.find((c: { id: string }) => c.id === 'investments').spending, false)
   assert.deepEqual(list.find((c: { id: string }) => c.id === 'income'), { id: 'income', label: 'Надходження', emoji: '💰', spending: false, subcategories: [] })
 })
