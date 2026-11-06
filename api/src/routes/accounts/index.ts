@@ -1,4 +1,5 @@
 import { type FastifyPluginAsync } from 'fastify'
+import type { Account, Transaction } from '@runway-budget/shared'
 import { desc, eq, max, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
@@ -10,7 +11,8 @@ import { accounts, accountKinds, currencies, merchantCategories, transactions, t
 type AccountRow = typeof accounts.$inferSelect
 type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
 
-const toDto = ({ balanceCents, position: _position, ...rest }: AccountRow) => ({ ...rest, balance: balanceCents / 100 })
+const toDto = ({ balanceCents, position: _position, updatedAt, ...rest }: AccountRow): Account =>
+  ({ ...rest, updatedAt: updatedAt.toISOString(), balance: balanceCents / 100 })
 const toCents = (balance: number) => Math.round(balance * 100)
 
 const MONO_URL = 'https://api.monobank.ua/personal'
@@ -72,11 +74,12 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       .orderBy(desc(transactions.time), desc(transactions.id))
     const overrides = new Map((await fastify.db.select().from(merchantCategories))
       .map((o) => [o.merchant, o.category as CategoryId]))
-    return rows.map(({ amountCents, category: own, ...rest }) => {
+    return rows.map(({ amountCents, category: own, time, ...rest }): Transaction => {
       const key = merchantKey(rest.description)
       const merchant = overrides.get(key)
       return {
         ...rest,
+        time: time.toISOString(),
         amount: amountCents / 100,
         // groups a merchant's purchases and refunds, same key as merchant category overrides
         merchant: key,

@@ -28,12 +28,13 @@ and when you reach your goals.
 
 ## Stack
 
-pnpm workspace with two apps:
+pnpm workspace with two apps and a shared types package:
 
 | Path   | What                                                                       |
 | ------ | -------------------------------------------------------------------------- |
 | `api/` | [Fastify](https://fastify.dev) + TypeScript, SQLite via [Drizzle ORM](https://orm.drizzle.team) and `better-sqlite3` |
 | `web/` | React + TypeScript + [Vite](https://vite.dev), styled with [Tailwind CSS](https://tailwindcss.com) |
+| `shared/` | `@runway-budget/shared`: TypeScript types for the API's JSON responses |
 
 ## Getting started
 
@@ -182,6 +183,12 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   range and folds the rest into one gray `Решта`, since more hues stop being distinguishable. The
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast
   in light and dark mode.
+- **Shared package is types only.** `shared/index.d.ts` declares the response shapes (`Account`,
+  `Transaction`, `Category`, `Budget`, `Goal`, `Rates`) and the `Currency`/`AccountKind` unions. The
+  API types its response mappers with them and the web reads them, so a changed field fails to
+  compile on both sides. Imports are type-only, so nothing is built or shipped: it is a dev
+  dependency and the API image runs without it. Runtime lists (currencies, account kinds) stay in
+  each app, checked with `AllOf<Union, typeof list>` so a missing or unknown member fails to compile.
 - **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
 - **Web layout:** `web/src/pages/` for the two pages, `components/` for their parts, `lib/` for
   types, API calls, formatting and shared class names.
@@ -194,4 +201,4 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 - [x] Delete and rename accounts
 - [ ] Balance history over time
 - [ ] Goals in priority order (reach one after another instead of each on its own)
-- [ ] Shared package for types used by both `api` and `web`
+- [x] Shared package for types used by both `api` and `web`

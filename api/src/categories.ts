@@ -1,3 +1,5 @@
+import type { Category as CategoryDto } from '@runway-budget/shared'
+
 // Categories and subcategories: one table owns the labels, icons and the MCC codes per subcategory.
 // A transaction always gets a leaf: a subcategory, or a category that has none.
 // MCC ranges may overlap; the first leaf in this order wins (salons before generic services).
@@ -162,7 +164,7 @@ export function categorize (mcc: number, description: string, amount: number, ov
 }
 
 // tree for the UI: every category with its parent-level info and leaves
-export const categoryTree = (categories as readonly Category[]).map(({ id, label, emoji, spending, subcategories }) => ({
+export const categoryTree: CategoryDto[] = (categories as readonly Category[]).map(({ id, label, emoji, spending, subcategories }) => ({
   id,
   label,
   emoji,

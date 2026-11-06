@@ -4,6 +4,7 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY api/package.json api/
 COPY web/package.json web/
+COPY shared/package.json shared/
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build && pnpm --filter api deploy --prod --legacy /out/api

@@ -30,6 +30,7 @@
     "fastify-plugin": "^6.0.0"
   },
   "devDependencies": {
+    "@runway-budget/shared": "workspace:*",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.0.0",
     "c8": "^12.0.0",

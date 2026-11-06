@@ -1,4 +1,5 @@
 import { type FastifyPluginAsync } from 'fastify'
+import type { Budget } from '@runway-budget/shared'
 import { budget, currencies, type Currency } from '../../db/schema'
 
 type BudgetInput = {
@@ -17,7 +18,7 @@ const fromCents = (cents: number | null) => cents === null ? null : cents / 100
 // omitted amount clears the pair
 const toCents = (amount?: number) => amount === undefined ? null : Math.round(amount * 100)
 
-const toDto = (row?: typeof budget.$inferSelect) =>
+const toDto = (row?: typeof budget.$inferSelect): Budget | null =>
   row
     ? {
         monthlySpend: row.monthlySpendCents / 100,

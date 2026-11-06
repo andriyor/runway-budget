@@ -1,6 +1,7 @@
 packages:
   - api
   - web
+  - shared
 
 allowBuilds:
   better-sqlite3: true

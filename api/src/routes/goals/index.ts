@@ -1,10 +1,11 @@
 import { type FastifyPluginAsync } from 'fastify'
+import type { Goal } from '@runway-budget/shared'
 import { eq } from 'drizzle-orm'
 import { goals, currencies, type Currency } from '../../db/schema'
 
 type GoalRow = typeof goals.$inferSelect
 
-const toDto = ({ targetCents, ...rest }: GoalRow) => ({ ...rest, target: targetCents / 100 })
+const toDto = ({ targetCents, ...rest }: GoalRow): Goal => ({ ...rest, target: targetCents / 100 })
 
 const goalsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async () => {

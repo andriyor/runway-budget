@@ -1,0 +1,10 @@
+{
+  "name": "@runway-budget/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types for the JSON the API sends and the web app reads; types only, nothing to build or run",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": { "types": "./index.d.ts" }
+  }
+}

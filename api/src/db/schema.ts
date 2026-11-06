@@ -1,10 +1,13 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import type { AccountKind, AllOf, Currency } from '@runway-budget/shared'
 import { categoryIds } from '../categories'
 
-export const currencies = ['USD', 'EUR', 'UAH'] as const
-export type Currency = typeof currencies[number]
-export const accountKinds = ['bank', 'cash'] as const
-export type AccountKind = typeof accountKinds[number]
+export type { AccountKind, Currency }
+// runtime lists for column enums and request validation; AllOf keeps them equal to the shared unions
+const currencyList = ['USD', 'EUR', 'UAH'] as const
+export const currencies: AllOf<Currency, typeof currencyList> = currencyList
+const accountKindList = ['bank', 'cash'] as const
+export const accountKinds: AllOf<AccountKind, typeof accountKindList> = accountKindList
 
 export const accounts = sqliteTable('accounts', {
   id: integer('id').primaryKey({ autoIncrement: true }),

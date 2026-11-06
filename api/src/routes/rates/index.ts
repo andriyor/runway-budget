@@ -1,11 +1,10 @@
 import { type FastifyPluginAsync } from 'fastify'
-import { type Currency } from '../../db/schema'
+import type { Rates } from '@runway-budget/shared'
 
 // National Bank of Ukraine official rates: UAH per 1 unit of currency
 const NBU_URL = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json'
 const TTL_MS = 60 * 60 * 1000
 
-type Rates = { date: string, rates: Record<Currency, number> }
 let cache: { at: number, value: Rates } | undefined
 
 async function fetchNbu (): Promise<Rates> {
