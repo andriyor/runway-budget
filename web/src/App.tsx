@@ -73,6 +73,14 @@ function BriefcaseIcon() {
   )
 }
 
+function ChevronIcon({ up }: { up?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={up ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} />
+    </svg>
+  )
+}
+
 function Skeleton() {
   return <span className="inline-block h-8 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
 }
@@ -120,9 +128,18 @@ function MoneyInput({ id, label, value, onChange, currency, onCurrency, required
   )
 }
 
-type AccountRowProps = { account: Account, onSaved: (a: Account) => void, onDeleted: (id: number) => void }
+type AccountRowProps = {
+  account: Account
+  onSaved: (a: Account) => void
+  onDeleted: (id: number) => void
+  // undefined disables the button (first / last row)
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+}
 
-function AccountRow({ account, onSaved, onDeleted }: AccountRowProps) {
+const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+
+function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }: AccountRowProps) {
   const [name, setName] = useState(account.name)
   const [balance, setBalance] = useState(String(account.balance))
   const [currency, setCurrency] = useState(account.currency)
@@ -155,6 +172,14 @@ function AccountRow({ account, onSaved, onDeleted }: AccountRowProps) {
   return (
     <li className="py-3">
       <form className="flex flex-wrap items-center gap-3" onSubmit={save}>
+        <div className="-ml-2 flex flex-col">
+          <button type="button" onClick={onMoveUp} disabled={!onMoveUp} aria-label={`Move ${account.name} up`} className={moveButton}>
+            <ChevronIcon up />
+          </button>
+          <button type="button" onClick={onMoveDown} disabled={!onMoveDown} aria-label={`Move ${account.name} down`} className={moveButton}>
+            <ChevronIcon />
+          </button>
+        </div>
         <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
         <div className="min-w-32 flex-1">
           <input
@@ -509,6 +534,19 @@ export default function App() {
     }
   }
 
+  async function move(index: number, by: -1 | 1) {
+    const previous = accounts
+    const next = [...accounts]
+    ;[next[index], next[index + by]] = [next[index + by], next[index]]
+    setAccounts(next)
+    try {
+      await api('/accounts/order', { method: 'PUT', body: JSON.stringify({ ids: next.map((a) => a.id) }) })
+    } catch (err) {
+      setAccounts(previous)
+      setError(`Reorder: ${(err as Error).message}`)
+    }
+  }
+
   const removeAccount = (id: number) => setAccounts((list) => list.filter((a) => a.id !== id))
   const replace = (updated: Account) =>
     setAccounts((list) => list.map((a) => (a.id === updated.id ? updated : a)))
@@ -573,7 +611,16 @@ export default function App() {
           <span className={muted}>{accounts.length}</span>
         </div>
         <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
-          {accounts.map((a) => <AccountRow key={`${a.id}-${a.updatedAt}`} account={a} onSaved={replace} onDeleted={removeAccount} />)}
+          {accounts.map((a, i) => (
+            <AccountRow
+              key={`${a.id}-${a.updatedAt}`}
+              account={a}
+              onSaved={replace}
+              onDeleted={removeAccount}
+              onMoveUp={i > 0 ? () => move(i, -1) : undefined}
+              onMoveDown={i < accounts.length - 1 ? () => move(i, 1) : undefined}
+            />
+          ))}
         </ul>
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
 

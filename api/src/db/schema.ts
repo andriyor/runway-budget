@@ -9,6 +9,8 @@ export const accounts = sqliteTable('accounts', {
   currency: text('currency', { enum: currencies }).notNull(),
   // stored in minor units (cents/kopiykas) to avoid float drift
   balanceCents: integer('balance_cents').notNull(),
+  // display order, ascending; ties fall back to id
+  position: integer('position').notNull().default(0),
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date())

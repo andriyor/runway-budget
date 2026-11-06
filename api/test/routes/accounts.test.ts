@@ -45,3 +45,27 @@ test('rename and delete account', async (t) => {
   assert.deepEqual((await app.inject({ url: '/accounts' })).json(), [])
   assert.equal((await app.inject({ method: 'DELETE', url: `/accounts/${id}` })).statusCode, 404)
 })
+
+test('reorder accounts', async (t) => {
+  const app = await build(t)
+  const create = async (name: string) =>
+    (await app.inject({ method: 'POST', url: '/accounts', payload: { name, currency: 'UAH', balance: 1 } })).json()
+  const a = await create('A')
+  const b = await create('B')
+  const c = await create('C')
+  const names = async () => (await app.inject({ url: '/accounts' })).json().map((x: { name: string }) => x.name)
+
+  assert.deepEqual(await names(), ['A', 'B', 'C'])
+  const order = await app.inject({ method: 'PUT', url: '/accounts/order', payload: { ids: [c.id, a.id, b.id] } })
+  assert.equal(order.statusCode, 204)
+  assert.deepEqual(await names(), ['C', 'A', 'B'])
+
+  const list = (await app.inject({ url: '/accounts' })).json()
+  assert.equal(list.find((x: { id: number }) => x.id === a.id).updatedAt, a.updatedAt)
+
+  await create('D')
+  assert.deepEqual(await names(), ['C', 'A', 'B', 'D'])
+
+  const partial = await app.inject({ method: 'PUT', url: '/accounts/order', payload: { ids: [a.id, b.id] } })
+  assert.equal(partial.statusCode, 400)
+})
