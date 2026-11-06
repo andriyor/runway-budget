@@ -75,7 +75,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     return rows.map(({ amountCents, ...rest }) => ({
       ...rest,
       amount: amountCents / 100,
-      category: categorize(rest.mcc, rest.description, amountCents, overrides.get(merchantKey(rest.description))),
+      category: categorize(rest.mcc, rest.description, amountCents,
+        (rest.category as CategoryId | null) ?? overrides.get(merchantKey(rest.description))),
       mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
       merchantDomain: merchantDomain(rest.description)
     }))

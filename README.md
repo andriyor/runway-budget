@@ -92,7 +92,8 @@ integer minor units (cents/kopiykas).
 | `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `category`, `mccDescription` and `merchantDomain` |
 | `GET`    | `/categories`   | Categories `{ id, label, emoji }`                     |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
-| `POST`   | `/accounts/mono/sync` | Import the last 31 days from Monobank and update the balance |
+| `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
+| `POST`   | `/accounts/mono/sync` | Import 31 days from Monobank ending at `?to=` (unix seconds, default now) |
 | `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
 | `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
@@ -133,10 +134,12 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   5815–5818 digital goods) land together. The raw MCC is still shown as `mccDescription`, from the
   Ukrainian `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
   (MIT, license in `api/src/data/mcc.LICENSE`).
-- **Category is decided on read, in this order:** your merchant override, then the jar rule
-  (`Поповнення «…»` is charity), then the MCC table, else `Інше`. A positive transfer becomes
-  `Надходження` (income). Nothing is stored per transaction, so changing a rule relabels history.
-- **Overrides are per merchant.** `merchant_categories` keys on the lowercased description with the
+- **Category is decided on read, in this order:** the transaction's own category, then your
+  merchant override, then the jar rule (`Поповнення «…»` is charity), then the MCC table, else
+  `Інше`. A positive transfer becomes `Надходження` (income). Only your explicit choices are stored,
+  so changing a rule relabels the rest of history.
+- **Two levels of override.** `transactions.category` fixes a single purchase (a Bluetti from
+  Rozetka) without moving the merchant. `merchant_categories` keys on the lowercased description with the
   `Скасування. ` prefix stripped, so one correction covers every purchase and refund from that
   merchant.
 - **Spending is net of refunds.** The summary sums each category's amounts, so a refund lowers the

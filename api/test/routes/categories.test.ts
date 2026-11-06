@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
+import { eq } from 'drizzle-orm'
 import { build } from '../helper'
 import { accounts, transactions } from '../../src/db/schema'
 
@@ -33,6 +34,17 @@ test('categories come from MCC, description rules and merchant overrides', async
   assert.equal((await set('Rozetka', null)).statusCode, 204)
   assert.equal((await categoryOf())[4], 'shopping')
   assert.equal((await set('Rozetka', 'nope')).statusCode, 400)
+
+  // a transaction's own category wins over its merchant's, and clearing it falls back
+  assert.equal((await set('Rozetka', 'home')).statusCode, 204)
+  const [refund] = app.db.select().from(transactions).where(eq(transactions.externalId, '5')).all()
+  const setOne = (id: number, category: string | null) =>
+    app.inject({ method: 'PUT', url: `/categories/transactions/${id}`, payload: { category } })
+  assert.equal((await setOne(refund.id, 'health')).statusCode, 204)
+  assert.deepEqual([(await categoryOf())[4], (await categoryOf())[5]], ['home', 'health'])
+  assert.equal((await setOne(refund.id, null)).statusCode, 204)
+  assert.equal((await categoryOf())[5], 'home')
+  assert.equal((await setOne(999, 'home')).statusCode, 404)
 
   const list = (await app.inject({ url: '/categories' })).json()
   assert.deepEqual(list[0], { id: 'groceries', label: 'Продукти', emoji: '🛒' })

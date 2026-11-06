@@ -941,10 +941,15 @@ function TransactionsPage() {
     }
   }
 
-  // applies to every transaction of the merchant, so reload the list
-  async function recategorize(t: Transaction, id: string) {
+  // choice is "t:<id>" for this transaction or "m:<id>" for the whole merchant; an empty id resets that level.
+  // A merchant change touches other rows, so reload the list either way.
+  async function recategorize(t: Transaction, choice: string) {
+    const [scope, id] = choice.split(':')
+    const category = id || null
     try {
-      await api('/categories/merchants', { method: 'PUT', body: JSON.stringify({ description: t.description, category: id }) })
+      await (scope === 't'
+        ? api(`/categories/transactions/${t.id}`, { method: 'PUT', body: JSON.stringify({ category }) })
+        : api('/categories/merchants', { method: 'PUT', body: JSON.stringify({ description: t.description, category }) }))
       setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
     } catch (err) {
       setError(`Category: ${(err as Error).message}`)
@@ -1043,11 +1048,18 @@ function TransactionsPage() {
                     <p className={`flex min-w-0 items-center gap-1 tabular-nums ${muted}`}>
                       <select
                         aria-label={`Category of ${t.description}`}
-                        value={t.category}
+                        value={`t:${t.category}`}
                         onChange={(e) => recategorize(t, e.target.value)}
                         className="max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
                       >
-                        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        <optgroup label="Лише ця транзакція">
+                          {categories.map((c) => <option key={c.id} value={`t:${c.id}`}>{c.label}</option>)}
+                          <option value="t:">Автоматично</option>
+                        </optgroup>
+                        <optgroup label="Усі від продавця">
+                          {categories.map((c) => <option key={c.id} value={`m:${c.id}`}>{c.label}</option>)}
+                          <option value="m:">Автоматично</option>
+                        </optgroup>
                       </select>
                       <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>
                     </p>
