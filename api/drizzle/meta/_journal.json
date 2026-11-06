@@ -43,6 +43,13 @@
       "when": 1793965171534,
       "tag": "0005_lush_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793965641806,
+      "tag": "0006_chubby_micromacro",
+      "breakpoints": true
     }
   ]
 }

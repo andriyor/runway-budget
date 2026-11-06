@@ -2,11 +2,14 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const currencies = ['USD', 'EUR', 'UAH'] as const
 export type Currency = typeof currencies[number]
+export const accountKinds = ['bank', 'cash'] as const
+export type AccountKind = typeof accountKinds[number]
 
 export const accounts = sqliteTable('accounts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   currency: text('currency', { enum: currencies }).notNull(),
+  kind: text('kind', { enum: accountKinds }).notNull().default('bank'),
   // stored in minor units (cents/kopiykas) to avoid float drift
   balanceCents: integer('balance_cents').notNull(),
   // display order, ascending; ties fall back to id

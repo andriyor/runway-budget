@@ -1,9 +1,9 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { eq, sql } from 'drizzle-orm'
-import { accounts, currencies, type Currency } from '../../db/schema'
+import { accounts, accountKinds, currencies, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
-type AccountInput = { name: string, currency: Currency, balance: number }
+type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
 
 const toDto = ({ balanceCents, position: _position, ...rest }: AccountRow) => ({ ...rest, balance: balanceCents / 100 })
 const toCents = (balance: number) => Math.round(balance * 100)
@@ -11,7 +11,8 @@ const toCents = (balance: number) => Math.round(balance * 100)
 const inputProps = {
   name: { type: 'string', minLength: 1, maxLength: 100 },
   currency: { type: 'string', enum: currencies },
-  balance: { type: 'number' }
+  balance: { type: 'number' },
+  kind: { type: 'string', enum: accountKinds }
 }
 
 const accountsRoutes: FastifyPluginAsync = async (fastify) => {
@@ -30,11 +31,12 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
   }, async (request, reply) => {
-    const { name, currency, balance } = request.body
+    const { name, currency, balance, kind } = request.body
     const [row] = await fastify.db.insert(accounts)
       .values({
         name,
         currency,
+        kind,
         balanceCents: toCents(balance),
         // append to the end of the list
         position: sql`(select coalesce(max(${accounts.position}), -1) + 1 from ${accounts})`

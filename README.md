@@ -6,7 +6,7 @@ and when you reach your goals.
 
 ## Features
 
-- **Accounts**: add accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
+- **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
 - **Runway**: enter monthly spending, an optional salary and an optional untouchable reserve, and see
   how many months your savings last with and without salary.
@@ -64,9 +64,9 @@ integer minor units (cents/kopiykas).
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
-| `POST`   | `/accounts`     | Create account `{ name, currency, balance }`          |
+| `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
-| `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`           |
+| `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
 | `DELETE` | `/accounts/:id` | Delete account                                        |
 | `GET`    | `/budget`       | Monthly spend, salary and reserve, or `null`          |
 | `PUT`    | `/budget`       | Set `{ monthlySpend, currency, salary?, salaryCurrency?, reserve?, reserveCurrency? }` |

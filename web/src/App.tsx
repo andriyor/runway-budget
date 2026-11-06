@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 const currencies = ['USD', 'EUR', 'UAH'] as const
 type Currency = typeof currencies[number]
-type Account = { id: number, name: string, currency: Currency, balance: number, updatedAt: string }
+const accountKinds = ['bank', 'cash'] as const
+type AccountKind = typeof accountKinds[number]
+type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -43,6 +45,45 @@ function BankIcon() {
       <path d="M5.5 10v7.5M10 10v7.5M14 10v7.5M18.5 10v7.5" />
       <path d="M3 20h18" />
     </svg>
+  )
+}
+
+function CashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 9.5v5M18 9.5v5" />
+    </svg>
+  )
+}
+
+const kindLabels: Record<AccountKind, string> = { bank: 'Bank', cash: 'Cash' }
+const kindIcons: Record<AccountKind, () => React.JSX.Element> = { bank: BankIcon, cash: CashIcon }
+
+function KindToggle({ value, onChange }: { value: AccountKind, onChange: (k: AccountKind) => void }) {
+  return (
+    <div role="group" aria-label="Account type" className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+      {accountKinds.map((k) => {
+        const Icon = kindIcons[k]
+        const active = k === value
+        return (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(k)}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium ${
+              active
+                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
+                : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Icon /> {kindLabels[k]}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -143,15 +184,19 @@ function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }: Accou
   const [name, setName] = useState(account.name)
   const [balance, setBalance] = useState(String(account.balance))
   const [currency, setCurrency] = useState(account.currency)
+  const [kind, setKind] = useState(account.kind)
   const [error, setError] = useState('')
-  const dirty = name.trim() !== account.name || Number(balance) !== account.balance || currency !== account.currency
+  const dirty = name.trim() !== account.name
+    || Number(balance) !== account.balance
+    || currency !== account.currency
+    || kind !== account.kind
 
   async function save(e: FormEvent) {
     e.preventDefault()
     try {
       onSaved(await api<Account>(`/accounts/${account.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: name.trim(), balance: Number(balance), currency }),
+        body: JSON.stringify({ name: name.trim(), balance: Number(balance), currency, kind }),
       }))
       setError('')
     } catch (err) {
@@ -196,6 +241,7 @@ function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }: Accou
             updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
           </p>
         </div>
+        <KindToggle value={kind} onChange={setKind} />
         <div className="w-56">
           <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
         </div>
@@ -560,6 +606,7 @@ export default function App() {
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
+  const [kind, setKind] = useState<AccountKind>('bank')
   // undefined while loading
   const [budget, setBudget] = useState<Budget | null>()
 
@@ -574,7 +621,7 @@ export default function App() {
     try {
       const created = await api<Account>('/accounts', {
         method: 'POST',
-        body: JSON.stringify({ name, currency, balance: Number(balance) }),
+        body: JSON.stringify({ name, currency, kind, balance: Number(balance) }),
       })
       setAccounts((list) => [...list, created])
       setName('')
@@ -687,6 +734,7 @@ export default function App() {
             aria-label="Account name"
             className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
           />
+          <KindToggle value={kind} onChange={setKind} />
           <div className="w-56">
             <MoneyInput label="Balance" required placeholder="Balance" value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
           </div>

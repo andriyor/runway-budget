@@ -32,6 +32,18 @@ test('create, list and update accounts', async (t) => {
   assert.equal(missing.statusCode, 404)
 })
 
+test('account kind defaults to bank and can be changed', async (t) => {
+  const app = await build(t)
+  const bank = (await app.inject({ method: 'POST', url: '/accounts', payload: { name: 'Mono', currency: 'UAH', balance: 1 } })).json()
+  assert.equal(bank.kind, 'bank')
+  const cash = (await app.inject({ method: 'POST', url: '/accounts', payload: { name: 'Wallet', currency: 'USD', balance: 1, kind: 'cash' } })).json()
+  assert.equal(cash.kind, 'cash')
+
+  const changed = await app.inject({ method: 'PATCH', url: `/accounts/${bank.id}`, payload: { kind: 'cash' } })
+  assert.equal(changed.json().kind, 'cash')
+  assert.equal((await app.inject({ method: 'PATCH', url: `/accounts/${bank.id}`, payload: { kind: 'crypto' } })).statusCode, 400)
+})
+
 test('rename and delete account', async (t) => {
   const app = await build(t)
   const { id } = (await app.inject({ method: 'POST', url: '/accounts', payload: { name: 'Old', currency: 'EUR', balance: 5 } })).json()
