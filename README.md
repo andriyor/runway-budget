@@ -130,6 +130,11 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   `fullDescription` in [Oleksios/Merchant-Category-Codes](https://github.com/Oleksios/Merchant-Category-Codes)
   (MIT, license in `api/src/data/mcc.LICENSE`), trimmed to an `mcc → label` map. Changing the map
   relabels every past transaction with no migration.
+- **Merchant icons come from a hand-kept keyword map.** Monobank sends no logos, only a description
+  such as `Apple` or `Сільпо`. `api/src/data/merchants.json` maps a domain to name fragments, matched
+  case-insensitively on read; the web app shows that domain's favicon from Google's favicon service
+  (which therefore sees the shown domains). Unmatched merchants get a letter avatar. Add a line to
+  the map to cover a new shop.
 - **Transactions are deleted with their account** via an `ON DELETE CASCADE` foreign key.
 - **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
 

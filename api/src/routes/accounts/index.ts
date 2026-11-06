@@ -2,6 +2,8 @@ import { type FastifyPluginAsync } from 'fastify'
 import { desc, eq, sql } from 'drizzle-orm'
 // MCC → category, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccCategories from '../../data/mcc.json'
+// merchant domain → lowercase name fragments; the domain is used for the icon
+import merchantKeywords from '../../data/merchants.json'
 import { accounts, accountKinds, currencies, transactions, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
@@ -16,6 +18,12 @@ const MONTH_S = 31 * 24 * 60 * 60
 // ISO 4217 numeric codes
 const monoCurrencies: Record<number, Currency> = { 980: 'UAH', 840: 'USD', 978: 'EUR' }
 type ClientInfo = { accounts: Array<{ id: string, creditLimit: number, currencyCode: number }> }
+const merchants = Object.entries(merchantKeywords as Record<string, string[]>)
+const merchantDomain = (description: string) => {
+  const text = description.toLowerCase()
+  return merchants.find(([, keywords]) => keywords.some((k) => text.includes(k)))?.[0] ?? null
+}
+
 type StatementItem = { id: string, time: number, description: string, mcc: number, amount: number, balance: number }
 
 const inputProps = {
@@ -64,7 +72,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     return rows.map(({ amountCents, ...rest }) => ({
       ...rest,
       amount: amountCents / 100,
-      category: (mccCategories as Record<string, string>)[rest.mcc] ?? null
+      category: (mccCategories as Record<string, string>)[rest.mcc] ?? null,
+      merchantDomain: merchantDomain(rest.description)
     }))
   })
 

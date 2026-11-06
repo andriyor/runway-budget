@@ -89,7 +89,7 @@ test('sync Monobank statement into one account', async (t) => {
   t.after(() => { delete process.env.MONO_TOKEN; delete process.env.MONO_ACCOUNT })
 
   const statement = [
-    { id: 'b', time: 1_700_000_200, description: 'Coffee', mcc: 5814, amount: -9500, balance: 100500 },
+    { id: 'b', time: 1_700_000_200, description: 'Скасування. Сільпо', mcc: 5814, amount: -9500, balance: 100500 },
     { id: 'a', time: 1_700_000_100, description: 'Salary', mcc: 4829, amount: 110000, balance: 110000 }
   ]
   const info = { accounts: [{ id: 'other', creditLimit: 0, currencyCode: 840 }, { id: 'acc1', creditLimit: 50000, currencyCode: 980 }] }
@@ -110,6 +110,7 @@ test('sync Monobank statement into one account', async (t) => {
   const list = (await app.inject({ url: `/accounts/${first.json().account.id}/transactions` })).json()
   assert.deepEqual(list.map((x: { externalId: string, amount: number, category: string }) => [x.externalId, x.amount, x.category]),
     [['b', -95, 'Ресторани швидкого харчування'], ['a', 1100, 'Банківський переказ грошових доручень / Грошові перекази']])
+  assert.deepEqual(list.map((x: { merchantDomain: string | null }) => x.merchantDomain), ['silpo.ua', null])
 
   fetchMock.mock.mockImplementation(async () => new Response('', { status: 429 }))
   assert.equal((await app.inject({ method: 'POST', url: '/accounts/mono/sync' })).statusCode, 429)

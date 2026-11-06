@@ -5,7 +5,7 @@ type Currency = typeof currencies[number]
 const accountKinds = ['bank', 'cash'] as const
 type AccountKind = typeof accountKinds[number]
 type Account = { id: number, name: string, currency: Currency, kind: AccountKind, balance: number, updatedAt: string, monoAccountId: string | null }
-type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string | null }
+type Transaction = { id: number, externalId: string, time: string, description: string, mcc: number, amount: number, category: string | null, merchantDomain: string | null }
 type Rates = { date: string, rates: Record<Currency, number> }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -789,6 +789,51 @@ function Nav({ page }: { page: string }) {
   return <nav className="flex gap-2">{link('#/', 'Balances')}{link('#/transactions', 'Transactions')}</nav>
 }
 
+// [first MCC, last MCC, icon]; first match wins, so specific codes go before ranges
+const mccIcons: Array<[number, number, string]> = [
+  [742, 742, '🐾'], [3000, 3350, '✈️'], [3351, 3500, '🚗'], [3501, 3999, '🏨'],
+  [4111, 4112, '🚆'], [4121, 4121, '🚕'], [4131, 4131, '🚌'], [4215, 4215, '📦'],
+  [4511, 4511, '✈️'], [4722, 4722, '🧳'], [4784, 4784, '🛣️'],
+  [4812, 4814, '📱'], [4816, 4816, '🌐'], [4899, 4899, '📺'], [4900, 4900, '💡'],
+  [4829, 4829, '💸'], [6010, 6010, '💸'], [6011, 6011, '🏧'], [6012, 6012, '💸'], [6051, 6051, '💸'],
+  [6300, 6399, '🛡️'], [6513, 6513, '🏠'], [6538, 6540, '💸'],
+  [5200, 5251, '🔨'], [5262, 5262, '🛍️'], [5300, 5399, '🏬'],
+  [5441, 5441, '🍬'], [5462, 5462, '🥐'], [5411, 5499, '🛒'],
+  [5541, 5542, '⛽'], [5983, 5983, '⛽'],
+  [5611, 5655, '👕'], [5661, 5661, '👟'], [5691, 5699, '👕'],
+  [5712, 5719, '🛋️'], [5732, 5734, '💻'], [5045, 5045, '💻'], [7372, 7372, '💻'],
+  [5812, 5812, '🍽️'], [5813, 5813, '🍸'], [5814, 5814, '🍔'],
+  [5815, 5815, '🎵'], [5816, 5816, '🎮'], [5817, 5818, '📲'],
+  [5912, 5912, '💊'], [5122, 5122, '💊'], [5942, 5943, '📚'], [5945, 5945, '🧸'],
+  [5977, 5977, '💄'], [5992, 5992, '💐'], [5995, 5995, '🐾'],
+  [7230, 7230, '💇'], [7298, 7298, '💆'], [7523, 7523, '🅿️'],
+  [7832, 7832, '🎬'], [7922, 7922, '🎭'], [7997, 7997, '🏋️'], [7941, 7941, '⚽'],
+  [8021, 8021, '🦷'], [8011, 8099, '🩺'], [8211, 8299, '🎓'], [8999, 8999, '💼'],
+  [8398, 8398, '❤️'], [8661, 8661, '❤️'], [9211, 9402, '🏛️'],
+]
+const mccIcon = (mcc: number) => mccIcons.find(([from, to]) => mcc >= from && mcc <= to)?.[2]
+
+// ponytail: favicons via Google's public service, so it sees which merchant domains are shown; proxy through the API if that matters
+function MerchantIcon({ domain, name, mcc }: { domain: string | null, name: string, mcc: number }) {
+  const [failed, setFailed] = useState(false)
+  if (domain && !failed) {
+    return (
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        alt=""
+        onError={() => setFailed(true)}
+        className="size-9 shrink-0 rounded-full bg-white object-contain p-1.5 ring-1 ring-zinc-200 dark:ring-zinc-700"
+      />
+    )
+  }
+  const emoji = mccIcon(mcc)
+  return (
+    <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 ${emoji ? 'text-lg' : 'text-sm'}`}>
+      {emoji ?? name.replace(/^Скасування\.\s*/, '').trim().charAt(0).toUpperCase()}
+    </span>
+  )
+}
+
 function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState<number>()
@@ -857,8 +902,9 @@ function TransactionsPage() {
         {account && list && list.length > 0 && (
           <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
             {list.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-4 py-3">
-                <div className="min-w-0">
+              <li key={t.id} className="flex items-center gap-3 py-3">
+                <MerchantIcon domain={t.merchantDomain} name={t.description} mcc={t.mcc} />
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
                   <p className={`truncate tabular-nums ${muted}`} title={t.category ?? undefined}>{t.category ?? 'Без категорії'} · {dateTime.format(new Date(t.time))} · MCC {t.mcc}</p>
                 </div>
