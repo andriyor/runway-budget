@@ -193,36 +193,29 @@ function budgetBody(spend: string, currency: Currency, salary: string, salaryCur
   }
 }
 
-function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undefined, convert: Convert }) {
-  const [saved, setSaved] = useState<Budget | null>(null)
-  const [spend, setSpend] = useState('')
-  const [currency, setCurrency] = useState<Currency>('UAH')
-  const [salary, setSalary] = useState('')
-  const [salaryCurrency, setSalaryCurrency] = useState<Currency>('UAH')
-  const [reserve, setReserve] = useState('')
-  const [reserveCurrency, setReserveCurrency] = useState<Currency>('UAH')
-  const [error, setError] = useState('')
+type RunwayProps = {
+  saved: Budget | null
+  onSaved: (b: Budget) => void
+  availableIn: (c: Currency) => number | undefined
+  reserveIn: (c: Currency) => number
+  salaryIn: (c: Currency) => number | undefined
+}
 
-  useEffect(() => {
-    api<Budget | null>('/budget').then((b) => {
-      setSaved(b)
-      if (b) {
-        setSpend(String(b.monthlySpend))
-        setCurrency(b.currency)
-        setSalary(amountString(b.salary))
-        if (b.salaryCurrency) setSalaryCurrency(b.salaryCurrency)
-        setReserve(amountString(b.reserve))
-        if (b.reserveCurrency) setReserveCurrency(b.reserveCurrency)
-      }
-    }).catch((e) => setError(e.message))
-  }, [])
+function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProps) {
+  const [spend, setSpend] = useState(saved ? String(saved.monthlySpend) : '')
+  const [currency, setCurrency] = useState<Currency>(saved?.currency ?? 'UAH')
+  const [salary, setSalary] = useState(amountString(saved?.salary ?? null))
+  const [salaryCurrency, setSalaryCurrency] = useState<Currency>(saved?.salaryCurrency ?? 'UAH')
+  const [reserve, setReserve] = useState(amountString(saved?.reserve ?? null))
+  const [reserveCurrency, setReserveCurrency] = useState<Currency>(saved?.reserveCurrency ?? 'UAH')
+  const [error, setError] = useState('')
 
   const body = budgetBody(spend, currency, salary, salaryCurrency, reserve, reserveCurrency)
 
   async function save(e: FormEvent) {
     e.preventDefault()
     try {
-      setSaved(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(body) }))
+      onSaved(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(body) }))
       setError('')
     } catch (err) {
       setError((err as Error).message)
@@ -235,12 +228,9 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
     amountString(saved.reserve), saved.reserveCurrency ?? reserveCurrency,
   ))
 
-  const total = saved && totalIn(saved.currency)
-  const inSpendCurrency = (amount: number | null, from: Currency | null) =>
-    saved && amount !== null && from ? convert(amount, from, saved.currency) : undefined
-  const salaryInSpendCurrency = inSpendCurrency(saved?.salary ?? null, saved?.salaryCurrency ?? null)
-  const reserved = inSpendCurrency(saved?.reserve ?? null, saved?.reserveCurrency ?? null) ?? 0
-  const available = total != null ? total - reserved : undefined
+  const available = saved ? availableIn(saved.currency) : undefined
+  const reserved = saved ? reserveIn(saved.currency) : 0
+  const salaryInSpendCurrency = saved ? salaryIn(saved.currency) : undefined
 
   const fieldLabel = 'text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
@@ -297,6 +287,149 @@ function Runway({ totalIn, convert }: { totalIn: (c: Currency) => number | undef
   )
 }
 
+type Goal = { id: number, name: string, target: number, currency: Currency }
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
+  )
+}
+
+type GoalsProps = {
+  availableIn: (c: Currency) => number | undefined
+  // salary minus spending per month; undefined when spending is not set
+  netIn: (c: Currency) => number | undefined
+}
+
+function Goals({ availableIn, netIn }: GoalsProps) {
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [currency, setCurrency] = useState<Currency>('USD')
+  const [error, setError] = useState('')
+  const [now] = useState(Date.now)
+
+  useEffect(() => {
+    api<Goal[]>('/goals').then(setGoals).catch((e) => setError(e.message))
+  }, [])
+
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    try {
+      const created = await api<Goal>('/goals', {
+        method: 'POST',
+        body: JSON.stringify({ name, target: Number(target), currency }),
+      })
+      setGoals((list) => [...list, created])
+      setName('')
+      setTarget('')
+      setError('')
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function remove(goal: Goal) {
+    if (!confirm(`Delete goal "${goal.name}"?`)) return
+    try {
+      const res = await fetch(`/api/goals/${goal.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(res.statusText)
+      setGoals((list) => list.filter((g) => g.id !== goal.id))
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  function status(goal: Goal, have: number) {
+    if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
+    const net = netIn(goal.currency)
+    if (net === undefined) return <span className={muted}>Set monthly spending and salary to see when.</span>
+    if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
+    const months = (goal.target - have) / net
+    const when = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)
+    return (
+      <span className="text-zinc-700 tabular-nums dark:text-zinc-300">
+        In <strong>{months.toFixed(1)} months</strong>
+        <span className="text-zinc-500 dark:text-zinc-400"> · {when.toLocaleDateString('uk-UA')} · saving {format(net, goal.currency)} per month</span>
+      </span>
+    )
+  }
+
+  return (
+    <section className={card}>
+      <div>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Goals</h2>
+        <p className={muted}>Measured against your available savings. Each goal assumes your whole monthly surplus goes to it.</p>
+      </div>
+
+      <ul className="mt-4 flex flex-col gap-5">
+        {goals.map((g) => {
+          const available = availableIn(g.currency)
+          const have = Math.max(0, available ?? 0)
+          const progress = Math.min(1, have / g.target)
+          return (
+            <li key={g.id}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <CurrencyIcon currency={g.currency} />
+                  <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{g.name}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`tabular-nums ${muted}`}>
+                    {format(Math.min(have, g.target), g.currency)} / {format(g.target, g.currency)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => remove(g)}
+                    aria-label={`Delete goal ${g.name}`}
+                    className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </div>
+              <div
+                role="progressbar"
+                aria-label={`${g.name} progress`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress * 100)}
+                className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+              >
+                <div
+                  className={`h-full rounded-full transition-[width] ${progress >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-sm">{available === undefined ? <Skeleton /> : status(g, have)}</p>
+            </li>
+          )
+        })}
+      </ul>
+      {goals.length === 0 && <p className={`py-6 text-center ${muted}`}>No goals yet. Add one below.</p>}
+      <ErrorText>{error}</ErrorText>
+
+      <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
+        <input
+          placeholder="Goal, e.g. Car"
+          required
+          maxLength={100}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Goal name"
+          className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
+        />
+        <div className="w-56">
+          <MoneyInput label="Goal amount" required min="0.01" placeholder="Amount" value={target} onChange={setTarget} currency={currency} onCurrency={setCurrency} />
+        </div>
+        <button className={button}>Add goal</button>
+      </form>
+    </section>
+  )
+}
+
 export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
@@ -304,8 +437,11 @@ export default function App() {
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
+  // undefined while loading
+  const [budget, setBudget] = useState<Budget | null>()
 
   useEffect(() => {
+    api<Budget | null>('/budget').then(setBudget).catch((e) => setError(e.message))
     api<Account[]>('/accounts').then(setAccounts).catch((e) => setError(e.message))
     api<Rates>('/rates').then(setRates).catch((e) => setError(`Rates: ${e.message}`))
   }, [])
@@ -333,6 +469,16 @@ export default function App() {
   const convert: Convert = (amount, from, to) => rates && (amount * rates.rates[from]) / rates.rates[to]
   const totalIn = (target: Currency) =>
     rates && accounts.reduce((sum, a) => sum + convert(a.balance, a.currency, target)!, 0)
+  const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
+    amount != null && from ? convert(amount, from, to) : undefined
+  const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
+  const salaryIn = (c: Currency) => fromBudget(budget?.salary, budget?.salaryCurrency, c)
+  const availableIn = (c: Currency) => {
+    const total = totalIn(c)
+    return total === undefined ? undefined : total - reserveIn(c)
+  }
+  const netIn = (c: Currency) =>
+    budget && rates ? (salaryIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
@@ -367,7 +513,11 @@ export default function App() {
         ))}
       </section>
 
-      <Runway totalIn={totalIn} convert={convert} />
+      {budget !== undefined && (
+        <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} />
+      )}
+
+      <Goals availableIn={availableIn} netIn={netIn} />
 
       <section className={card}>
         <div className="flex items-baseline justify-between">

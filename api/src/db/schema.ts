@@ -15,6 +15,13 @@ export const accounts = sqliteTable('accounts', {
     .$onUpdateFn(() => new Date())
 })
 
+export const goals = sqliteTable('goals', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  targetCents: integer('target_cents').notNull(),
+  currency: text('currency', { enum: currencies }).notNull()
+})
+
 // single row (id = 1): how much is spent per month, used for runway
 export const budget = sqliteTable('budget', {
   id: integer('id').primaryKey(),
