@@ -35,6 +35,14 @@ pnpm dev
 The web dev server proxies `/api/*` to the API. The SQLite database `api/data.db` is created and
 migrated on first start; set `DB_FILE` to use another path.
 
+## Docker
+
+```sh
+docker compose up -d --build
+```
+
+Serves the app on <http://localhost:8080>. The SQLite database is kept in the `data` volume.
+
 ## Scripts
 
 Run from the repository root:
