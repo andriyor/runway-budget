@@ -12,7 +12,8 @@ and when you reach your goals.
   how many months your savings last with and without salary. Enter how many months you want to live
   without salary to see the most you can spend per month.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
-  surplus (salary minus spending).
+  surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
+  and not counted toward goals.
 
 ## Stack
 

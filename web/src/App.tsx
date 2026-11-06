@@ -516,13 +516,17 @@ function TrashIcon() {
   )
 }
 
+type Cushion = { months: number, amount: number, available: number, currency: Currency }
+
 type GoalsProps = {
-  availableIn: (c: Currency) => number | undefined
+  // available savings minus the months-without-salary cushion
+  forGoalsIn: (c: Currency) => number | undefined
+  cushion: Cushion | undefined
   // salary minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
 }
 
-function Goals({ availableIn, netIn }: GoalsProps) {
+function Goals({ forGoalsIn, cushion, netIn }: GoalsProps) {
   const [goals, setGoals] = useState<Goal[]>([])
   const [name, setName] = useState('')
   const [target, setTarget] = useState('')
@@ -580,12 +584,21 @@ function Goals({ availableIn, netIn }: GoalsProps) {
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Goals</h2>
         <p className={muted}>Measured against your available savings. Each goal assumes your whole monthly surplus goes to it.</p>
+        {cushion && (
+          <p className={`mt-1 flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
+            <CalendarIcon />
+            <span>{format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month cushion</span>
+            {cushion.available < cushion.amount && (
+              <span className="text-amber-700 dark:text-amber-400">· {format(cushion.amount - Math.max(0, cushion.available), cushion.currency)} short of covering it</span>
+            )}
+          </p>
+        )}
       </div>
 
       <ul className="mt-4 flex flex-col gap-5">
         {goals.map((g) => {
-          const available = availableIn(g.currency)
-          const have = Math.max(0, available ?? 0)
+          const forGoals = forGoalsIn(g.currency)
+          const have = Math.max(0, forGoals ?? 0)
           const progress = Math.min(1, have / g.target)
           return (
             <li key={g.id}>
@@ -621,7 +634,7 @@ function Goals({ availableIn, netIn }: GoalsProps) {
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-sm">{available === undefined ? <Skeleton /> : status(g, have)}</p>
+              <p className="mt-1.5 text-sm">{forGoals === undefined ? <Skeleton /> : status(g, have)}</p>
             </li>
           )
         })}
@@ -825,6 +838,15 @@ export default function App() {
     const total = totalIn(c)
     return total === undefined ? undefined : total - reserveIn(c)
   }
+  const cushionIn = (c: Currency) =>
+    budget?.targetMonths ? budget.targetMonths * fromBudget(budget.monthlySpend, budget.currency, c)! : 0
+  const forGoalsIn = (c: Currency) => {
+    const available = availableIn(c)
+    return available === undefined ? undefined : available - cushionIn(c)
+  }
+  const cushion = budget?.targetMonths && rates
+    ? { months: budget.targetMonths, amount: cushionIn(budget.currency), available: availableIn(budget.currency)!, currency: budget.currency }
+    : undefined
   const netIn = (c: Currency) =>
     budget && rates ? (salaryIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
@@ -867,7 +889,7 @@ export default function App() {
         <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} minimalIn={minimalIn} />
       )}
 
-      <Goals availableIn={availableIn} netIn={netIn} />
+      <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />
 
       <section className={card}>
         <div className="flex items-baseline justify-between">
