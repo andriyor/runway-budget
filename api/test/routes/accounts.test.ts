@@ -113,6 +113,15 @@ test('sync Monobank statement into one account', async (t) => {
   assert.equal(list[0].mccDescription, 'Ресторани швидкого харчування')
   assert.deepEqual(list.map((x: { merchantDomain: string | null }) => x.merchantDomain), ['silpo.ua', null])
 
+  // an older window adds its transactions but keeps the newer balance
+  const older = [{ id: 'z', time: 1_690_000_000, description: 'Old', mcc: 5411, amount: -100, balance: 999999 }]
+  fetchMock.mock.mockImplementation(async (url: string) => Response.json(url.endsWith('/client-info') ? info : older))
+  const back = await app.inject({ method: 'POST', url: '/accounts/mono/sync?to=1690000100' })
+  assert.equal(back.json().account.balance, 505)
+  assert.match(String(fetchMock.mock.calls.at(-1)!.arguments[0]), /\/statement\/acc1\/1687321700\/1690000100$/)
+  assert.equal((await app.inject({ url: `/accounts/${first.json().account.id}/transactions` })).json().length, 3)
+  assert.equal((await app.inject({ method: 'POST', url: '/accounts/mono/sync?to=-1' })).statusCode, 400)
+
   fetchMock.mock.mockImplementation(async () => new Response('', { status: 429 }))
   assert.equal((await app.inject({ method: 'POST', url: '/accounts/mono/sync' })).statusCode, 429)
 

@@ -1,5 +1,5 @@
 import { type FastifyPluginAsync } from 'fastify'
-import { desc, eq, sql } from 'drizzle-orm'
+import { desc, eq, max, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
 import { categorize, merchantKey, type CategoryId } from '../../categories'
@@ -81,8 +81,10 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     }))
   })
 
-  // pulls the last month of the MONO_ACCOUNT statement; safe to repeat
-  fastify.post('/mono/sync', async (request, reply) => {
+  // pulls 31 days of the MONO_ACCOUNT statement ending at `to` (unix seconds, default now); safe to repeat
+  fastify.post<{ Querystring: { to?: number } }>('/mono/sync', {
+    schema: { querystring: { type: 'object', additionalProperties: false, properties: { to: { type: 'integer', minimum: 0 } } } }
+  }, async (request, reply) => {
     const { MONO_TOKEN: token, MONO_ACCOUNT: monoAccountId } = process.env
     if (!token || !monoAccountId) return reply.internalServerError('MONO_TOKEN and MONO_ACCOUNT must be set')
 
@@ -102,7 +104,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     const currency = monoCurrencies[card.currencyCode]
     if (!currency) return reply.badRequest(`Unsupported Monobank currency ${card.currencyCode}`)
 
-    const to = Math.floor(Date.now() / 1000)
+    const to = request.query.to ?? Math.floor(Date.now() / 1000)
     // ponytail: Monobank caps a statement at 500 items; page by `to` if a month ever exceeds that
     const items = await get(`/statement/${monoAccountId}/${to - MONTH_S}/${to}`) as StatementItem[]
 
@@ -117,6 +119,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
         }).returning().get()
 
       if (items.length > 0) {
+        const stored = tx.select({ latest: max(transactions.time) }).from(transactions).where(eq(transactions.accountId, row.id)).get()
         tx.insert(transactions).values(items.map((i) => ({
           accountId: row.id,
           externalId: i.id,
@@ -126,8 +129,9 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
           amountCents: i.amount
         }))).onConflictDoNothing().run()
         const latest = items.reduce((a, b) => (b.time > a.time ? b : a))
+        // an older window must not roll the balance back
         // statement balance includes the bank's credit limit; keep only own money
-        row = tx.update(accounts).set({ balanceCents: latest.balance - card.creditLimit }).where(eq(accounts.id, row.id)).returning().get()
+        if (!stored?.latest || latest.time * 1000 >= stored.latest.getTime()) row = tx.update(accounts).set({ balanceCents: latest.balance - card.creditLimit }).where(eq(accounts.id, row.id)).returning().get()
       }
       return row
     })
