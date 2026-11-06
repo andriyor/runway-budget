@@ -55,6 +55,24 @@ function LockIcon() {
   )
 }
 
+function BagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 8h14l-1 12H6L5 8Z" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </svg>
+  )
+}
+
+function BriefcaseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18" />
+    </svg>
+  )
+}
+
 function Skeleton() {
   return <span className="inline-block h-8 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
 }
@@ -232,7 +250,7 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProp
   const reserved = saved ? reserveIn(saved.currency) : 0
   const salaryInSpendCurrency = saved ? salaryIn(saved.currency) : undefined
 
-  const fieldLabel = 'text-sm font-medium text-zinc-700 dark:text-zinc-300'
+  const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
 
   return (
@@ -243,15 +261,15 @@ function Runway({ saved, onSaved, availableIn, reserveIn, salaryIn }: RunwayProp
           <p className={muted}>How long your savings last.</p>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}>I spend per month</span>
+          <span className={fieldLabel}><span className="text-rose-500"><BagIcon /></span> I spend per month</span>
           <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={spend} onChange={setSpend} currency={currency} onCurrency={setCurrency} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}>My salary per month {optional}</span>
+          <span className={fieldLabel}><span className="text-emerald-600"><BriefcaseIcon /></span> My salary per month {optional}</span>
           <MoneyInput id="salary" label="Monthly salary" min="0" placeholder="leave empty if none" value={salary} onChange={setSalary} currency={salaryCurrency} onCurrency={setSalaryCurrency} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}>Untouchable reserve {optional}</span>
+          <span className={fieldLabel}><span className="text-amber-500"><LockIcon /></span> Untouchable reserve {optional}</span>
           <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={reserve} onChange={setReserve} currency={reserveCurrency} onCurrency={setReserveCurrency} />
         </label>
         <div>
