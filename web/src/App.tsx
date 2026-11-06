@@ -922,13 +922,18 @@ function TransactionsPage() {
   const [syncing, setSyncing] = useState(false)
   const [category, setCategory] = useState<string>()
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
+  // the transaction just recategorized stays in the filtered view it was changed in,
+  // so its "усім від продавця" link is still reachable; another filter drops it
+  const [kept, setKept] = useState<{ id: number, view: string }>()
   const [period, setPeriod] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const account = accounts.find((a) => a.id === accountId)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
     c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
   // a selection is a category (matches all its subcategories) or a single subcategory
-  const inSelection = (t: Transaction) => t.category === category || leafById.get(t.category)?.parent.id === category
+  const view = `${accountId}|${period}|${category}`
+  const inSelection = (t: Transaction) =>
+    t.category === category || leafById.get(t.category)?.parent.id === category || (kept?.id === t.id && kept.view === view)
   const selectionLabel = (id: string) => {
     const leaf = leafById.get(id)
     if (!leaf) return categories.find((c) => c.id === id)?.label
@@ -1071,7 +1076,10 @@ function TransactionsPage() {
                         aria-label={`Category of ${t.description}`}
                         value={t.category}
                         title={selectionLabel(t.category)}
-                        onChange={(e) => changeCategory(t, [setOwn(t, e.target.value || null)])}
+                        onChange={(e) => {
+                          setKept({ id: t.id, view })
+                          changeCategory(t, [setOwn(t, e.target.value || null)])
+                        }}
                         className="max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100"
                       >
                         <option value="">Автоматично</option>
