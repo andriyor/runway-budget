@@ -81,3 +81,11 @@ integer minor units (cents/kopiykas).
   as if the whole surplus goes to it.
 
 Estimates assume flat spending and salary, and ignore interest and inflation.
+
+## TODO
+
+- [ ] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
+- [ ] Delete and rename accounts
+- [ ] Balance history over time
+- [ ] Goals in priority order (reach one after another instead of each on its own)
+- [ ] Shared package for types used by both `api` and `web`
