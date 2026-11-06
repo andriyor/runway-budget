@@ -149,7 +149,15 @@ export function TransactionsPage() {
       </section>
       {account && shown && list!.length > 0 && (
         <>
-          <MonthlySpending list={list!} currency={account.currency} leafById={leafById} period={period} onPick={(p, c) => { setPeriod(p); pickCategory(c) }} />
+          <MonthlySpending
+            list={list!}
+            currency={account.currency}
+            leafById={leafById}
+            period={period}
+            onPick={(p) => { setPeriod(p); setMerchant(undefined) }}
+            selected={category}
+            onSelect={pickCategory}
+          />
           <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
           <MerchantSpending list={inCategory!} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
           <section className={card}>
