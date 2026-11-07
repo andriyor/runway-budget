@@ -232,6 +232,9 @@ export function TransactionsPage() {
               <optgroup label="Квартал">
                 {periodOptions('q:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </optgroup>
+              <optgroup label="Рік">
+                {periodOptions('y:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </optgroup>
               <optgroup label="Тиждень">
                 {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </optgroup>

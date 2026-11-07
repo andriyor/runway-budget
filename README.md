@@ -35,7 +35,7 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
     picking a category or merchant reduces the bars to it to show its trend;
   - spending by category with a drill-down into subcategories;
   - spending by merchant;
-  - filters by month, quarter or ISO week, category and merchant, all clickable from the charts;
+  - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
   - sorting by date or amount and a note on any transaction.
 - **Phones**: a bottom tab bar, compact balance cards and account rows, and a Transactions page that
   opens on the latest quarter, with the monthly chart showing that quarter.

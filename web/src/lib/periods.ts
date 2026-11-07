@@ -29,7 +29,7 @@ export const quarterMonths = (quarter: string) => {
   return [1, 2, 3].map((i) => `${year}-${String((q - 1) * 3 + i).padStart(2, '0')}`)
 }
 
-// month, quarter and week keys a transaction belongs to, with a label for each, in local time
+// month, quarter, year and week keys a transaction belongs to, with a label for each, in local time
 export function periodsOf(t: Transaction): Array<[string, string]> {
   const date = new Date(t.time)
   const { year, week } = isoWeek(date)
@@ -38,6 +38,7 @@ export function periodsOf(t: Transaction): Array<[string, string]> {
   return [
     [`m:${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, monthName.format(date)],
     [quarterOf(monthKey(t.time)), quarterLabel(quarterOf(monthKey(t.time)))],
+    [`y:${date.getFullYear()}`, `${date.getFullYear()} рік`],
     [`w:${year}-${String(week).padStart(2, '0')}`, `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
   ]
 }

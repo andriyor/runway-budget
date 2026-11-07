@@ -106,7 +106,8 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const quarter = period.startsWith('q:') ? period : period.startsWith('m:') ? quarterOf(period.slice(2)) : undefined
   const inQuarter = (q: string | undefined, month: string) => q !== undefined && quarterMonths(q).includes(month)
   // phones show one quarter, since a year of bars is too thin to read: that one, or the latest with data
-  const latest = columns.at(-1)?.month
+  // (in the selected year, if any)
+  const latest = columns.filter((c) => !period.startsWith('y:') || c.month.startsWith(period.slice(2))).at(-1)?.month
   const phoneQuarter = quarter ?? (latest ? quarterOf(latest) : undefined)
   const pick = <T extends { month: string }>(all: T[]) => (phone ? all.filter((c) => inQuarter(phoneQuarter, c.month)) : all)
   const shown = pick(columns)
@@ -214,8 +215,8 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             <button
               key={c.month}
               type="button"
-              // a picked month, or every month of a picked quarter
-              aria-pressed={period === `m:${c.month}` || (period.startsWith('q:') && inQuarter(period, c.month))}
+              // a picked month, or every month of a picked quarter or year
+              aria-pressed={period === `m:${c.month}` || (period.startsWith('q:') && inQuarter(period, c.month)) || period === `y:${c.month.slice(0, 4)}`}
               onClick={() => pickMonth(c.month)}
               className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
             >
