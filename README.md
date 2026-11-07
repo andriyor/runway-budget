@@ -38,6 +38,7 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
   - spending by merchant;
   - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
   - sorting by date or amount and a note on any transaction.
+  - opens on the latest year with transactions; «Увесь час» in the period filter shows everything.
 - **Phones**: a bottom tab bar, compact balance cards and account rows, and a Transactions page that
   opens on the latest quarter, with the monthly chart showing that quarter.
 - **Categories**: transactions are sorted into categories and subcategories automatically from their

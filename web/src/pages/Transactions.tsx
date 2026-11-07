@@ -79,8 +79,10 @@ export function TransactionsPage() {
     api<Transaction[]>(`/accounts/${accountId}/transactions`)
       .then((loaded) => {
         setList(loaded)
-        // phones open on the latest quarter with data; a year at once is too much for a small screen
-        if (loaded.length && matchMedia(PHONE).matches) setPeriod(quarterOf(monthKey(loaded[0].time)))
+        // open on the latest year with data, or its latest quarter on phones, where a year at once is too much;
+        // all time stays in the period filter
+        const latest = loaded.length ? monthKey(loaded[0].time) : undefined
+        if (latest) setPeriod(matchMedia(PHONE).matches ? quarterOf(latest) : `y:${latest.slice(0, 4)}`)
       })
       .catch((e) => setError(e.message))
   }, [accountId])
