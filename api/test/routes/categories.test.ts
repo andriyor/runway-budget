@@ -20,14 +20,14 @@ test('categories come from MCC, description rules and merchant overrides', async
   add('Агенція нерухомості', 6513, -700)
   add('Interactive Brokers', 6211, -800)
 
-  const categoryOf = async () => Object.fromEntries((await app.inject({ url: `/accounts/${account.id}/transactions` })).json()
+  const categoryOf = async () => Object.fromEntries((await app.inject({ url: `/api/accounts/${account.id}/transactions` })).json()
     .map((x: { externalId: string, category: string }) => [x.externalId, x.category]))
 
   assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'transfers', 3: 'income', 4: 'marketplaces', 5: 'marketplaces', 6: 'other_expenses', 7: 'rent', 8: 'investments' })
 
   // an override covers the merchant's refunds too
   const set = (description: string, category: string | null) =>
-    app.inject({ method: 'PUT', url: '/categories/merchants', payload: { description, category } })
+    app.inject({ method: 'PUT', url: '/api/categories/merchants', payload: { description, category } })
   assert.equal((await set('ROZETKA', 'renovation')).statusCode, 204)
   assert.equal((await set('Іван Петренко', 'own')).statusCode, 204)
   assert.deepEqual(await categoryOf(), { 0: 'supermarket', 1: 'army_funds', 2: 'own', 3: 'income', 4: 'renovation', 5: 'renovation', 6: 'other_expenses', 7: 'rent', 8: 'investments' })
@@ -42,9 +42,9 @@ test('categories come from MCC, description rules and merchant overrides', async
   assert.equal((await set('Rozetka', 'renovation')).statusCode, 204)
   const [refund] = app.db.select().from(transactions).where(eq(transactions.externalId, '5')).all()
   const setOne = (id: number, category: string | null) =>
-    app.inject({ method: 'PUT', url: `/categories/transactions/${id}`, payload: { category } })
+    app.inject({ method: 'PUT', url: `/api/categories/transactions/${id}`, payload: { category } })
   assert.equal((await setOne(refund.id, 'pharmacy')).statusCode, 204)
-  const rows = (await app.inject({ url: `/accounts/${account.id}/transactions` })).json()
+  const rows = (await app.inject({ url: `/api/accounts/${account.id}/transactions` })).json()
   const byId = (id: string) => rows.find((x: { externalId: string }) => x.externalId === id)
   assert.deepEqual([byId('4').category, byId('4').categorySource], ['renovation', 'merchant'])
   assert.deepEqual([byId('5').category, byId('5').categorySource], ['pharmacy', 'transaction'])
@@ -55,7 +55,7 @@ test('categories come from MCC, description rules and merchant overrides', async
   assert.equal((await categoryOf())[5], 'renovation')
   assert.equal((await setOne(999, 'renovation')).statusCode, 404)
 
-  const list = (await app.inject({ url: '/categories' })).json()
+  const list = (await app.inject({ url: '/api/categories' })).json()
   assert.deepEqual(list[0].subcategories[0], { id: 'supermarket', label: 'Супермаркет', essential: true })
   assert.equal(list.find((c: { id: string }) => c.id === 'investments').spending, false)
   assert.deepEqual(list.find((c: { id: string }) => c.id === 'income'), { id: 'income', label: 'Надходження', emoji: '💰', spending: false, subcategories: [] })

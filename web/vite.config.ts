@@ -10,7 +10,6 @@ export default defineConfig({
       '/api': {
         // API_URL points the dev server at another API, e.g. one running on a demo database
         target: process.env.API_URL ?? 'http://localhost:3000',
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

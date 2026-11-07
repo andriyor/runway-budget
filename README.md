@@ -66,7 +66,7 @@ pnpm dev
 ```
 
 `pnpm dev` starts the API on <http://localhost:3000> and the web app on <http://localhost:5173>.
-The web dev server proxies `/api/*` to the API. The SQLite database `api/data.db` is created and
+The API's routes live under `/api`, and the web dev server proxies `/api/*` to it. The SQLite database `api/data.db` is created and
 migrated on first start; set `DB_FILE` to use another path.
 
 ## Demo data
@@ -92,7 +92,8 @@ any API (default `http://localhost:3000`).
 docker compose up -d --build
 ```
 
-Serves the app on <http://localhost:8080>. The SQLite database is kept in the `data` volume.
+Serves the app on <http://localhost:8080> from a single container: the API serves the built web app
+at `/` and its own routes under `/api`. The SQLite database is kept in the `data` volume.
 `api/.env` is passed to the API container when it exists. The API container runs in
 `TZ=Europe/Kyiv` so the Monobank sync happens at local 09:00 and 21:00; change `TZ` in
 `compose.yaml` for another time zone.
@@ -113,7 +114,7 @@ history, call the sync endpoint once per earlier 31-day window, a minute apart (
 limit):
 
 ```sh
-curl -X POST "localhost:3000/accounts/mono/sync?to=$(date -v-31d +%s)"
+curl -X POST "localhost:3000/api/accounts/mono/sync?to=$(date -v-31d +%s)"
 ```
 
 ## Scripts
