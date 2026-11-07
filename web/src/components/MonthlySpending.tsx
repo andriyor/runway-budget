@@ -98,18 +98,26 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         return { month, segments: value > 0 ? [{ ...focus, value }] : [], total: value }
       })
     : breakdown
-  // the current month is still running, so it would pull the median down
-  const complete = columns.filter((c) => c.month !== thisMonth)
-  const typical = complete.length ? median(complete.map((c) => c.total)) : undefined
-  // the median always covers every complete month; bars, legend totals and tooltip use the shown ones
-  // the selected quarter, or the quarter of the selected month; none for all time or a week
-  const quarter = period.startsWith('q:') ? period : period.startsWith('m:') ? quarterOf(period.slice(2)) : undefined
   const inQuarter = (q: string | undefined, month: string) => q !== undefined && quarterMonths(q).includes(month)
-  // phones show one quarter, since a year of bars is too thin to read: that one, or the latest with data
-  // (in the selected year, if any)
-  const latest = columns.filter((c) => !period.startsWith('y:') || c.month.startsWith(period.slice(2))).at(-1)?.month
+  // the chart follows the period filter: a year or quarter shows its months, a month shows its year
+  // (so picking a bar keeps the bars around it); all time and a week show every month
+  const inScope = (month: string) =>
+    period.startsWith('y:') ? month.startsWith(period.slice(2))
+      : period.startsWith('q:') ? inQuarter(period, month)
+        : period.startsWith('m:') ? month.startsWith(period.slice(2, 6))
+          : true
+  const scoped = columns.filter((c) => inScope(c.month))
+  // the current month is still running, so it would pull the median down
+  const complete = scoped.filter((c) => c.month !== thisMonth)
+  const typical = complete.length ? median(complete.map((c) => c.total)) : undefined
+  // the median covers every complete month in scope; bars, legend totals and tooltip use the shown ones
+  // the selected quarter, or the quarter of the selected month; none for all time, a year or a week
+  const quarter = period.startsWith('q:') ? period : period.startsWith('m:') ? quarterOf(period.slice(2)) : undefined
+  // phones show one quarter, since a year of bars is too thin to read: that one, or the latest in scope
+  const latest = scoped.at(-1)?.month
   const phoneQuarter = quarter ?? (latest ? quarterOf(latest) : undefined)
-  const pick = <T extends { month: string }>(all: T[]) => (phone ? all.filter((c) => inQuarter(phoneQuarter, c.month)) : all)
+  const pick = <T extends { month: string }>(all: T[]) =>
+    all.filter((c) => inScope(c.month) && (!phone || inQuarter(phoneQuarter, c.month)))
   const shown = pick(columns)
   const shownBreakdown = pick(breakdown)
   // the scale includes the median so its line stays inside the plot

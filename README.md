@@ -32,7 +32,8 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
   balance from them, on demand and automatically at 09:00 and 21:00.
 - **Transactions page**:
   - a stacked chart of spending per month by category, with a median line over complete months;
-    picking a category or merchant reduces the bars to it to show its trend;
+    picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
+    filter shows only its months (a picked month shows its year);
   - spending by category with a drill-down into subcategories;
   - spending by merchant;
   - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
@@ -241,7 +242,8 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast
   in light and dark mode. A selected category or merchant replaces the stack with that one series.
 - **Median over complete months.** The chart's median leaves out the running month, which would
-  pull it down, and counts months without spending as zero when a category or merchant is selected.
+  pull it down, counts months without spending as zero when a category or merchant is selected, and
+  covers only the months the period filter shows (every month for all time or a week).
   The median, not the average, so one big month barely moves it. Sending it to Runway goes through
   `web/src/lib/budget.ts`, which rebuilds the whole budget body because `PUT /budget` clears any
   field it is not given.
@@ -254,7 +256,8 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 - **Phone layout is the same components below Tailwind's `sm` breakpoint.** Layout differences are
   `sm:`/`max-sm:` classes; the two behaviors that need JavaScript (opening on the latest quarter,
   and the chart showing one quarter) read the same breakpoint from `web/src/lib/media.ts`. On a
-  phone the chart's median still covers every complete month, not only the quarter shown.
+  phone the chart's median still covers every complete month in the filter's scope, not only the
+  quarter shown.
 - **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
 - **Web layout:** `web/src/pages/` for the two pages, `components/` for their parts, `lib/` for
   types, API calls, formatting and shared class names.
