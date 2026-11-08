@@ -376,15 +376,26 @@ export function TransactionsPage() {
                           {categoryOptions}
                         </select>
                       ) : (
-                        <button
-                          type="button"
-                          aria-label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
-                          title={selectionLabel(t.category)}
-                          onClick={() => setPicking({ id: t.id, kind: 'category' })}
-                          className={rowPicker}
-                        >
-                          {leafById.get(t.category)?.label ?? t.category} <span aria-hidden>▾</span>
-                        </button>
+                        // one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it
+                        <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          <button
+                            type="button"
+                            title={`Статистика: ${selectionLabel(t.category)}`}
+                            onClick={() => { pickCategory(t.category); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                            className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
+                          >
+                            {leafById.get(t.category)?.label ?? t.category}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
+                            title="Змінити категорію"
+                            onClick={() => setPicking({ id: t.id, kind: 'category' })}
+                            className="cursor-pointer py-0.5 pr-2 pl-1.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
+                          >
+                            <svg aria-hidden viewBox="0 0 16 16" className="size-3 fill-current"><path d="M4.2 6.2a.75.75 0 0 1 1.06 0L8 8.94l2.74-2.74a.75.75 0 1 1 1.06 1.06l-3.27 3.27a.75.75 0 0 1-1.06 0L4.2 7.26a.75.75 0 0 1 0-1.06Z" /></svg>
+                          </button>
+                        </span>
                       )}
                       {picking?.id === t.id && picking.kind === 'essential' ? (
                         <select
