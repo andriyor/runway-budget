@@ -17,6 +17,17 @@ const monthName = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numer
 
 const shortDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 
+const longDay = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+
+// ISO week key of a local date: "w:2026-45"
+const weekKey = (date: Date) => {
+  const { year, week } = isoWeek(date)
+  return `w:${year}-${String(week).padStart(2, '0')}`
+}
+
+// week key of a day key: "2026-11-09" → "w:2026-46"
+export const weekOfDay = (day: string) => weekKey(new Date(`${day}T00:00:00`))
+
 // quarter of a month key: "2026-10" → "q:2026-4"
 export const quarterOf = (month: string) => `q:${month.slice(0, 4)}-${Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1}`
 
@@ -29,7 +40,17 @@ export const quarterMonths = (quarter: string) => {
   return [1, 2, 3].map((i) => `${year}-${String((q - 1) * 3 + i).padStart(2, '0')}`)
 }
 
-// month, quarter, year and week keys a transaction belongs to, with a label for each, in local time
+// local day key: "2026-11-09"
+export const dayKey = (time: string) => `${monthKey(time)}-${String(new Date(time).getDate()).padStart(2, '0')}`
+
+// day keys of an ISO week key, Monday first: "w:2026-01" → ["2025-12-29", …, "2026-01-04"]
+export const weekDays = (week: string) => {
+  const [year, n] = week.slice(2).split('-').map(Number)
+  // January 4th is always in week 1
+  const monday = 4 - ((new Date(year, 0, 4).getDay() || 7) - 1) + (n - 1) * 7
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => dayKey(new Date(year, 0, monday + i).toISOString()))
+}
+// month, quarter, year, week and day keys a transaction belongs to, with a label for each, in local time
 export function periodsOf(t: Transaction): Array<[string, string]> {
   const date = new Date(t.time)
   const { year, week } = isoWeek(date)
@@ -39,6 +60,7 @@ export function periodsOf(t: Transaction): Array<[string, string]> {
     [`m:${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, monthName.format(date)],
     [quarterOf(monthKey(t.time)), quarterLabel(quarterOf(monthKey(t.time)))],
     [`y:${date.getFullYear()}`, `${date.getFullYear()} рік`],
-    [`w:${year}-${String(week).padStart(2, '0')}`, `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
+    [weekKey(date), `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
+    [`d:${dayKey(t.time)}`, longDay.format(date)],
   ]
 }

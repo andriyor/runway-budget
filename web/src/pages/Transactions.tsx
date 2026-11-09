@@ -228,6 +228,8 @@ export function TransactionsPage() {
               className={`min-w-0 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none sm:w-52 sm:flex-none dark:text-zinc-100 ${inputBox}`}
             >
               <option value="">Увесь час</option>
+              {/* days are picked from the week chart, too many to list; only the picked one shows */}
+              {period.startsWith('d:') && <option value={period}>{periods.get(period)}</option>}
               <optgroup label="Місяць">
                 {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </optgroup>

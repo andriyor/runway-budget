@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
 import { usePhone } from '../lib/media'
-import { monthKey, quarterLabel, quarterMonths, quarterOf } from '../lib/periods'
+import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../lib/periods'
 import { card, muted } from '../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../lib/types'
 
@@ -26,15 +26,21 @@ const firstDay = (month: string) => new Date(`${month}-01T00:00:00`)
 const shortMonth = new Intl.DateTimeFormat('uk-UA', { month: 'short', year: 'numeric' })
 // month name alone, for the axis where the year sits on its own line
 const monthOnly = new Intl.DateTimeFormat('uk-UA', { month: 'short' })
+// a day of a week: weekday on the axis with the date below it
+const date = (day: string) => new Date(`${day}T00:00:00`)
+const weekday = new Intl.DateTimeFormat('uk-UA', { weekday: 'short' })
+const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
+const longDay = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
-// spending per month and top-level category; income, transfers and investments are left out
-function spendingByMonth(list: Transaction[], leafById: Map<string, Leaf>) {
+// spending per month (or day, with bucket = dayKey) and top-level category; income, transfers and
+// investments are left out
+function spendingByMonth(list: Transaction[], leafById: Map<string, Leaf>, bucket = monthKey) {
   const months = new Map<string, Map<string, number>>()
   const totals = new Map<string, number>()
   for (const t of list) {
     const parent = leafById.get(t.category)?.parent
     if (!parent?.spending) continue
-    const month = monthKey(t.time)
+    const month = bucket(t.time)
     if (!months.has(month)) months.set(month, new Map())
     add(months.get(month)!, parent.id, -t.amount)
     add(totals, parent.id, -t.amount)
@@ -56,16 +62,19 @@ function stack(months: Map<string, Map<string, number>>, series: Omit<Segment, '
 const inQuarter = (quarter: string, month: string) => quarterMonths(quarter).includes(month)
 
 // the chart follows the period filter: a year or quarter shows its months, a month shows its year
-// (so picking a bar keeps the bars around it); all time and a week show every month
+// (so picking a bar keeps the bars around it), a week or day shows the week's 7 days; all time
+// shows every month
 function inScope(period: string, month: string) {
   if (period.startsWith('y:')) return month.startsWith(period.slice(2))
   if (period.startsWith('q:')) return inQuarter(period, month)
   if (period.startsWith('m:')) return month.startsWith(period.slice(2, 6))
+  if (period.startsWith('w:')) return weekDays(period).includes(month)
+  if (period.startsWith('d:')) return weekDays(weekOfDay(period.slice(2))).includes(month)
   return true
 }
 
 // phones show one quarter, since a year of bars is too thin to read: the picked quarter,
-// the quarter of the picked month, or the latest one in scope
+// the quarter of the picked month, or the latest one in scope. A week's 7 days always fit.
 function phoneQuarter(period: string, latest: string | undefined) {
   if (period.startsWith('q:')) return period
   if (period.startsWith('m:')) return quarterOf(period.slice(2))
@@ -106,13 +115,18 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
   // series: the biggest categories in a fixed color order, then "Решта"
   const parents = new Map<string, Category>([...leafById.values()].map((l) => [l.parent.id, l.parent]))
-  const { months, totals } = spendingByMonth(list, leafById)
+  // a picked week or day shows the week's 7 days, empty ones included; any other period shows months
+  const week = period.startsWith('w:') ? period : period.startsWith('d:') ? weekOfDay(period.slice(2)) : undefined
+  const days = week ? weekDays(week) : undefined
+  const bucket = days ? dayKey : monthKey
+  const { months, totals } = spendingByMonth(list, leafById, bucket)
   const top = [...totals].filter(([, x]) => x > 0).sort((a, b) => b[1] - a[1]).slice(0, SERIES)
   const series = [
     ...top.map(([id], i) => ({ id, label: parents.get(id)!.label, color: `var(--series-${i + 1})` })),
     { id: REST, label: 'Решта', color: 'var(--series-rest)' },
   ]
-  const stacked = stack(months, series)
+  const all = stack(months, series)
+  const stacked = days ? days.map((d) => all.find((b) => b.month === d) ?? { month: d, segments: [], total: 0 }) : all
 
   // focus: the selected category (or subcategory) and/or merchant alone, on the same months,
   // colored like the category it belongs to in the legend
@@ -130,7 +144,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const inFocus = (t: Transaction) =>
     (!selectedParent || t.category === selected || leafById.get(t.category)?.parent.id === selected) &&
     (!merchant || t.merchant === merchant.key)
-  const focusMonths = focus ? spendingByMonth(list.filter(inFocus), leafById).months : undefined
+  const focusMonths = focus ? spendingByMonth(list.filter(inFocus), leafById, bucket).months : undefined
   const bars: Bar[] = focus
     ? stacked.map(({ month }) => {
         const value = Math.max(0, sum([...(focusMonths!.get(month)?.values() ?? [])]))
@@ -142,9 +156,10 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   // bars, legend totals and the tooltip use the shown ones
   const scoped = bars.filter((b) => inScope(period, b.month))
   const complete = scoped.filter((b) => b.month !== thisMonth)
-  const typical = complete.length ? median(complete.map((b) => b.total)) : undefined
-  const quarter = phone ? phoneQuarter(period, scoped.at(-1)?.month) : undefined
-  const isShown = (month: string) => inScope(period, month) && (!phone || (quarter !== undefined && inQuarter(quarter, month)))
+  // the median is a monthly figure, so a week of days has none
+  const typical = !days && complete.length ? median(complete.map((b) => b.total)) : undefined
+  const quarter = phone && !days ? phoneQuarter(period, scoped.at(-1)?.month) : undefined
+  const isShown = (month: string) => inScope(period, month) && (!phone || days !== undefined || (quarter !== undefined && inQuarter(quarter, month)))
   const shown = bars.filter((b) => isShown(b.month))
   const shownStacked = stacked.filter((b) => isShown(b.month))
   if (!stacked.some((b) => b.total > 0)) return null
@@ -153,11 +168,14 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const max = Math.max(...shown.map((b) => b.total), typical ?? 0)
   const height = (value: number) => `${(value / max) * 85}%`
   const seriesTotal = (id: string) => sum(shownStacked.map((b) => b.segments.find((s) => s.id === id)?.value ?? 0))
-  const label = (month: string) => shortMonth.format(firstDay(month))
+  const label = (month: string) => (days ? longDay.format(date(month)) : shortMonth.format(firstDay(month)))
   const active = hover && shown.find((b) => b.month === hover.month)
   const activeSegment = active?.segments.find((s) => s.id === hover!.series)
-  // picking the month already selected goes back to all time
-  const pickMonth = (month: string) => onPick(period === `m:${month}` ? '' : `m:${month}`)
+  // picking the month already selected goes back to all time, the day already selected to its week
+  const pickMonth = (month: string) => {
+    const key = days ? `d:${month}` : `m:${month}`
+    onPick(period !== key ? key : days ? week! : '')
+  }
   const toggle = (id: string) => onSelect(selected === id ? undefined : id)
   const legendButton = 'flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900'
   const legendContent = (color: string, text: string, amount: number) => (
@@ -171,7 +189,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   return (
     <section className={`${card} viz`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{essentialOnly ? 'Essential spending per month' : 'Spending per month'}</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{`${essentialOnly ? 'Essential spending' : 'Spending'} per ${days ? 'day' : 'month'}`}</h2>
         {typical !== undefined && (
           <span className={`tabular-nums ${muted}`}>
             Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
@@ -248,12 +266,12 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             <button
               key={b.month}
               type="button"
-              aria-pressed={period === `m:${b.month}`}
+              aria-pressed={period === `m:${b.month}` || period === `d:${b.month}`}
               onClick={() => pickMonth(b.month)}
               className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
             >
-              {monthOnly.format(firstDay(b.month))}
-              <span className="block text-[0.65rem] opacity-75">{b.month.slice(0, 4)}</span>
+              {days ? weekday.format(date(b.month)) : monthOnly.format(firstDay(b.month))}
+              <span className="block text-[0.65rem] opacity-75">{days ? dayMonth.format(date(b.month)) : b.month.slice(0, 4)}</span>
             </button>
           ))}
         </div>
