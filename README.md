@@ -44,7 +44,8 @@ All accounts together, in Runway's currency.
   Spending also shows its usual range (the middle half of the months, p25–p75)
   and the lowest and worst months, since Runway assumes every month costs the same. Each transaction
   is converted at its day's NBU rate, and a Rates column shows what rate moves did to the USD and EUR
-  balances each month. The other Spending cards use today's rate.
+  balances each month. The other Spending cards use today's rate. «In today's prices» scales each month
+  by consumer prices since, so months compare in real terms.
 - **Recurring payments**: rent, subscriptions and regular donations, found as a merchant charged about
   once a month for a similar amount in at least 3 of the last 6 months and within the last 40 days,
   with the latest charge, the expected next date and the committed monthly total.
@@ -67,14 +68,16 @@ All accounts together, in Runway's currency.
 - **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
   currency, marked if it keeps coming when the others stop, like a pension), an optional essential-spending
   budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
-  without income to see the most you can spend per month.
+  without income to see the most you can spend per month. Each estimate also shows how long it lasts
+  with spending growing by the last 12 months' inflation and incomes staying flat.
 - **Emergency fund**: how many months of essential spending your available savings cover, against
   Runway's "Months to cover without income" (6 if not set) and the 3-month minimum: red below 3, amber
   below the target, green once funded. Essentials are Runway's essential spending (the usual spending
   without one), less incomes that keep coming.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (income minus spending). Months you want to live without income are kept aside as a cushion
-  and not counted toward goals.
+  and not counted toward goals. Each date also shows when, with spending growing by inflation and
+  income flat, or that spending catches up first.
 
 ### Everywhere
 
@@ -211,10 +214,15 @@ integer minor units (cents/kopiykas).
 | `DELETE` | `/goals/:id`    | Delete goal                                           |
 | `GET`    | `/rates`        | NBU rates as UAH per unit, cached for an hour         |
 | `GET`    | `/rates/history?from=YYYY-MM-DD` | NBU rates for every day from `from` to today, cached for 12 hours |
+| `GET`    | `/inflation?from=YYYY-MM` | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day |
 
 ## How estimates work
 
 - **Available savings** = total balance − untouchable reserve, converted at NBU rates.
+- **Inflation** = the product of the last 12 published months' CPI changes. In estimates, spending grows by
+  it every month (yearly rate^(1/12)) while incomes stay flat, the cautious case; savings lasting over
+  100 years count as no end. «In today's prices» multiplies a month by the CPI rise from it to the latest
+  published month.
 - **From exchange rates** = each day's change in total value − that day's transactions at the same rate,
   which is yesterday's USD and EUR balances times the rate change.
 - **Runway** = available savings ÷ monthly loss (spending, or spending − all incomes). A month is 30.44 days.
@@ -349,7 +357,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 ### Missing financial concepts
 
 - [x] Historical NBU rates, so the balance chart and cash flow show currency gains and losses
-- [ ] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
+- [x] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
 - [ ] Investments: track positions and value, count them in net worth, let goals assume a return
 - [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities
 - [x] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status

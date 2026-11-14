@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
-import { dayKey } from './periods'
-import type { Account, Budget, Category, Convert, ConvertOn, Currency, Rates, RateHistory, Transaction } from './types'
+import { dayKey, monthKey } from './periods'
+import type { Account, Budget, Category, Convert, ConvertOn, Currency, Inflation, Rates, RateHistory, Transaction } from './types'
 
 // Accounts, NBU rates, the Runway budget and categories, with conversions between currencies and
 // the budget-derived amounts the pages share. withTransactions also loads every account's transactions
-// and the NBU rates of every day since the first one.
-export function useFinance({ withTransactions = false } = {}) {
+// and the NBU rates of every day since the first one. withInflation loads monthly CPI since the first
+// transaction, or at least the last 13 months, enough for a yearly rate.
+export function useFinance({ withTransactions = false, withInflation = false } = {}) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
   const [error, setError] = useState('')
@@ -16,6 +17,7 @@ export function useFinance({ withTransactions = false } = {}) {
   const [categories, setCategories] = useState<Category[]>([])
   // undefined while loading; {} when it failed, so conversions fall back to today's rates
   const [history, setHistory] = useState<RateHistory>()
+  const [inflation, setInflation] = useState<Inflation>()
   // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
   const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
   // the last fetch would linger after every account is deleted
@@ -38,6 +40,17 @@ export function useFinance({ withTransactions = false } = {}) {
         setError(`Transactions: ${e.message}`)
       })
   }, [ids, withTransactions])
+
+  // waits for the transactions when they are loaded, so the CPI reaches back to the first one
+  const [yearAgo] = useState(() => monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 13, 1).toISOString()))
+  const inflationFrom = !withInflation ? undefined
+    : !withTransactions ? yearAgo
+    : fetched ? fetched.reduce((min, t) => (monthKey(t.time) < min ? monthKey(t.time) : min), yearAgo)
+    : undefined
+  useEffect(() => {
+    if (!inflationFrom) return
+    api<Inflation>(`/inflation?from=${inflationFrom}`).then(setInflation).catch((e) => setError(`Inflation: ${e.message}`))
+  }, [inflationFrom])
 
   useEffect(() => {
     api<Budget | null>('/budget').then(setBudget).catch((e) => setError(e.message))
@@ -84,7 +97,7 @@ export function useFinance({ withTransactions = false } = {}) {
     budget && rates ? (incomeIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return {
-    accounts, setAccounts, rates, budget, setBudget, categories, transactions, error, setError,
+    accounts, setAccounts, rates, budget, setBudget, categories, transactions, inflation, error, setError,
     // amounts in statistics are shown in Runway's currency
     currency: budget?.currency ?? 'UAH' as Currency,
     convert, convertOn, totalIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, availableIn, forGoalsIn, cushion, netIn,

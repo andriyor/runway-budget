@@ -3,24 +3,49 @@ import { ErrorText, MoneyInput } from './controls'
 import { LockIcon, BagIcon, BriefcaseIcon, CalendarIcon, TrendDownIcon, TrashIcon } from './icons'
 import { api } from '../lib/api'
 import { format } from '../lib/format'
+import { monthsLasting } from '../lib/inflation'
 import { card, muted, inputBox, button, linkButton } from '../lib/styles'
 import { type Currency, type Budget } from '../lib/types'
 
 export const AVG_DAYS_IN_MONTH = 30.44
 
-function Estimate({ label, total, burn, currency }: { label: string, total: number, burn: number, currency: Currency }) {
+type EstimateProps = {
+  label: string
+  total: number
+  spend: number
+  // incomes that keep coming in this scenario
+  income: number
+  // yearly inflation, e.g. 0.11; undefined while unknown
+  inflation: number | undefined
+  currency: Currency
+}
+
+// How long `total` lasts at `spend` minus `income` per month, and, with inflation known, how long when
+// spending grows with it while incomes stay flat.
+function Estimate({ label, total, spend, income, inflation, currency }: EstimateProps) {
   const [now] = useState(Date.now)
+  const burn = spend - income
+  const date = (months: number) => new Date(now + months * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
+  const inflated = inflation !== undefined && inflation > 0 ? monthsLasting(total, spend, income, inflation) : undefined
+  const withInflation = inflated !== undefined && (
+    <p className={`mt-1 text-sm tabular-nums ${muted}`}>
+      With {(inflation! * 100).toFixed(1)}% inflation:{' '}
+      {inflated === Infinity
+        ? 'still no end'
+        : <span className={burn <= 0 ? 'text-amber-700 dark:text-amber-400' : undefined}>{inflated.toFixed(1)} months · until {date(inflated)}</span>}
+    </p>
+  )
   if (burn <= 0) {
     return (
       <div className="rounded-xl bg-emerald-50 p-3 sm:p-4 dark:bg-emerald-950/40">
         <p className={muted}>{label}</p>
         <p className="mt-1 text-xl font-semibold text-emerald-700 sm:text-2xl dark:text-emerald-400">No end</p>
         <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">+{format(-burn, currency)} saved per month</p>
+        {withInflation}
       </div>
     )
   }
   const months = Math.max(0, total / burn)
-  const until = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)
   return (
     <div className="rounded-xl bg-zinc-50 p-3 sm:p-4 dark:bg-zinc-800/50">
       <p className={muted}>{label}</p>
@@ -29,9 +54,10 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
         {months >= 12 && <span className="text-base font-normal text-zinc-500"> · ≈ {(months / 12).toFixed(1)} years</span>}
       </p>
       <p className="mt-1 text-sm tabular-nums">
-        <span className="text-zinc-500 dark:text-zinc-400">until {until.toLocaleDateString('uk-UA')} · </span>
+        <span className="text-zinc-500 dark:text-zinc-400">until {date(months)} · </span>
         <span className="text-rose-600 dark:text-rose-400">−{format(burn, currency)} per month</span>
       </p>
+      {withInflation}
     </div>
   )
 }
@@ -106,9 +132,11 @@ type RunwayProps = {
   // the incomes that keep coming without the others
   keptIncomeIn: (c: Currency) => number
   minimalIn: (c: Currency) => number | undefined
+  // yearly inflation, e.g. 0.11; undefined while unknown
+  inflation: number | undefined
 }
 
-export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn }: RunwayProps) {
+export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, inflation }: RunwayProps) {
   const [form, setForm] = useState(() => toForm(saved))
   const [error, setError] = useState('')
   const field = <K extends keyof BudgetForm>(key: K) => (value: BudgetForm[K]) => setForm((f) => ({ ...f, [key]: value }))
@@ -235,10 +263,10 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(Math.max(0, available), saved.currency)} available</span>
                 </p>
               )}
-              <Estimate label="Without income" total={available} burn={saved.monthlySpend - kept} currency={saved.currency} />
+              <Estimate label="Without income" total={available} spend={saved.monthlySpend} income={kept} inflation={inflation} currency={saved.currency} />
               {minimalInSpendCurrency !== undefined && (
                 <>
-                  <Estimate label="Essentials only, without income" total={available} burn={minimalInSpendCurrency - kept} currency={saved.currency} />
+                  <Estimate label="Essentials only, without income" total={available} spend={minimalInSpendCurrency} income={kept} inflation={inflation} currency={saved.currency} />
                   {minimalInSpendCurrency >= saved.monthlySpend && (
                     <p className="text-sm text-amber-700 dark:text-amber-400">Essential spending is not below your usual spending.</p>
                   )}
@@ -248,7 +276,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
                 <SpendLimit months={saved.targetMonths} total={available} kept={kept} spend={saved.monthlySpend} minimal={minimalInSpendCurrency} currency={saved.currency} />
               )}
               {incomeInSpendCurrency !== undefined && (
-                <Estimate label="With income" total={available} burn={saved.monthlySpend - incomeInSpendCurrency} currency={saved.currency} />
+                <Estimate label="With income" total={available} spend={saved.monthlySpend} income={incomeInSpendCurrency} inflation={inflation} currency={saved.currency} />
               )}
             </>
             )

@@ -61,6 +61,10 @@ export type Rates = { date: string, rates: Record<Currency, number> }
 // the NBU publishes weekends and holidays too, repeating the last working day's rate
 export type RateHistory = Record<string, Record<Currency, number>>
 
+// Ukraine's consumer price index (State Statistics Service, via the NBU): the % change from the previous
+// month, keyed 'YYYY-MM', for every published month from the requested one; the latest month lags a month or two
+export type Inflation = Record<string, number>
+
 export type Budget = {
   monthlySpend: number
   currency: Currency

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
 import { dailyValues } from '../lib/history'
+import { inLatestPrices } from '../lib/inflation'
 import { dayKey, monthKey } from '../lib/periods'
 import { median, quantile } from '../lib/stats'
 import { card, muted, linkButton } from '../lib/styles'
-import type { Account, Category, ConvertOn, Currency, Transaction } from '../lib/types'
+import type { Account, Category, ConvertOn, Currency, Inflation, Transaction } from '../lib/types'
 
 // how far back the figures look, in complete months
 const MONTHS = 12
@@ -60,13 +61,24 @@ type CashFlowProps = {
   currency: Currency
   // undefined until a budget exists to hold the income
   onUseIncome: ((amount: number, currency: Currency) => void) | undefined
+  // monthly CPI, for amounts in today's prices; undefined while loading
+  inflation: Inflation | undefined
 }
 
-export function CashFlow({ transactions, accounts, categories, convertOn, currency, onUseIncome }: CashFlowProps) {
+export function CashFlow({ transactions, accounts, categories, convertOn, currency, onUseIncome, inflation }: CashFlowProps) {
   const [now] = useState(() => new Date())
+  // each month's amounts scaled by inflation since, so months compare in today's prices
+  const [real, setReal] = useState(false)
   if (!transactions || !categories.length) return null
-  const months = cashFlow(transactions, accounts, categories, convertOn, currency, now)
-  if (!months?.length) return null
+  const nominal = cashFlow(transactions, accounts, categories, convertOn, currency, now)
+  if (!nominal?.length) return null
+  const prices = inflation && inLatestPrices(inflation)
+  const months = real && prices
+    ? nominal.map((m) => {
+        const f = prices.factor(m.month)
+        return { ...m, income: m.income * f, spent: m.spent * f, fromRates: m.fromRates * f }
+      })
+    : nominal
 
   const income = months.reduce((s, m) => s + m.income, 0)
   const spent = months.reduce((s, m) => s + m.spent, 0)
@@ -87,7 +99,15 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
     <section className={card}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Cash flow</h2>
-        <span className={muted}>{months.length} complete {months.length === 1 ? 'month' : 'months'}, all accounts</span>
+        <span className={`flex flex-wrap items-center gap-x-3 ${muted}`}>
+          {months.length} complete {months.length === 1 ? 'month' : 'months'}, all accounts
+          {prices?.latest && (
+            <label className="flex cursor-pointer items-center gap-1.5" title={`Each month scaled by consumer prices up to ${monthLabel.format(new Date(`${prices.latest}-01T00:00:00`))}, the latest the NBU has published`}>
+              <input type="checkbox" checked={real} onChange={(e) => setReal(e.target.checked)} className="size-4 accent-indigo-600" />
+              In today's prices
+            </label>
+          )}
+        </span>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">

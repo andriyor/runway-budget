@@ -4,6 +4,7 @@ import { Skeleton, ErrorText, MoneyInput } from './controls'
 import { CurrencyIcon, CalendarIcon, TrashIcon } from './icons'
 import { api } from '../lib/api'
 import { format } from '../lib/format'
+import { monthsToSave } from '../lib/inflation'
 import { card, muted, inputBox, button } from '../lib/styles'
 import type { Currency, Goal } from '../lib/types'
 
@@ -15,9 +16,13 @@ type GoalsProps = {
   cushion: Cushion | undefined
   // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
+  // monthly spending, which grows with inflation while income stays flat
+  spendIn: (c: Currency) => number | undefined
+  // yearly inflation, e.g. 0.11; undefined while unknown
+  inflation: number | undefined
 }
 
-export function Goals({ forGoalsIn, cushion, netIn }: GoalsProps) {
+export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsProps) {
   const [goals, setGoals] = useState<Goal[]>([])
   const [name, setName] = useState('')
   const [target, setTarget] = useState('')
@@ -61,11 +66,21 @@ export function Goals({ forGoalsIn, cushion, netIn }: GoalsProps) {
     if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
     if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
     const months = (goal.target - have) / net
-    const when = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)
+    const date = (m: number) => new Date(now + m * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
+    const spend = spendIn(goal.currency)
+    const inflated = inflation !== undefined && inflation > 0 && spend !== undefined
+      ? { months: monthsToSave(goal.target - have, spend, spend + net, inflation) }
+      : undefined
     return (
       <span className="text-zinc-700 tabular-nums dark:text-zinc-300">
         In <strong>{months.toFixed(1)} months</strong>
-        <span className="text-zinc-500 dark:text-zinc-400"> · {when.toLocaleDateString('uk-UA')} · saving {format(net, goal.currency)} per month</span>
+        <span className="text-zinc-500 dark:text-zinc-400"> · {date(months)} · saving {format(net, goal.currency)} per month</span>
+        {inflated && (
+          <span className={`block ${inflated.months === undefined ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
+            With {(inflation! * 100).toFixed(1)}% inflation:{' '}
+            {inflated.months === undefined ? 'not reached before spending catches up with income' : `${inflated.months.toFixed(1)} months · ${date(inflated.months)}`}
+          </span>
+        )}
       </span>
     )
   }

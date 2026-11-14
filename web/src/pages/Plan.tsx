@@ -3,9 +3,14 @@ import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
 import { ErrorBanner, InfoTip } from '../components/controls'
 import { useFinance } from '../lib/finance'
+import { annualRate } from '../lib/inflation'
+import type { Currency } from '../lib/types'
 
 export function Plan() {
-  const { budget, setBudget, error, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, forGoalsIn, cushion, netIn } = useFinance()
+  const { budget, setBudget, inflation: cpi, error, convert, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, forGoalsIn, cushion, netIn } = useFinance({ withInflation: true })
+  // spending in the estimates grows by the last 12 months' inflation
+  const inflation = cpi && annualRate(cpi)
+  const spendIn = (c: Currency) => (budget ? convert(budget.monthlySpend, budget.currency, c) : undefined)
 
   return (
     <>
@@ -17,7 +22,7 @@ export function Plan() {
       <ErrorBanner>{error}</ErrorBanner>
 
       {budget !== undefined && (
-        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} />
+        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} inflation={inflation} />
       )}
 
       {budget && availableIn(budget.currency) !== undefined && (
@@ -31,7 +36,7 @@ export function Plan() {
         />
       )}
 
-      <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />
+      <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} spendIn={spendIn} inflation={inflation} />
     </>
   )
 }

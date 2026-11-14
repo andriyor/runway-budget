@@ -9,7 +9,7 @@ import { useFinance } from '../lib/finance'
 import type { Budget, Currency } from '../lib/types'
 
 export function Spending() {
-  const { accounts, rates, budget, setBudget, categories, transactions, error, setError, currency, convert, convertOn } = useFinance({ withTransactions: true })
+  const { accounts, rates, budget, setBudget, categories, transactions, inflation, error, setError, currency, convert, convertOn } = useFinance({ withTransactions: true, withInflation: true })
 
   // the cash flow's median income becomes one of Runway's incomes, keeping the rest of the budget
   async function incomeFromCashFlow(amount: number, c: Currency) {
@@ -34,7 +34,7 @@ export function Spending() {
       {rates && (
         <>
           <ThisMonth {...shared} planned={budget?.monthlySpend} />
-          <CashFlow transactions={transactions} accounts={accounts} categories={categories} convertOn={convertOn} currency={currency} onUseIncome={budget ? incomeFromCashFlow : undefined} />
+          <CashFlow transactions={transactions} accounts={accounts} categories={categories} convertOn={convertOn} currency={currency} onUseIncome={budget ? incomeFromCashFlow : undefined} inflation={inflation} />
           <Recurring {...shared} />
           <YearOverYear {...shared} />
         </>
