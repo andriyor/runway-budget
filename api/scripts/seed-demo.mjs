@@ -40,7 +40,15 @@ const mono = ids[0]
 
 sqlite.prepare(`insert into budget (id, monthly_spend_cents, currency, incomes, reserve_cents, reserve_currency,
   minimal_spend_cents, minimal_spend_currency, target_months) values (1, ?, 'UAH', ?, ?, 'USD', ?, 'UAH', 6)`)
-  .run(cents(45000), JSON.stringify([{ name: 'Зарплата', amountCents: cents(95000), currency: 'UAH' }]), cents(2000), cents(22000))
+  .run(cents(45000), JSON.stringify([
+    { name: 'Зарплата', amountCents: cents(95000), currency: 'UAH', keeps: false },
+    // keeps coming without the salary, so the without-income estimates count it
+    { name: 'Оренда гаража', amountCents: cents(3000), currency: 'UAH', keeps: true },
+  ]), cents(2000), cents(22000))
+const categoryBudget = sqlite.prepare('insert into category_budgets (category, amount_cents, currency) values (?, ?, ?)')
+categoryBudget.run('groceries', cents(9000), 'UAH')
+categoryBudget.run('cafes_restaurants', cents(3500), 'UAH')
+categoryBudget.run('transport', cents(2500), 'UAH')
 const goal = sqlite.prepare('insert into goals (name, target_cents, currency) values (?, ?, ?)')
 goal.run('Відпустка в Карпатах', cents(1500), 'EUR')
 goal.run('Новий автомобіль', cents(12000), 'USD')

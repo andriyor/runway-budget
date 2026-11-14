@@ -5,20 +5,22 @@ Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at 
 (against the usual, budgets, recurring payments, inflation) and estimates how long your savings last
 and when you reach your goals.
 
-![Spending per month and by category](https://github.com/user-attachments/assets/7492dbc0-ac89-4b7f-90e1-427873328c54)
+![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a5198fb3-1030-4634-9eff-e075e627bae8)
 
 <details>
 <summary>More screenshots</summary>
 
 | | |
 | --- | --- |
-| ![Balances, runway and goals](https://github.com/user-attachments/assets/6430ccb4-fbcb-4b9e-b27c-08c7a46ab773) | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/97069ed7-2bd1-4990-a436-8c8d9c0b055e) |
-| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/b988bc74-6c48-4987-936d-267f13e1b54f) | ![Essential spending only, with its median](https://github.com/user-attachments/assets/84e3eb55-13c3-43bd-b0b7-0a5e65281bfd) |
+| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/6e6d28a3-1d85-4005-bb8c-57c2fc5265c4) | ![Plan: runway, emergency fund and goals](https://github.com/user-attachments/assets/b855b0ac-c7c2-40fd-aa4b-f7d4ab375c7e) |
+| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/f01ddaba-42ad-40b3-958b-494687923089) | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/b52bda7b-55d1-4ee9-a6ec-63d21293ffa0) |
+| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/30a041b9-02ce-48bf-99db-26baa0022958) | ![Essential spending only, with its median](https://github.com/user-attachments/assets/6f5f2994-372b-4eec-98d6-d0ba0abc8a83) |
+| ![Balances on a phone](https://github.com/user-attachments/assets/b0c4f010-8fd9-4a9a-9e30-32c4aad2aac8) | |
 
 </details>
 
 Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)) and were taken on
-2026-11-06, before the Spending and Plan pages; they live in [issue #1](https://github.com/andriyor/runway-budget/issues/1).
+2026-11-14; they live in [issue #2](https://github.com/andriyor/runway-budget/issues/2).
 
 ## Features
 
