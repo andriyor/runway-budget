@@ -77,15 +77,9 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
         </span>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        {/* labels sit at the height of the values they name, not at the padded edges */}
-        <div className={`relative w-16 shrink-0 text-right text-xs tabular-nums ${muted}`} aria-hidden>
-          {levels.map((v, i) => (
-            <span key={i} className="absolute right-0 -translate-y-1/2" style={{ top: `${y(v)}%` }}>{wholeMoney(v, currency)}</span>
-          ))}
-        </div>
+      <div className="mt-4">
         <div
-          className="relative h-48 min-w-0 flex-1 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
+          className="relative h-48 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
           tabIndex={0}
           role="img"
           aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
@@ -104,6 +98,15 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
             <path d={`${line}L100,100L0,100Z`} fill="var(--series-1)" opacity={0.12} />
             <path d={line} fill="none" stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           </svg>
+          {/* labels ride on their guides inside the plot (high above, low below) so mobile keeps the full width */}
+          {levels.map((v, i) => (
+            <span
+              key={v}
+              aria-hidden
+              className={`pointer-events-none absolute left-0 rounded bg-white/80 px-1 text-xs tabular-nums dark:bg-zinc-900/80 ${muted} ${i ? '' : '-translate-y-full'}`}
+              style={{ top: `${y(v)}%` }}
+            >{wholeMoney(v, currency)}</span>
+          ))}
           {extremes.map((i) => (
             <div
               key={i}
@@ -132,7 +135,7 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
           )}
         </div>
       </div>
-      <div className={`mt-1.5 ml-18 flex justify-between text-xs ${muted}`} aria-hidden>
+      <div className={`mt-1.5 flex justify-between text-xs ${muted}`} aria-hidden>
         <span>{dayLabel.format(points[0].day)}</span>
         <span>Today</span>
       </div>
