@@ -1,4 +1,5 @@
-import { useId, useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
+import { Popover } from '@base-ui/react/popover'
 import { Info } from 'lucide-react'
 import { kindIcons, kindLabels } from '../lib/display'
 import { inputBox } from '../lib/styles'
@@ -85,37 +86,26 @@ export function MoneyInput({ id, label, value, onChange, currency, onCurrency, r
   )
 }
 
-// ⓘ with a short explanation: shown while a mouse hovers, toggled by click, tap or Enter, closed by Esc
-// or leaving. Driven by state only: touch screens report a tapped button as hovered and focused,
-// so CSS :hover/:focus would keep it open after a second tap.
+// ⓘ with a short explanation: opens on mouse hover or on click, tap or Enter; closes on Esc or outside.
+// In a portal, so a scrolling table or a narrow screen does not clip it.
 export function InfoTip({ label, children }: { label: string, children: ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const id = useId()
   return (
-    <span
-      className="relative inline-flex"
-      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setOpen(true) }}
-      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setOpen(false) }}
-    >
-      <button
-        type="button"
+    <Popover.Root>
+      <Popover.Trigger
+        openOnHover
+        delay={0}
         aria-label={label}
-        aria-describedby={id}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-        className="rounded-full text-zinc-400 hover:text-zinc-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-200"
+        className="inline-flex rounded-full text-zinc-400 hover:text-zinc-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-200"
       >
         <Info size={20} />
-      </button>
-      <span
-        role="tooltip"
-        id={id}
-        className={`absolute top-full left-0 z-20 mt-2 w-64 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-zinc-700 ${open ? 'block' : 'hidden'}`}
-      >
-        {children}
-      </span>
-    </span>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner sideOffset={8} align="start" collisionPadding={8} className="z-20">
+          <Popover.Popup className="w-64 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-normal text-white shadow-lg outline-none dark:bg-zinc-700">
+            {children}
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
