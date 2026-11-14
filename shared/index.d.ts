@@ -86,3 +86,26 @@ export type Goal = { id: number, name: string, target: number, currency: Currenc
 
 // a monthly spending cap for a top-level spending category
 export type CategoryBudget = { category: string, amount: number, currency: Currency }
+
+// Spending per spending category and calendar year, net of refunds, in the requested currency at today's
+// NBU rates. Days are local to the requested time zone. Cancelled pairs, income, own-account moves and
+// investments are left out.
+export type SpendingPerYear = {
+  // 'YYYY-MM-DD'
+  today: string
+  // the day of the first transaction of any kind; null when there are none
+  first: string | null
+  // the most recent years, oldest first, the running one included; a first year with less than its December is left out
+  years: number[]
+  // whether last year has data from 1 January, so this year so far compares with the same days of it
+  comparable: boolean
+  // largest this year first
+  rows: Array<{
+    // a top-level category id
+    category: string
+    // keyed by year; a missing year is 0
+    byYear: Record<string, number>
+    // last year from 1 January to today's date
+    lastYearToDate: number
+  }>
+}

@@ -1,75 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../lib/api'
 import { percentOf, wholeMoney } from '../lib/format'
 import { card, muted } from '../lib/styles'
-import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
+import type { Category, Currency, SpendingPerYear, Transaction } from '../lib/types'
 
-// most recent years shown, the running one included
-const YEARS = 3
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-type Row = { category: Category, byYear: Map<number, number>, lastYearToDate: number }
+type Row = SpendingPerYear['rows'][number] & { info: Category }
 // a table column: a past year, last year to date (when comparable) or this year so far, the last one;
 // from marks the column of the year the data starts in
 type Column = { key: string, label: string, value: (r: Row) => number, current?: boolean, from?: boolean }
 
-// Spending per category and calendar year, and last year's spending from 1 January to today's date,
-// so the running year can be compared with the same part of the last one. Net of refunds; cancelled
-// pairs, income, own-account moves and investments are left out.
-function perYear(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
-  const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
-  const year = now.getFullYear()
-  // the same moment a year ago: last year's spending up to it compares with this year's so far
-  const yearAgo = new Date(year - 1, now.getMonth(), now.getDate() + 1)
-  const rows = new Map<string, Row>()
-  let first: Date | undefined
-  for (const t of transactions) {
-    if (t.cancelled) continue
-    const time = new Date(t.time)
-    if (!first || time < first) first = time
-    const parent = parentOf.get(t.category)
-    if (!parent?.spending || time.getFullYear() <= year - YEARS) continue
-    const amount = convert(t.amount, currencyOf.get(t.accountId)!, currency)
-    if (amount === undefined) return undefined
-    const row = rows.get(parent.id) ?? { category: parent, byYear: new Map(), lastYearToDate: 0 }
-    row.byYear.set(time.getFullYear(), (row.byYear.get(time.getFullYear()) ?? 0) - amount)
-    if (time.getFullYear() === year - 1 && time < yearAgo) row.lastYearToDate -= amount
-    rows.set(parent.id, row)
-  }
-  if (!first) return undefined
-  const since = first
-  // the first year counts only with at least its December, else a few days of data look like a cheap year
-  const years = Array.from({ length: YEARS }, (_, i) => year - YEARS + 1 + i)
-    .filter((y) => y > since.getFullYear() || (y === since.getFullYear() && since < new Date(y, 11, 1)))
-  const list = [...rows.values()]
-    .sort((a, b) => (b.byYear.get(year) ?? 0) - (a.byYear.get(year) ?? 0) || (b.byYear.get(year - 1) ?? 0) - (a.byYear.get(year - 1) ?? 0))
-  return { rows: list, years, first: since }
-}
-
 type YearOverYearProps = {
+  // only to refetch when they reload; the API does the summing
   transactions: Transaction[] | undefined
-  accounts: Account[]
   categories: Category[]
-  convert: Convert
   currency: Currency
+  onError: (message: string) => void
 }
 
-export function YearOverYear({ transactions, accounts, categories, convert, currency }: YearOverYearProps) {
-  const [now] = useState(() => new Date())
-  if (!transactions || !categories.length) return null
-  const result = perYear(transactions, accounts, categories, convert, currency, now)
-  if (!result) return null
-  const { years, first } = result
+export function YearOverYear({ transactions, categories, currency, onError }: YearOverYearProps) {
+  const [result, setResult] = useState<SpendingPerYear>()
+  useEffect(() => {
+    if (!transactions) return
+    api<SpendingPerYear>(`/stats/spending-per-year?currency=${currency}&tz=${encodeURIComponent(timeZone)}`)
+      .then(setResult)
+      .catch((e) => onError(`Spending per year: ${e.message}`))
+  }, [transactions, currency, onError])
+  if (!result?.first || !categories.length) return null
+  const { years, comparable } = result
+  const now = new Date(`${result.today}T00:00`)
+  const first = new Date(`${result.first}T00:00`)
   const year = now.getFullYear()
-  // a change needs last year's data from 1 January; last year then shows only to date, the part it is taken against
-  const comparable = years.includes(year - 1) && first <= new Date(year - 1, 0, 1, 23, 59)
   const columns: Column[] = [
     ...years.filter((y) => y < (comparable ? year - 1 : year))
-      .map((y) => ({ key: String(y), label: String(y), value: (r: Row) => r.byYear.get(y) ?? 0, from: y === first.getFullYear() })),
+      .map((y) => ({ key: String(y), label: String(y), value: (r: Row) => r.byYear[y] ?? 0, from: y === first.getFullYear() })),
     ...(comparable ? [{ key: 'before', label: `${year - 1} to date`, value: (r: Row) => r.lastYearToDate }] : []),
-    { key: 'now', label: `${year} to date`, value: (r: Row) => r.byYear.get(year) ?? 0, current: true, from: year === first.getFullYear() },
+    { key: 'now', label: `${year} to date`, value: (r: Row) => r.byYear[year] ?? 0, current: true, from: year === first.getFullYear() },
   ]
-  const rows = result.rows.filter((r) => columns.some((c) => c.value(r) > 0))
+  const byId = new Map(categories.map((c) => [c.id, c]))
+  const rows = result.rows.flatMap((r) => {
+    const info = byId.get(r.category)
+    return info ? [{ ...r, info }] : []
+  }).filter((r) => columns.some((c) => c.value(r) > 0))
   if (!rows.length) return null
   const total = (c: Column) => rows.reduce((sum, r) => sum + c.value(r), 0)
   const [before, current] = columns.slice(-2)
@@ -111,12 +85,12 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {rows.map((r) => (
-              <tr key={r.category.id} className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:py-1.5">
+              <tr key={r.info.id} className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:py-1.5">
                 <td className="text-left">
                   {/* this year's transactions in the category, on the Transactions page */}
-                  <a href={`#/transactions?category=${r.category.id}&period=y:${year}`} className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
-                    <span aria-hidden className="mr-2">{r.category.emoji}</span>
-                    {r.category.label}
+                  <a href={`#/transactions?category=${r.info.id}&period=y:${year}`} className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
+                    <span aria-hidden className="mr-2">{r.info.emoji}</span>
+                    {r.info.label}
                   </a>
                 </td>
                 {columns.map((c) => (

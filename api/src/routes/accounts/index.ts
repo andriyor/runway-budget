@@ -1,15 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { type FastifyPluginAsync } from 'fastify'
-import type { Account, Transaction } from '@runway-budget/shared'
-import { count, desc, eq, sql } from 'drizzle-orm'
-// MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
-import mccDescriptions from '../../data/mcc.json'
-import { cancelledIds } from '../../cancellations'
-import { categorize, isEssential, merchantKey, type CategoryId } from '../../categories'
-// merchant domain → lowercase name fragments; the domain is used for the icon
-import merchantKeywords from '../../data/merchants.json'
+import type { Account } from '@runway-budget/shared'
+import { count, eq, sql } from 'drizzle-orm'
 import { syncMono } from '../../mono'
-import { accounts, accountKinds, currencies, merchantCategories, merchantEssentials, transactions, type AccountKind, type Currency } from '../../db/schema'
+import { accountTransactions } from '../../transactions'
+import { accounts, accountKinds, currencies, transactions, type AccountKind, type Currency } from '../../db/schema'
 
 type AccountRow = typeof accounts.$inferSelect
 type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
@@ -17,13 +12,6 @@ type AccountInput = { name: string, currency: Currency, balance: number, kind?: 
 const toDto = ({ balanceCents, position: _position, updatedAt, ...rest }: AccountRow, transactionCount: number): Account =>
   ({ ...rest, updatedAt: updatedAt.toISOString(), balance: balanceCents / 100, transactionCount })
 const toCents = (balance: number) => Math.round(balance * 100)
-
-const merchants = Object.entries(merchantKeywords as Record<string, string[]>)
-const merchantDomain = (description: string) => {
-  const text = description.toLowerCase()
-  return merchants.find(([, keywords]) => keywords.some((k) => text.includes(k)))?.[0] ?? null
-}
-
 
 const inputProps = {
   name: { type: 'string', minLength: 1, maxLength: 100 },
@@ -69,37 +57,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { id: number } }>('/:id/transactions', {
     schema: { params: { type: 'object', properties: { id: { type: 'integer' } } } }
-  }, async (request) => {
-    const rows = await fastify.db.select().from(transactions)
-      .where(eq(transactions.accountId, request.params.id))
-      .orderBy(desc(transactions.time), desc(transactions.id))
-    const overrides = new Map((await fastify.db.select().from(merchantCategories))
-      .map((o) => [o.merchant, o.category as CategoryId]))
-    const essentials = new Map((await fastify.db.select().from(merchantEssentials)).map((o) => [o.merchant, o.essential]))
-    const cancelled = cancelledIds(rows)
-    return rows.map(({ amountCents, category: own, essential: ownEssential, time, operationAmount: _op, operationCurrency: _cur, ...rest }): Transaction => {
-      const key = merchantKey(rest.description)
-      const merchant = overrides.get(key)
-      const merchantEssential = essentials.get(key)
-      const category = categorize(rest.mcc, rest.description, amountCents, own ?? merchant)
-      return {
-        ...rest,
-        time: time.toISOString(),
-        amount: amountCents / 100,
-        // groups a merchant's purchases and refunds, same key as merchant category overrides
-        merchant: key,
-        category,
-        // which level decided the category, so the UI can offer to promote or reset it
-        categorySource: own ? 'transaction' : merchant ? 'merchant' : 'auto',
-        // needed to live; same three levels as the category, the default comes from the category
-        essential: ownEssential ?? merchantEssential ?? isEssential(category),
-        essentialSource: ownEssential != null ? 'transaction' : merchantEssential != null ? 'merchant' : 'auto',
-        mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
-        merchantDomain: merchantDomain(rest.description),
-        cancelled: cancelled.has(rest.id)
-      }
-    })
-  })
+  }, async (request) => accountTransactions(fastify.db, request.params.id))
 
   // pulls 31 days of the MONO_ACCOUNT statement ending at `to` (unix seconds, default now); safe to repeat
   fastify.post<{ Querystring: { to?: number } }>('/mono/sync', {
