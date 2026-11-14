@@ -50,6 +50,8 @@ export function TransactionsPage() {
   const [essentialOnly, setEssentialOnly] = useState(false)
   const [notice, setNotice] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
+  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; applied on the first load only
+  const linked = useRef(new URLSearchParams(location.hash.split('?')[1]))
   const account = accounts.find((a) => a.id === accountId)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
     c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
@@ -69,8 +71,8 @@ export function TransactionsPage() {
       .then((all) => {
         setAccounts(all)
         // an account linked from the Balances list, else the synced one, else the first
-        const linked = Number(new URLSearchParams(location.hash.split('?')[1]).get('account'))
-        setAccountId((all.find((a) => a.id === linked) ?? all.find((a) => a.monoAccountId) ?? all[0])?.id)
+        const linkedId = Number(linked.current.get('account'))
+        setAccountId((all.find((a) => a.id === linkedId) ?? all.find((a) => a.monoAccountId) ?? all[0])?.id)
       })
       .catch((e) => setError(e.message))
     api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
@@ -84,7 +86,12 @@ export function TransactionsPage() {
         // open on the latest year with data, or its latest quarter on phones, where a year at once is too much;
         // all time stays in the period filter
         const latest = loaded.length ? monthKey(loaded[0].time) : undefined
-        if (latest) setPeriod(matchMedia(PHONE).matches ? quarterOf(latest) : `y:${latest.slice(0, 4)}`)
+        const { current: from } = linked
+        if (from.has('period') || from.has('category')) {
+          setPeriod(from.get('period') ?? '')
+          pickCategory(from.get('category') ?? undefined)
+          linked.current = new URLSearchParams()
+        } else if (latest) setPeriod(matchMedia(PHONE).matches ? quarterOf(latest) : `y:${latest.slice(0, 4)}`)
       })
       .catch((e) => setError(e.message))
   }, [accountId])
