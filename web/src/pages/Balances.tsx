@@ -61,19 +61,19 @@ export function Balances() {
 
       {/* desktop: the overview on the left, accounts beside it; phones and tablets: one column */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-          {/* phones: one line per currency; the rate footer only shows from sm up */}
-          <section className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:gap-4">
+          {/* one card: phones a line per currency, from sm up three columns; the rate only shows from sm up */}
+          <section className={`${card} grid divide-y divide-zinc-200 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-4 dark:divide-zinc-800`}>
             {currencies.map((c) => (
-              <div key={c} className={`${card} flex items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:justify-start`}>
+              <div key={c} className="flex min-w-0 items-center justify-between gap-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:px-4 sm:py-0 sm:first:pl-0 sm:last:pr-0">
                 <p className={`flex shrink-0 items-center gap-2 ${muted}`}>
                   <CurrencyIcon currency={c} /> Total in {c}
                 </p>
-                <p className="min-w-0 truncate text-lg font-semibold text-zinc-900 tabular-nums sm:mt-3 sm:text-2xl dark:text-zinc-100">
+                <p className="min-w-0 truncate text-lg font-semibold text-zinc-900 tabular-nums sm:mt-1.5 sm:text-xl dark:text-zinc-100">
                   {rates ? format(totalIn(c)!, c) : <Skeleton />}
                 </p>
                 {rates && (
-                  <p className="mt-4 hidden items-center gap-1.5 border-t sm:flex border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
+                  <p className="mt-0.5 hidden items-center gap-1.5 text-xs text-zinc-500 tabular-nums sm:flex dark:text-zinc-400">
                     {c === 'UAH'
                       ? <><BankIcon /> NBU rate · {rates.date}</>
                       : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}

@@ -33,7 +33,7 @@ function ShareBar({ title, slices }: { title: string, slices: Slice[] }) {
           />
         ))}
       </div>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-3">
+      <ul className="mt-2 grid gap-2 sm:grid-cols-3">
         {slices.map((x) => (
           <li key={x.key} className="flex items-start gap-2">
             {x.icon}
@@ -110,7 +110,7 @@ export function Allocation({ accounts, convert }: { accounts: Account[], convert
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Allocation</h2>
         <span className={muted}>share of total at NBU rate</span>
       </div>
-      <div className="mt-4 flex flex-col gap-6">
+      <div className="mt-3 flex flex-col gap-4">
         <ShareBar title="By currency" slices={byCurrency} />
         <ShareBar title="By type" slices={byKind} />
       </div>

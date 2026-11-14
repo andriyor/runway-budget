@@ -68,9 +68,9 @@ export function BalanceHistory({ accounts, transactions, convert, currency }: Ba
         </span>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <div
-          className="relative h-48 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
+          className="relative h-40 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
           tabIndex={0}
           role="img"
           aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
