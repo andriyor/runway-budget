@@ -36,11 +36,11 @@ function Estimate({ label, total, burn, currency }: { label: string, total: numb
   )
 }
 
-type SpendLimitProps = { months: number, total: number, spend: number, minimal: number | undefined, currency: Currency }
+type SpendLimitProps = { months: number, total: number, kept: number, spend: number, minimal: number | undefined, currency: Currency }
 
-// the most you can spend per month to make savings last `months` without income
-function SpendLimit({ months, total, spend, minimal, currency }: SpendLimitProps) {
-  const limit = Math.max(0, total) / months
+// the most you can spend per month to make savings plus the incomes that keep coming (`kept`) last `months`
+function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimitProps) {
+  const limit = Math.max(0, total) / months + kept
   const diff = limit - spend
   return (
     <div className="rounded-xl bg-violet-50 p-3 sm:p-4 dark:bg-violet-950/40">
@@ -61,7 +61,7 @@ function SpendLimit({ months, total, spend, minimal, currency }: SpendLimitProps
 const amountString = (n: number | null) => (n === null ? '' : String(n))
 
 // amounts as typed in the inputs; '' means not set
-type IncomeRow = { name: string, amount: string, currency: Currency }
+type IncomeRow = { name: string, amount: string, currency: Currency, keeps: boolean }
 type BudgetForm = {
   spend: string
   currency: Currency
@@ -76,7 +76,7 @@ type BudgetForm = {
 const toForm = (b: Budget | null, fallback: Currency = 'UAH'): BudgetForm => ({
   spend: b ? String(b.monthlySpend) : '',
   currency: b?.currency ?? fallback,
-  incomes: (b?.incomes ?? []).map((i) => ({ name: i.name, amount: String(i.amount), currency: i.currency })),
+  incomes: (b?.incomes ?? []).map((i) => ({ name: i.name, amount: String(i.amount), currency: i.currency, keeps: i.keeps })),
   reserve: amountString(b?.reserve ?? null),
   reserveCurrency: b?.reserveCurrency ?? fallback,
   minimal: amountString(b?.minimalSpend ?? null),
@@ -89,7 +89,7 @@ function budgetBody(f: BudgetForm) {
   return {
     monthlySpend: Number(f.spend),
     currency: f.currency,
-    incomes: f.incomes.filter((i) => i.amount !== '').map((i) => ({ name: i.name.trim() || 'Income', amount: Number(i.amount), currency: i.currency })),
+    incomes: f.incomes.filter((i) => i.amount !== '').map((i) => ({ name: i.name.trim() || 'Income', amount: Number(i.amount), currency: i.currency, keeps: i.keeps })),
     ...(f.reserve !== '' && { reserve: Number(f.reserve), reserveCurrency: f.reserveCurrency }),
     ...(f.minimal !== '' && { minimalSpend: Number(f.minimal), minimalSpendCurrency: f.minimalCurrency }),
     ...(f.months !== '' && { targetMonths: Number(f.months) }),
@@ -103,16 +103,18 @@ type RunwayProps = {
   reserveIn: (c: Currency) => number
   // all incomes together
   incomeIn: (c: Currency) => number | undefined
+  // the incomes that keep coming without the others
+  keptIncomeIn: (c: Currency) => number
   minimalIn: (c: Currency) => number | undefined
 }
 
-export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, minimalIn }: RunwayProps) {
+export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn }: RunwayProps) {
   const [form, setForm] = useState(() => toForm(saved))
   const [error, setError] = useState('')
   const field = <K extends keyof BudgetForm>(key: K) => (value: BudgetForm[K]) => setForm((f) => ({ ...f, [key]: value }))
   const incomeField = <K extends keyof IncomeRow>(index: number, key: K) => (value: IncomeRow[K]) =>
     setForm((f) => ({ ...f, incomes: f.incomes.map((i, n) => (n === index ? { ...i, [key]: value } : i)) }))
-  const addIncome = () => setForm((f) => ({ ...f, incomes: [...f.incomes, { name: '', amount: '', currency: f.currency }] }))
+  const addIncome = () => setForm((f) => ({ ...f, incomes: [...f.incomes, { name: '', amount: '', currency: f.currency, keeps: false }] }))
   const removeIncome = (index: number) => setForm((f) => ({ ...f, incomes: f.incomes.filter((_, n) => n !== index) }))
 
   const body = budgetBody(form)
@@ -137,6 +139,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, minim
   const available = saved ? availableIn(saved.currency) : undefined
   const reserved = saved ? reserveIn(saved.currency) : 0
   const incomeInSpendCurrency = saved ? incomeIn(saved.currency) : undefined
+  const kept = saved ? keptIncomeIn(saved.currency) : 0
   const minimalInSpendCurrency = saved ? minimalIn(saved.currency) : undefined
 
   const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
@@ -162,6 +165,14 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, minim
           {form.incomes.map((income, index) => (
             <div key={index} className="flex items-center gap-2">
               <input
+                type="checkbox"
+                checked={income.keeps}
+                onChange={(e) => incomeField(index, 'keeps')(e.target.checked)}
+                aria-label={`${income.name || `Income ${index + 1}`} keeps coming without income`}
+                title="Keeps coming without income"
+                className="size-4 shrink-0 accent-indigo-600"
+              />
+              <input
                 placeholder="Salary"
                 maxLength={100}
                 value={income.name}
@@ -182,6 +193,9 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, minim
               </button>
             </div>
           ))}
+          {form.incomes.length > 0 && (
+            <p className={muted}>Check an income that keeps coming in the “without income” estimates, like a pension or rent.</p>
+          )}
           <button type="button" className={`self-start text-sm ${linkButton}`} onClick={addIncome}>+ Add income</button>
         </fieldset>
         <label className="flex flex-col gap-1.5">
@@ -221,17 +235,17 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, minim
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(Math.max(0, available), saved.currency)} available</span>
                 </p>
               )}
-              <Estimate label="Without income" total={available} burn={saved.monthlySpend} currency={saved.currency} />
+              <Estimate label="Without income" total={available} burn={saved.monthlySpend - kept} currency={saved.currency} />
               {minimalInSpendCurrency !== undefined && (
                 <>
-                  <Estimate label="Extreme saving, without income" total={available} burn={minimalInSpendCurrency} currency={saved.currency} />
+                  <Estimate label="Extreme saving, without income" total={available} burn={minimalInSpendCurrency - kept} currency={saved.currency} />
                   {minimalInSpendCurrency >= saved.monthlySpend && (
                     <p className="text-sm text-amber-700 dark:text-amber-400">Extreme saving is not below your usual spending.</p>
                   )}
                 </>
               )}
               {saved.targetMonths !== null && (
-                <SpendLimit months={saved.targetMonths} total={available} spend={saved.monthlySpend} minimal={minimalInSpendCurrency} currency={saved.currency} />
+                <SpendLimit months={saved.targetMonths} total={available} kept={kept} spend={saved.monthlySpend} minimal={minimalInSpendCurrency} currency={saved.currency} />
               )}
               {incomeInSpendCurrency !== undefined && (
                 <Estimate label="With income" total={available} burn={saved.monthlySpend - incomeInSpendCurrency} currency={saved.currency} />

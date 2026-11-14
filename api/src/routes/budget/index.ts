@@ -2,10 +2,12 @@ import { type FastifyPluginAsync } from 'fastify'
 import type { Budget, Income } from '@runway-budget/shared'
 import { budget, currencies, type Currency } from '../../db/schema'
 
+type IncomeInput = Omit<Income, 'keeps'> & { keeps?: boolean }
+
 type BudgetInput = {
   monthlySpend: number
   currency: Currency
-  incomes?: Income[]
+  incomes?: IncomeInput[]
   reserve?: number
   reserveCurrency?: Currency
   minimalSpend?: number
@@ -22,7 +24,7 @@ const toDto = (row?: typeof budget.$inferSelect): Budget | null =>
     ? {
         monthlySpend: row.monthlySpendCents / 100,
         currency: row.currency,
-        incomes: row.incomes.map(({ amountCents, ...rest }) => ({ ...rest, amount: amountCents / 100 })),
+        incomes: row.incomes.map(({ amountCents, keeps = false, ...rest }) => ({ ...rest, amount: amountCents / 100, keeps })),
         reserve: fromCents(row.reserveCents),
         reserveCurrency: row.reserveCurrency,
         minimalSpend: fromCents(row.minimalSpendCents),
@@ -56,7 +58,8 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
               properties: {
                 name: { type: 'string', minLength: 1, maxLength: 100 },
                 amount: { type: 'number', exclusiveMinimum: 0 },
-                currency: { type: 'string', enum: currencies }
+                currency: { type: 'string', enum: currencies },
+                keeps: { type: 'boolean' }
               }
             }
           },
@@ -77,7 +80,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     const values = {
       monthlySpendCents: Math.round(monthlySpend * 100),
       currency,
-      incomes: incomes.map(({ amount, ...rest }) => ({ ...rest, amountCents: Math.round(amount * 100) })),
+      incomes: incomes.map(({ amount, keeps = false, ...rest }) => ({ ...rest, amountCents: Math.round(amount * 100), keeps })),
       reserveCents: toCents(reserve),
       reserveCurrency: reserve === undefined ? null : reserveCurrency!,
       minimalSpendCents: toCents(minimalSpend),

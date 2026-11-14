@@ -23,8 +23,8 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
 - **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
-  currency), an optional extreme-saving budget and an optional untouchable reserve, and see
-  how many months your savings last with and without income. Enter how many months you want to live
+  currency, marked if it keeps coming when the others stop, like a pension), an optional extreme-saving
+  budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
   without income to see the most you can spend per month.
 - **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
   months across all accounts, with a per-month table. The median income can be sent to Runway as an

@@ -73,8 +73,8 @@ export const budget = sqliteTable('budget', {
   id: integer('id').primaryKey(),
   monthlySpendCents: integer('monthly_spend_cents').notNull(),
   currency: text('currency', { enum: currencies }).notNull(),
-  // monthly incomes, e.g. a salary and a side job; amounts in minor units
-  incomes: text('incomes', { mode: 'json' }).$type<Array<{ name: string, amountCents: number, currency: Currency }>>().notNull().default([]),
+  // monthly incomes, e.g. a salary and a side job; amounts in minor units; keeps is missing on rows saved before it, meaning false
+  incomes: text('incomes', { mode: 'json' }).$type<Array<{ name: string, amountCents: number, currency: Currency, keeps?: boolean }>>().notNull().default([]),
   // optional amount that is never spent; excluded from runway
   reserveCents: integer('reserve_cents'),
   reserveCurrency: text('reserve_currency', { enum: currencies }),

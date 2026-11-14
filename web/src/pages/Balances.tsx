@@ -100,13 +100,17 @@ export function Balances() {
   // all incomes together; undefined when there are none or rates are missing
   const incomeIn = (c: Currency) =>
     budget?.incomes.length && rates ? budget.incomes.reduce((sum, i) => sum + convert(i.amount, i.currency, c)!, 0) : undefined
+  // incomes that keep coming in the "without income" estimates, e.g. rent
+  const keptIncomeIn = (c: Currency) =>
+    rates ? (budget?.incomes ?? []).filter((i) => i.keeps).reduce((sum, i) => sum + convert(i.amount, i.currency, c)!, 0) : 0
   const minimalIn = (c: Currency) => fromBudget(budget?.minimalSpend, budget?.minimalSpendCurrency, c)
   const availableIn = (c: Currency) => {
     const total = totalIn(c)
     return total === undefined ? undefined : total - reserveIn(c)
   }
+  // months without income, covering what the incomes that keep coming do not
   const cushionIn = (c: Currency) =>
-    budget?.targetMonths ? budget.targetMonths * fromBudget(budget.monthlySpend, budget.currency, c)! : 0
+    budget?.targetMonths ? budget.targetMonths * Math.max(0, fromBudget(budget.monthlySpend, budget.currency, c)! - keptIncomeIn(c)) : 0
   const forGoalsIn = (c: Currency) => {
     const available = availableIn(c)
     return available === undefined ? undefined : available - cushionIn(c)
@@ -167,7 +171,7 @@ export function Balances() {
       )}
 
       {budget !== undefined && (
-        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} minimalIn={minimalIn} />
+        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} />
       )}
 
       <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />

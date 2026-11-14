@@ -9,7 +9,7 @@ test('budget is empty, then set and overwritten', async (t) => {
 
   assert.equal((await app.inject({ url: '/api/budget' })).json(), null)
 
-  await put({ monthlySpend: 1000, currency: 'USD', incomes: [{ name: 'Job', amount: 2000, currency: 'USD' }], reserve: 5000, reserveCurrency: 'EUR' })
+  await put({ monthlySpend: 1000, currency: 'USD', incomes: [{ name: 'Job', amount: 2000, currency: 'USD', keeps: false }], reserve: 5000, reserveCurrency: 'EUR' })
   const res = await put({ monthlySpend: 40000.5, currency: 'UAH' })
   const expected = { monthlySpend: 40000.5, currency: 'UAH', ...none }
   assert.deepEqual(res.json(), expected)
@@ -18,7 +18,7 @@ test('budget is empty, then set and overwritten', async (t) => {
   const fullBody = {
     monthlySpend: 40000,
     currency: 'UAH',
-    incomes: [{ name: 'Job', amount: 1500.25, currency: 'USD' }, { name: 'Rent', amount: 12000, currency: 'UAH' }],
+    incomes: [{ name: 'Job', amount: 1500.25, currency: 'USD', keeps: false }, { name: 'Rent', amount: 12000, currency: 'UAH', keeps: true }],
     reserve: 3000,
     reserveCurrency: 'EUR',
     minimalSpend: 15000,
@@ -26,6 +26,9 @@ test('budget is empty, then set and overwritten', async (t) => {
     targetMonths: 12
   }
   assert.deepEqual((await put(fullBody)).json(), fullBody)
+  // an income saved without the flag does not keep coming, like those stored before it existed
+  const withoutFlag = await put({ monthlySpend: 1, currency: 'UAH', incomes: [{ name: 'Job', amount: 10, currency: 'UAH' }] })
+  assert.deepEqual(withoutFlag.json().incomes, [{ name: 'Job', amount: 10, currency: 'UAH', keeps: false }])
 
   assert.equal((await put({ monthlySpend: 0, currency: 'UAH' })).statusCode, 400)
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', incomes: [{ name: 'Job', amount: 100 }] })).statusCode, 400)

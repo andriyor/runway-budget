@@ -69,6 +69,7 @@ export type Budget = {
   targetMonths: number | null
 }
 
-export type Income = { name: string, amount: number, currency: Currency }
+// keeps: still comes in the "without income" estimates, like a pension or rent
+export type Income = { name: string, amount: number, currency: Currency, keeps: boolean }
 
 export type Goal = { id: number, name: string, target: number, currency: Currency }
