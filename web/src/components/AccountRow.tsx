@@ -106,19 +106,19 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             <a href={transactionsHref} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Transactions →</a>
           </p>
         </div>
-        {/* phones: delete sits on the name line and the controls take a full second line;
-            from sm up everything is one row with delete last */}
+        {/* a narrow list (phones, the desktop sidebar): delete sits on the name line and the controls take
+            a full second line; a list wide enough (the @container around it) gets one row with delete last */}
         <button
           type="button"
           onClick={remove}
           aria-label={`Delete account ${account.name}`}
-          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 sm:order-last dark:hover:bg-zinc-800"
+          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 @2xl:order-last dark:hover:bg-zinc-800"
         >
           <TrashIcon />
         </button>
-        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
+        <div className="flex w-full items-center gap-2 @2xl:w-auto @2xl:gap-3">
           <KindToggle value={kind} onChange={setKind} />
-          <div className="min-w-0 flex-1 sm:w-56 sm:flex-none">
+          <div className="min-w-0 flex-1 @2xl:w-56 @2xl:flex-none">
             {adjusting ? (
               <div className={`flex h-9 items-stretch ${inputBox}`}>
                 <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(-1)} aria-label={`Subtract from ${account.name}`} className={`rounded-l-lg border-r border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950`}>

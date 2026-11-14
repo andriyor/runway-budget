@@ -22,8 +22,8 @@ export function KindToggle({ value, onChange }: { value: AccountKind, onChange: 
                 : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
-            {/* icon only on phones; the label stays for screen readers */}
-            <Icon /> <span className="max-sm:sr-only">{kindLabels[k]}</span>
+            {/* icon only in an accounts list under 28rem (phones, the sidebar on smaller desktops); the label stays for screen readers */}
+            <Icon /> <span className="@max-md:sr-only">{kindLabels[k]}</span>
           </button>
         )
       })}

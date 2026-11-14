@@ -17,8 +17,9 @@ export default function App() {
   // the part before ? picks the page; the query is the page's own state, e.g. #/transactions?account=3
   const path = page.split('?')[0]
 
+  // Balances is wider on desktop for its accounts sidebar
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10">
+    <main className={`mx-auto flex ${path === '#/' ? 'max-w-7xl' : 'max-w-5xl'} flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10`}>
       <Nav page={path} />
       {/* keyed by page so switching pages clears an error */}
       <ErrorBoundary key={path}>

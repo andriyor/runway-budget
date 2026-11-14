@@ -59,67 +59,73 @@ export function Balances() {
 
       <ErrorBanner>{error}</ErrorBanner>
 
-      {/* phones: one line per currency; the rate footer only shows from sm up */}
-      <section className="grid gap-2 sm:grid-cols-3 sm:gap-4">
-        {currencies.map((c) => (
-          <div key={c} className={`${card} flex items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:justify-start`}>
-            <p className={`flex shrink-0 items-center gap-2 ${muted}`}>
-              <CurrencyIcon currency={c} /> Total in {c}
-            </p>
-            <p className="min-w-0 truncate text-lg font-semibold text-zinc-900 tabular-nums sm:mt-3 sm:text-2xl dark:text-zinc-100">
-              {rates ? format(totalIn(c)!, c) : <Skeleton />}
-            </p>
-            {rates && (
-              <p className="mt-4 hidden items-center gap-1.5 border-t sm:flex border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
-                {c === 'UAH'
-                  ? <><BankIcon /> NBU rate · {rates.date}</>
-                  : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
-              </p>
-            )}
-          </div>
-        ))}
-      </section>
+      {/* desktop: the overview on the left, accounts beside it; phones and tablets: one column */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
+          {/* phones: one line per currency; the rate footer only shows from sm up */}
+          <section className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+            {currencies.map((c) => (
+              <div key={c} className={`${card} flex items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:justify-start`}>
+                <p className={`flex shrink-0 items-center gap-2 ${muted}`}>
+                  <CurrencyIcon currency={c} /> Total in {c}
+                </p>
+                <p className="min-w-0 truncate text-lg font-semibold text-zinc-900 tabular-nums sm:mt-3 sm:text-2xl dark:text-zinc-100">
+                  {rates ? format(totalIn(c)!, c) : <Skeleton />}
+                </p>
+                {rates && (
+                  <p className="mt-4 hidden items-center gap-1.5 border-t sm:flex border-dashed border-zinc-200 pt-3 text-xs text-zinc-500 tabular-nums dark:border-zinc-800 dark:text-zinc-400">
+                    {c === 'UAH'
+                      ? <><BankIcon /> NBU rate · {rates.date}</>
+                      : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
+                  </p>
+                )}
+              </div>
+            ))}
+          </section>
 
-      <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={chartCurrency} />
+          <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={chartCurrency} />
 
-      <Allocation accounts={accounts} convert={convert} />
-
-      <section className={card}>
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Accounts</h2>
-          <span className={muted}>{accounts.length}</span>
+          <Allocation accounts={accounts} convert={convert} />
         </div>
-        <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
-          {accounts.map((a, i) => (
-            <AccountRow
-              key={`${a.id}-${a.updatedAt}`}
-              account={a}
-              onSaved={replace}
-              onDeleted={removeAccount}
-              onMoveUp={i > 0 ? () => move(i, -1) : undefined}
-              onMoveDown={i < accounts.length - 1 ? () => move(i, 1) : undefined}
-            />
-          ))}
-        </ul>
-        {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
 
-        <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
-          <input
-            placeholder="Account name"
-            required
-            maxLength={100}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-label="Account name"
-            className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
-          />
-          <KindToggle value={kind} onChange={setKind} />
-          <div className="w-56">
-            <MoneyInput label="Balance" required placeholder="Balance" value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+        {/* the container lets account rows lay out by the list's width, not the screen's */}
+        <section className={`${card} @container lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto`}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Accounts</h2>
+            <span className={muted}>{accounts.length}</span>
           </div>
-          <button className={button}>Add account</button>
-        </form>
-      </section>
+          <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
+            {accounts.map((a, i) => (
+              <AccountRow
+                key={`${a.id}-${a.updatedAt}`}
+                account={a}
+                onSaved={replace}
+                onDeleted={removeAccount}
+                onMoveUp={i > 0 ? () => move(i, -1) : undefined}
+                onMoveDown={i < accounts.length - 1 ? () => move(i, 1) : undefined}
+              />
+            ))}
+          </ul>
+          {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
+
+          <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
+            <input
+              placeholder="Account name"
+              required
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              aria-label="Account name"
+              className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
+            />
+            <KindToggle value={kind} onChange={setKind} />
+            <div className="w-56">
+              <MoneyInput label="Balance" required placeholder="Balance" value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+            </div>
+            <button className={button}>Add account</button>
+          </form>
+        </section>
+      </div>
     </>
   )
 }
