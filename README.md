@@ -25,6 +25,9 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **Runway**: enter monthly spending, an optional salary, an optional extreme-saving budget and an optional untouchable reserve, and see
   how many months your savings last with and without salary. Enter how many months you want to live
   without salary to see the most you can spend per month.
+- **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
+  months across all accounts, with a per-month table. The median income can be sent to Runway as salary,
+  so runway and goal dates use what you actually earn.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
   and not counted toward goals.
@@ -171,6 +174,9 @@ integer minor units (cents/kopiykas).
 
 - **Available savings** = total balance − untouchable reserve, converted at NBU rates.
 - **Runway** = available savings ÷ monthly loss (spending, or spending − salary). A month is 30.44 days.
+- **Savings rate** = (income − spending) ÷ income, summed over the shown months rather than a median
+  of monthly rates, so one month of tiny income cannot skew it. Moves between your own accounts and
+  investments count as neither income nor spending.
 - **Goal ETA** = (target − available savings) ÷ monthly surplus. Each goal is measured on its own,
   as if the whole surplus goes to it.
 
@@ -270,6 +276,26 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 
 - [x] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
 - [x] Delete and rename accounts
-- [ ] Balance history over time
+- [x] Balance history over time
 - [ ] Goals in priority order (reach one after another instead of each on its own)
 - [x] Shared package for types used by both `api` and `web`
+- [x] Income and savings rate from transactions (Cash flow card)
+
+### Missing statistics
+
+- [ ] This month against the usual: each category's spending vs its median («Продукти +34%»)
+- [ ] Recurring payments: detect subscriptions (same merchant, similar amount each month) and show the
+  committed monthly total
+- [ ] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
+- [ ] Year-over-year: same month last year and yearly totals per category
+- [ ] Pace within the month: «spent X by the 14th, on track for Y»
+
+### Missing financial concepts
+
+- [ ] Historical NBU rates, so the balance chart and cash flow show currency gains and losses
+- [ ] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
+- [ ] Investments: track positions and value, count them in net worth, let goals assume a return
+- [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities
+- [ ] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
+- [ ] Category budgets: a monthly cap per category and progress against it
+- [ ] Taxes: set aside a ФОП's single tax and ЄСВ from income
