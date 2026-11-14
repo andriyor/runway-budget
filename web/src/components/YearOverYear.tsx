@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { percentOf, wholeMoney } from '../lib/format'
 import { card, muted } from '../lib/styles'
 import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
@@ -8,6 +8,9 @@ const YEARS = 3
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 
 type Row = { category: Category, byYear: Map<number, number>, lastYearToDate: number }
+// a table column: a past year, last year to date (when comparable) or this year so far, the last one;
+// from marks the column of the year the data starts in
+type Column = { key: string, label: string, value: (r: Row) => number, current?: boolean, from?: boolean }
 
 // Spending per category and calendar year, and last year's spending from 1 January to today's date,
 // so the running year can be compared with the same part of the last one. Net of refunds; cancelled
@@ -34,13 +37,13 @@ function perYear(transactions: Transaction[], accounts: Account[], categories: C
     rows.set(parent.id, row)
   }
   if (!first) return undefined
+  const since = first
   // the first year counts only with at least its December, else a few days of data look like a cheap year
   const years = Array.from({ length: YEARS }, (_, i) => year - YEARS + 1 + i)
-    .filter((y) => y > first!.getFullYear() || (y === first!.getFullYear() && first! < new Date(y, 11, 1)))
+    .filter((y) => y > since.getFullYear() || (y === since.getFullYear() && since < new Date(y, 11, 1)))
   const list = [...rows.values()]
-    .filter((r) => years.some((y) => (r.byYear.get(y) ?? 0) > 0))
     .sort((a, b) => (b.byYear.get(year) ?? 0) - (a.byYear.get(year) ?? 0) || (b.byYear.get(year - 1) ?? 0) - (a.byYear.get(year - 1) ?? 0))
-  return { rows: list, years, first }
+  return { rows: list, years, first: since }
 }
 
 type YearOverYearProps = {
@@ -55,27 +58,31 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
   const [now] = useState(() => new Date())
   if (!transactions || !categories.length) return null
   const result = perYear(transactions, accounts, categories, convert, currency, now)
-  if (!result?.rows.length) return null
-  const { rows, years, first } = result
+  if (!result) return null
+  const { years, first } = result
   const year = now.getFullYear()
-  // a change needs last year's data from 1 January
+  // a change needs last year's data from 1 January; last year then shows only to date, the part it is taken against
   const comparable = years.includes(year - 1) && first <= new Date(year - 1, 0, 1, 23, 59)
-  // when comparable, last year shows only to date, the part the change is taken against
-  const shown = comparable ? years.filter((y) => y !== year - 1) : years
-  const total = (y: number) => rows.reduce((sum, r) => sum + (r.byYear.get(y) ?? 0), 0)
-  const lastYearToDate = rows.reduce((sum, r) => sum + r.lastYearToDate, 0)
+  const columns: Column[] = [
+    ...years.filter((y) => y < (comparable ? year - 1 : year))
+      .map((y) => ({ key: String(y), label: String(y), value: (r: Row) => r.byYear.get(y) ?? 0, from: y === first.getFullYear() })),
+    ...(comparable ? [{ key: 'before', label: `${year - 1} to date`, value: (r: Row) => r.lastYearToDate }] : []),
+    { key: 'now', label: `${year} to date`, value: (r: Row) => r.byYear.get(year) ?? 0, current: true, from: year === first.getFullYear() },
+  ]
+  const rows = result.rows.filter((r) => columns.some((c) => c.value(r) > 0))
+  if (!rows.length) return null
+  const total = (c: Column) => rows.reduce((sum, r) => sum + c.value(r), 0)
+  const [before, current] = columns.slice(-2)
 
-  const change = (spent: number, before: number) => {
-    if (before <= 0) return <td className={muted}>{spent > 0 ? 'new' : '—'}</td>
-    const over = spent > before
+  const change = (spent: number, base: number) => {
+    if (base <= 0) return <td className={muted}>{spent > 0 ? 'new' : '—'}</td>
+    const over = spent > base
     return (
-      <td className={spent === before ? muted : over ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}>
-        {spent === before ? '0%' : `${over ? '+' : '−'}${percentOf(Math.abs(spent - before) / before)}%`}
+      <td className={spent === base ? muted : over ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}>
+        {spent === base ? '0%' : `${over ? '+' : '−'}${percentOf(Math.abs(spent - base) / base)}%`}
       </td>
     )
   }
-  // last year's same days, next to this year's so far: the base the change is taken against
-  const toDateCell = (before: number) => <td className="text-zinc-500 dark:text-zinc-400">{wholeMoney(before, currency)}</td>
 
   return (
     <section className={card}>
@@ -91,50 +98,39 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
           <thead className={muted}>
             <tr className="text-right [&>th]:pb-1 [&>th]:font-normal">
               <th className="text-left">Category</th>
-              {shown.map((y) => (
-                <Fragment key={y}>
-                  {y === year && comparable && <th>{year - 1} to date</th>}
-                  <th>
-                    {y === year ? `${y} to date` : y}
-                    {y === first.getFullYear() && (first.getMonth() > 0 || first.getDate() > 1) && (
-                      <span className="block text-xs">from {dayMonth.format(first)}</span>
-                    )}
-                  </th>
-                </Fragment>
+              {columns.map((c) => (
+                <th key={c.key}>
+                  {c.label}
+                  {c.from && (first.getMonth() > 0 || first.getDate() > 1) && (
+                    <span className="block text-xs">from {dayMonth.format(first)}</span>
+                  )}
+                </th>
               ))}
               {comparable && <th className="w-20">Change</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {rows.map(({ category, byYear, lastYearToDate: before }) => (
-              <tr key={category.id} className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:py-1.5">
+            {rows.map((r) => (
+              <tr key={r.category.id} className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:py-1.5">
                 <td className="text-left">
                   {/* this year's transactions in the category, on the Transactions page */}
-                  <a href={`#/transactions?category=${category.id}&period=y:${year}`} className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
-                    <span aria-hidden className="mr-2">{category.emoji}</span>
-                    {category.label}
+                  <a href={`#/transactions?category=${r.category.id}&period=y:${year}`} className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
+                    <span aria-hidden className="mr-2">{r.category.emoji}</span>
+                    {r.category.label}
                   </a>
                 </td>
-                {shown.map((y) => (
-                  <Fragment key={y}>
-                    {y === year && comparable && toDateCell(before)}
-                    <td className={y === year ? undefined : 'text-zinc-500 dark:text-zinc-400'}>{wholeMoney(byYear.get(y) ?? 0, currency)}</td>
-                  </Fragment>
+                {columns.map((c) => (
+                  <td key={c.key} className={c.current ? undefined : 'text-zinc-500 dark:text-zinc-400'}>{wholeMoney(c.value(r), currency)}</td>
                 ))}
-                {comparable && change(byYear.get(year) ?? 0, before)}
+                {comparable && change(current.value(r), before.value(r))}
               </tr>
             ))}
           </tbody>
           <tfoot className="border-t border-zinc-200 font-semibold dark:border-zinc-700">
             <tr className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:pt-2">
               <td className="text-left">Total</td>
-              {shown.map((y) => (
-                <Fragment key={y}>
-                  {y === year && comparable && <td>{wholeMoney(lastYearToDate, currency)}</td>}
-                  <td>{wholeMoney(total(y), currency)}</td>
-                </Fragment>
-              ))}
-              {comparable && change(total(year), lastYearToDate)}
+              {columns.map((c) => <td key={c.key}>{wholeMoney(total(c), currency)}</td>)}
+              {comparable && change(total(current), total(before))}
             </tr>
           </tfoot>
         </table>
