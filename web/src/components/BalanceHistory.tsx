@@ -49,6 +49,10 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
   const values = points.map((p) => p.value)
   const low = Math.min(...values)
   const high = Math.max(...values)
+  // the extremes get a dot on the line and a guide to their axis label; the last one wins a tie
+  // a flat line has one extreme, not two on top of each other
+  const levels = high === low ? [high] : [high, low]
+  const extremes = levels.map((v) => values.lastIndexOf(v))
   const pad = (high - low) * 0.1 || Math.abs(high) * 0.1 || 1
   const [min, max] = [low - pad, high + pad]
   const x = (i: number) => (i / (points.length - 1)) * 100
@@ -74,9 +78,11 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
       </div>
 
       <div className="mt-4 flex gap-2">
-        <div className={`flex w-16 shrink-0 flex-col justify-between text-right text-xs tabular-nums ${muted}`} aria-hidden>
-          <span>{wholeMoney(high, currency)}</span>
-          <span>{wholeMoney(low, currency)}</span>
+        {/* labels sit at the height of the values they name, not at the padded edges */}
+        <div className={`relative w-16 shrink-0 text-right text-xs tabular-nums ${muted}`} aria-hidden>
+          {levels.map((v, i) => (
+            <span key={i} className="absolute right-0 -translate-y-1/2" style={{ top: `${y(v)}%` }}>{wholeMoney(v, currency)}</span>
+          ))}
         </div>
         <div
           className="relative h-48 min-w-0 flex-1 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
@@ -92,9 +98,20 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
           onBlur={() => setHover(undefined)}
         >
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden>
+            {levels.map((v, i) => (
+              <line key={i} x1={0} x2={100} y1={y(v)} y2={y(v)} stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" className="text-zinc-300 dark:text-zinc-700" />
+            ))}
             <path d={`${line}L100,100L0,100Z`} fill="var(--series-1)" opacity={0.12} />
             <path d={line} fill="none" stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           </svg>
+          {extremes.map((i) => (
+            <div
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900"
+              style={{ left: `${x(i)}%`, top: `${y(values[i])}%`, background: 'var(--series-1)' }}
+            />
+          ))}
           {active && (
             <>
               <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-zinc-400 dark:border-zinc-500" style={{ left: `${x(hover!)}%` }} />
