@@ -259,7 +259,8 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
   and the chart showing one quarter) read the same breakpoint from `web/src/lib/media.ts`. On a
   phone the chart's median still covers every complete month in the filter's scope, not only the
   quarter shown.
-- **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`).
+- **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`);
+  a query after it carries page state, e.g. `#/transactions?account=3` opens that account.
 - **Web layout:** `web/src/pages/` for the two pages, `components/` for their parts, `lib/` for
   types, API calls, formatting and shared class names.
 - **Dev watcher ignores `data.db`.** `pnpm dev` restarts the API on file changes in `api/`; writes to
