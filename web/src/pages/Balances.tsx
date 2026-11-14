@@ -5,6 +5,7 @@ import { BalanceHistory } from '../components/BalanceHistory'
 import { CashFlow } from '../components/CashFlow'
 import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
+import { ThisMonth } from '../components/ThisMonth'
 import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
 import { CurrencyIcon, BankIcon } from '../components/icons'
 import { api } from '../lib/api'
@@ -168,6 +169,10 @@ export function Balances() {
           currency={budget?.currency ?? 'UAH'}
           onUseIncome={budget ? incomeFromCashFlow : undefined}
         />
+      )}
+
+      {rates && (
+        <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
       )}
 
       {budget !== undefined && (
