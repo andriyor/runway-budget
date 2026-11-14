@@ -13,7 +13,7 @@ const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padSt
 // every later transaction: bank-synced ones and manual ± adjustments. Accounts without any stay flat.
 // ponytail: today's NBU rate for every day, so currency moves don't show; needs historical rates if they matter
 export function BalanceHistory({ accounts, convert, currency }: { accounts: Account[], convert: Convert, currency: Currency }) {
-  const [list, setList] = useState<Transaction[]>()
+  const [transactions, setTransactions] = useState<Transaction[]>()
   const [hover, setHover] = useState<number>()
   const [today] = useState(() => new Date())
   // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
@@ -22,17 +22,17 @@ export function BalanceHistory({ accounts, convert, currency }: { accounts: Acco
   useEffect(() => {
     if (!ids) return
     Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
-      .then((all) => setList(all.flat()))
-      .catch(() => setList([]))
+      .then((all) => setTransactions(all.flat()))
+      .catch(() => setTransactions([]))
   }, [ids])
 
   const total = accounts.reduce((sum, a) => sum + (convert(a.balance, a.currency, currency) ?? NaN), 0)
-  if (!list?.length || Number.isNaN(total)) return null
+  if (!transactions?.length || Number.isNaN(total)) return null
 
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const byDay = new Map<string, number>()
   let first = today
-  for (const t of list) {
+  for (const t of transactions) {
     const time = new Date(t.time)
     if (time < first) first = time
     byDay.set(dayKey(time), (byDay.get(dayKey(time)) ?? 0) + convert(t.amount, currencyOf.get(t.accountId)!, currency)!)
