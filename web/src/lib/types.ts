@@ -1,7 +1,7 @@
 import type { AccountKind, AllOf, Category, Currency } from '@runway-budget/shared'
 
 // API response shapes live in the shared package
-export type { Account, AccountKind, Budget, Category, Currency, Goal, Income, Inflation, Rates, RateHistory, Transaction } from '@runway-budget/shared'
+export type { Account, AccountKind, Budget, Category, CategoryBudget, Currency, Goal, Income, Inflation, Rates, RateHistory, Transaction } from '@runway-budget/shared'
 
 // runtime lists for pickers; AllOf keeps them equal to the shared unions
 const currencyList = ['USD', 'EUR', 'UAH'] as const

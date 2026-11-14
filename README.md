@@ -38,6 +38,9 @@ All accounts together, in Runway's currency.
   the same days a year ago. Same days rather than whole months, so a half-gone month does not look cheap.
   Above it, the pace: «spent X by 14 листопада, on track for Y», where Y is X plus the median of what past
   months spent after that day, red when above Runway's monthly spending (or the usual month without a budget).
+- **Category budgets**: a monthly cap per top-level spending category, in any currency, with this
+  month's spending against it: a bar with a tick at an even pace for the day, amber once ahead of that
+  pace, red once over the cap. Picking a category that has a cap edits it.
 - **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
   months across all accounts, with a per-month table. The median income can be sent to Runway as an
   `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
@@ -209,6 +212,9 @@ integer minor units (cents/kopiykas).
 | `DELETE` | `/accounts/:id` | Delete account                                        |
 | `GET`    | `/budget`       | Monthly spend, incomes and reserve, or `null`         |
 | `PUT`    | `/budget`       | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }` |
+| `GET`    | `/category-budgets` | Monthly caps per category                         |
+| `PUT`    | `/category-budgets/:category` | Set or replace a top-level spending category's cap `{ amount, currency }` |
+| `DELETE` | `/category-budgets/:category` | Remove a cap                            |
 | `GET`    | `/goals`        | List goals                                            |
 | `POST`   | `/goals`        | Create goal `{ name, target, currency }`              |
 | `DELETE` | `/goals/:id`    | Delete goal                                           |
@@ -361,5 +367,5 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - [ ] Investments: track positions and value, count them in net worth, let goals assume a return
 - [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities
 - [x] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
-- [ ] Category budgets: a monthly cap per category and progress against it
+- [x] Category budgets: a monthly cap per category and progress against it
 - [ ] Taxes: set aside a ФОП's single tax and ЄСВ from income

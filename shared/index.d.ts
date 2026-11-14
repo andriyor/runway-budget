@@ -81,3 +81,6 @@ export type Budget = {
 export type Income = { name: string, amount: number, currency: Currency, keeps: boolean }
 
 export type Goal = { id: number, name: string, target: number, currency: Currency }
+
+// a monthly spending cap for a top-level spending category
+export type CategoryBudget = { category: string, amount: number, currency: Currency }

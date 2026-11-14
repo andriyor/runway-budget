@@ -68,6 +68,13 @@ export const goals = sqliteTable('goals', {
   currency: text('currency', { enum: currencies }).notNull()
 })
 
+// a monthly spending cap per top-level spending category
+export const categoryBudgets = sqliteTable('category_budgets', {
+  category: text('category').primaryKey(),
+  amountCents: integer('amount_cents').notNull(),
+  currency: text('currency', { enum: currencies }).notNull()
+})
+
 // single row (id = 1): how much is spent per month, used for runway
 export const budget = sqliteTable('budget', {
   id: integer('id').primaryKey(),

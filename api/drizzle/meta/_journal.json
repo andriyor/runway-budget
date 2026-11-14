@@ -127,6 +127,13 @@
       "when": 1794663839889,
       "tag": "0017_drop_salary",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794668863885,
+      "tag": "0018_category_budgets",
+      "breakpoints": true
     }
   ]
 }

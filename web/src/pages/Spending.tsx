@@ -1,4 +1,5 @@
 import { CashFlow } from '../components/CashFlow'
+import { CategoryBudgets } from '../components/CategoryBudgets'
 import { Recurring } from '../components/Recurring'
 import { ThisMonth } from '../components/ThisMonth'
 import { YearOverYear } from '../components/YearOverYear'
@@ -34,6 +35,7 @@ export function Spending() {
       {rates && (
         <>
           <ThisMonth {...shared} planned={budget?.monthlySpend} />
+          <CategoryBudgets {...shared} />
           <CashFlow transactions={transactions} accounts={accounts} categories={categories} convertOn={convertOn} currency={currency} onUseIncome={budget ? incomeFromCashFlow : undefined} inflation={inflation} />
           <Recurring {...shared} />
           <YearOverYear {...shared} />
