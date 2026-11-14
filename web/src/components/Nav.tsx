@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ChartIcon, ListIcon, TargetIcon, WalletIcon } from './icons'
+import { ChartColumn, List, Target, Wallet } from 'lucide-react'
 
 // Phones: a fixed bottom tab bar with icons, within thumb reach and always visible.
 // From sm up: the pills at the top of the page, with a smaller icon before the label.
@@ -16,10 +16,10 @@ export function Nav({ page }: { page: string }) {
   )
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-zinc-200 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:static sm:z-auto sm:gap-2 sm:border-0 sm:bg-transparent sm:pb-0 sm:backdrop-blur-none dark:border-zinc-800 dark:bg-zinc-900/90 sm:dark:bg-transparent">
-      {link('#/', 'Balances', <WalletIcon />)}
-      {link('#/spending', 'Spending', <ChartIcon />)}
-      {link('#/transactions', 'Transactions', <ListIcon />)}
-      {link('#/plan', 'Plan', <TargetIcon />)}
+      {link('#/', 'Balances', <Wallet size={24} />)}
+      {link('#/spending', 'Spending', <ChartColumn size={24} />)}
+      {link('#/transactions', 'Transactions', <List size={24} />)}
+      {link('#/plan', 'Plan', <Target size={24} />)}
     </nav>
   )
 }

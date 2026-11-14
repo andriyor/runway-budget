@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CategorySpending } from '../components/CategorySpending'
 import { MerchantIcon } from '../components/MerchantIcon'
-import { SyncIcon } from '../components/icons'
+import { RefreshCw } from 'lucide-react'
 import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
 import { PeriodPicker } from '../components/PeriodPicker'
@@ -244,7 +244,7 @@ export function TransactionsPage() {
             )}
             {/* icon only on phones, the name stays for screen readers and as a tooltip */}
             <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
-              <SyncIcon spinning={syncing} />
+              <RefreshCw strokeWidth={2} className={syncing ? 'motion-safe:animate-spin' : undefined} />
               <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
             </button>
           </div>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { KindToggle, ErrorText, MoneyInput } from './controls'
-import { CurrencyIcon, ChevronIcon, TrashIcon } from './icons'
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { CurrencyIcon } from './icons'
 import { api } from '../lib/api'
 import { button, inputBox } from '../lib/styles'
 import { format, symbols } from '../lib/format'
@@ -80,10 +81,10 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
       <form className="flex flex-wrap items-center gap-x-3 gap-y-2" onSubmit={save}>
         <div className="-ml-2 flex flex-col">
           <button type="button" onClick={onMoveUp} disabled={!onMoveUp} aria-label={`Move ${account.name} up`} className={moveButton}>
-            <ChevronIcon up />
+            <ChevronUp strokeWidth={2} />
           </button>
           <button type="button" onClick={onMoveDown} disabled={!onMoveDown} aria-label={`Move ${account.name} down`} className={moveButton}>
-            <ChevronIcon />
+            <ChevronDown strokeWidth={2} />
           </button>
         </div>
         {/* links to the account's transactions only when it has any */}
@@ -123,7 +124,7 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
           aria-label={`Delete account ${account.name}`}
           className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 @2xl:order-last dark:hover:bg-zinc-800"
         >
-          <TrashIcon />
+          <Trash2 />
         </button>
         <div className="flex w-full items-center gap-2 @2xl:w-auto @2xl:gap-3">
           <KindToggle value={kind} onChange={setKind} />

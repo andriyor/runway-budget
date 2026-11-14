@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronIcon } from './icons'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { percentOf, wholeMoney } from '../lib/format'
 import { monthKey } from '../lib/periods'
 import { median } from '../lib/stats'
@@ -115,7 +115,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
                 onClick={() => setOpen(open === id ? undefined : id)}
                 className="rounded-md p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
               >
-                <ChevronIcon up={open === id} />
+                {open === id ? <ChevronUp strokeWidth={2} /> : <ChevronDown strokeWidth={2} />}
               </button>
             )}
           </span>

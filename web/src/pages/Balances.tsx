@@ -3,7 +3,8 @@ import { AccountRow } from '../components/AccountRow'
 import { Allocation } from '../components/Allocation'
 import { BalanceHistory } from '../components/BalanceHistory'
 import { ErrorBanner, InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
-import { CurrencyIcon, BankIcon } from '../components/icons'
+import { Landmark } from 'lucide-react'
+import { CurrencyIcon } from '../components/icons'
 import { api } from '../lib/api'
 import { useFinance } from '../lib/finance'
 import { format, formatRate, symbols } from '../lib/format'
@@ -75,7 +76,7 @@ export function Balances() {
                 {rates && (
                   <p className="mt-0.5 hidden items-center gap-1.5 text-xs text-zinc-500 tabular-nums sm:flex dark:text-zinc-400">
                     {c === 'UAH'
-                      ? <><BankIcon /> NBU rate · {rates.date}</>
+                      ? <><Landmark /> NBU rate · {rates.date}</>
                       : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
                   </p>
                 )}

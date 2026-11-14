@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { InfoIcon } from './icons'
+import { Info } from 'lucide-react'
 import { kindIcons, kindLabels } from '../lib/display'
 import { inputBox } from '../lib/styles'
 import { currencies, type Currency, accountKinds, type AccountKind } from '../lib/types'
@@ -107,7 +107,7 @@ export function InfoTip({ label, children }: { label: string, children: ReactNod
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
         className="rounded-full text-zinc-400 hover:text-zinc-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-200"
       >
-        <InfoIcon />
+        <Info size={20} />
       </button>
       <span
         role="tooltip"

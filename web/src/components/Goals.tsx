@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AVG_DAYS_IN_MONTH } from './Runway'
 import { Skeleton, ErrorText, MoneyInput } from './controls'
-import { CurrencyIcon, CalendarIcon, TrashIcon } from './icons'
+import { Calendar, Trash2 } from 'lucide-react'
+import { CurrencyIcon } from './icons'
 import { api } from '../lib/api'
 import { format } from '../lib/format'
 import { monthsToSave } from '../lib/inflation'
@@ -92,7 +93,7 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
         <p className={muted}>Measured against your available savings. Each goal assumes your whole monthly surplus goes to it.</p>
         {cushion && (
           <p className={`mt-1 flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
-            <CalendarIcon />
+            <Calendar />
             <span>{format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month cushion</span>
             {cushion.available < cushion.amount && (
               <span className="text-amber-700 dark:text-amber-400">· {format(cushion.amount - Math.max(0, cushion.available), cushion.currency)} short of covering it</span>
@@ -123,7 +124,7 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
                     aria-label={`Delete goal ${g.name}`}
                     className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
                   >
-                    <TrashIcon />
+                    <Trash2 />
                   </button>
                 </div>
               </div>

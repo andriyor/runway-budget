@@ -1,7 +1,7 @@
 import { Select } from '@base-ui/react/select'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
-import { ChevronIcon } from './icons'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { periodsOf } from '../lib/periods'
 import { inputBox } from '../lib/styles'
 import type { Transaction } from '../lib/types'
@@ -68,7 +68,7 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
       {listKind !== '' && (
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <button type="button" className={step} disabled={!older} onClick={() => older && onChange(older)} aria-label="Previous period">
-            <span className="-rotate-90"><ChevronIcon up /></span>
+            <ChevronLeft strokeWidth={2} />
           </button>
           <Select.Root
             value={period}
@@ -80,7 +80,7 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
               className={`flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-900 outline-none sm:w-64 sm:flex-none dark:text-zinc-100 ${inputBox}`}
             >
               <Select.Value className="truncate" />
-              <Select.Icon className="shrink-0 text-zinc-400"><ChevronIcon /></Select.Icon>
+              <Select.Icon className="shrink-0 text-zinc-400"><ChevronDown strokeWidth={2} /></Select.Icon>
             </Select.Trigger>
             <Select.Portal>
               <Select.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-40 outline-none">
@@ -102,7 +102,7 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
             </Select.Portal>
           </Select.Root>
           <button type="button" className={step} disabled={!newer} onClick={() => newer && onChange(newer)} aria-label="Next period">
-            <span className="rotate-90"><ChevronIcon up /></span>
+            <ChevronRight strokeWidth={2} />
           </button>
         </div>
       )}

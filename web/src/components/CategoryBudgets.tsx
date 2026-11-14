@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ErrorText, MoneyInput } from './controls'
-import { TrashIcon } from './icons'
+import { Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { format, wholeMoney } from '../lib/format'
 import { monthKey } from '../lib/periods'
@@ -122,7 +122,7 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
                     aria-label={`Remove the budget for ${c.label}`}
                     className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
                   >
-                    <TrashIcon />
+                    <Trash2 />
                   </button>
                 </span>
               </div>

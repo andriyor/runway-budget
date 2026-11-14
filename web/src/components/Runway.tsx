@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ErrorText, MoneyInput } from './controls'
-import { LockIcon, BagIcon, BriefcaseIcon, CalendarIcon, TrendDownIcon, TrashIcon } from './icons'
+import { Briefcase, Calendar, Lock, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
 import { api } from '../lib/api'
 import { format } from '../lib/format'
 import { monthsLasting } from '../lib/inflation'
@@ -181,15 +181,15 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
           <p className={muted}>How long your savings last.</p>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-rose-500"><BagIcon /></span> I spend per month</span>
+          <span className={fieldLabel}><span className="text-rose-500"><ShoppingBag /></span> I spend per month</span>
           <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={form.spend} onChange={field('spend')} currency={form.currency} onCurrency={field('currency')} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-sky-600"><TrendDownIcon /></span> Essential spending per month {optional}</span>
+          <span className={fieldLabel}><span className="text-sky-600"><TrendingDown /></span> Essential spending per month {optional}</span>
           <MoneyInput id="minimal" label="Essential spending per month" min="0.01" placeholder="rent, food, medicine: less than usual" value={form.minimal} onChange={field('minimal')} currency={form.minimalCurrency} onCurrency={field('minimalCurrency')} />
         </label>
         <fieldset className="flex flex-col gap-1.5">
-          <legend className={`${fieldLabel} mb-1.5`}><span className="text-emerald-600"><BriefcaseIcon /></span> My income per month {optional}</legend>
+          <legend className={`${fieldLabel} mb-1.5`}><span className="text-emerald-600"><Briefcase /></span> My income per month {optional}</legend>
           {form.incomes.map((income, index) => (
             <div key={index} className="flex items-center gap-2">
               <input
@@ -217,7 +217,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
                 aria-label={`Remove income ${income.name || index + 1}`}
                 className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
               >
-                <TrashIcon />
+                <Trash2 />
               </button>
             </div>
           ))}
@@ -227,11 +227,11 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
           <button type="button" className={`self-start text-sm ${linkButton}`} onClick={addIncome}>+ Add income</button>
         </fieldset>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-amber-500"><LockIcon /></span> Untouchable reserve {optional}</span>
+          <span className={fieldLabel}><span className="text-amber-500"><Lock /></span> Untouchable reserve {optional}</span>
           <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={form.reserve} onChange={field('reserve')} currency={form.reserveCurrency} onCurrency={field('reserveCurrency')} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-violet-600"><CalendarIcon /></span> Months to cover without income {optional}</span>
+          <span className={fieldLabel}><span className="text-violet-600"><Calendar /></span> Months to cover without income {optional}</span>
           <div className={`flex items-center ${inputBox}`}>
             <input
               id="months"
@@ -257,7 +257,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
             <>
               {reserved > 0 && (
                 <p className={`flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
-                  <LockIcon />
+                  <Lock />
                   <span>{format(reserved, saved.currency)} untouchable</span>
                   <span>·</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(Math.max(0, available), saved.currency)} available</span>
