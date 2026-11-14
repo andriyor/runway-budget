@@ -234,6 +234,7 @@ integer minor units (cents/kopiykas).
 | `GET`    | `/rates`        | NBU rates as UAH per unit, cached for an hour         |
 | `GET`    | `/rates/history?from=YYYY-MM-DD` | NBU rates for every day from `from` to today, cached for 12 hours |
 | `GET`    | `/inflation?from=YYYY-MM` | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day |
+| `GET`    | `/stats/spending-per-year?currency=UAH&tz=Europe/Kyiv` | Spending per category and year, and last year's up to today's date, at today's NBU rates; `tz` sets the local day |
 
 ## How estimates work
 
@@ -327,6 +328,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   a time («Показати ще» for more), and a row's category and essential flag are plain buttons that
   swap in their dropdown only when clicked. That took a year of transactions from 153k page
   elements (108k dropdown options) and ~1.4 s per filter change to 1.8k elements and ~40 ms.
+  The exception is Spending per year, summed by `/stats/spending-per-year` with the viewer's time zone.
 - **Monthly chart folds small categories.** It colors the seven biggest categories over the shown
   range and folds the rest into one gray `Решта`, since more hues stop being distinguishable. The
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast
@@ -387,3 +389,22 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - [x] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
 - [x] Category budgets: a monthly cap per category and progress against it
 - [ ] Taxes: set aside a ФОП's single tax and ЄСВ from income
+
+### Tech debt
+
+Deliberate shortcuts, each fine at today's size, with what would make it worth fixing:
+
+- [ ] **Reports split between browser and API.** Spending per year is summed in the API; This month,
+  Category budgets, Cash flow and Recurring still sum in the browser, so the Spending page loads every
+  transaction (~1.4 MB, ~30 ms today). Move them one at a time if loading gets slow; Cash flow needs
+  the daily rate history in the API.
+- [ ] **Spending per year returns unused years.** Rows keep amounts for years outside `years`; the
+  table ignores them.
+- [ ] **Monobank statements are not paged** (`api/src/mono.ts`). A request caps at 500 items; page by
+  `to` if a month ever exceeds that.
+- [ ] **Rate history and CPI are cached in memory** (`api/src/routes/rates`, `api/src/routes/inflation`)
+  and refetched after a restart; store them in a table if the NBU gets slow or rate-limits.
+- [ ] **Merchant icons come from Google's favicon service** (`web/src/components/MerchantIcon.tsx`), so
+  Google sees which merchant domains are shown; proxy them through the API if that matters.
+- [ ] **Recurring payments detect monthly cycles only** (`web/src/components/Recurring.tsx`); yearly
+  and weekly payments need their own period detection.
