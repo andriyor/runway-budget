@@ -174,7 +174,7 @@ export function Balances() {
       )}
 
       {rates && (
-        <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
+        <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} planned={budget?.monthlySpend} />
       )}
 
       {rates && (

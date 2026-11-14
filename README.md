@@ -34,6 +34,8 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **This month against the usual**: each category's spending from the 1st to today next to the median
   of the same days in the last 12 complete months, with the change in percent («Продукти +34%»), and
   the same days a year ago. Same days rather than whole months, so a half-gone month does not look cheap.
+  Above it, the pace: «spent X by 14 листопада, on track for Y», where Y is X plus the median of what past
+  months spent after that day, red when above Runway's monthly spending (or the usual month without a budget).
 - **Spending per year**: each category's total for the last 3 calendar years, this one to date, with the
   change from the same part of last year (1 January to today).
 - **Recurring payments**: rent, subscriptions and regular donations, found as a merchant charged about
@@ -314,7 +316,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   committed monthly total
 - [x] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
 - [x] Year-over-year: same month last year and yearly totals per category
-- [ ] Pace within the month: «spent X by the 14th, on track for Y»
+- [x] Pace within the month: «spent X by the 14th, on track for Y»
 
 ### Missing financial concepts
 

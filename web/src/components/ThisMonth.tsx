@@ -8,6 +8,8 @@ import type { Account, Category, Convert, Currency, Transaction } from '../lib/t
 
 // how far back "usual" looks, in complete months
 const MONTHS = 12
+// key of all spending categories together
+const ALL = '*'
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long' })
 
 // lastYear: the same days of this month a year ago; undefined before the transactions start
@@ -21,6 +23,8 @@ const ranked = (rows: Row[]) =>
 // days in each of up to MONTHS complete months before (from the first month with a transaction; a month
 // without spending in a category counts as 0). Same days rather than whole months, so a half-gone month
 // is not «−50%». Net of refunds; cancelled pairs, income, own-account moves and investments are left out.
+// The pace projects the month: spent so far plus the median of what the past months spent after this day,
+// so rent paid on the 2nd is not stretched over the month the way spent ÷ days × 30 would.
 function thisMonth(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
@@ -32,20 +36,25 @@ function thisMonth(transactions: Transaction[], accounts: Account[], categories:
     if (!spent.has(id)) spent.set(id, new Map())
     spent.get(id)!.set(month, (spent.get(id)!.get(month) ?? 0) - amount)
   }
+  // month key → whole past month's spending
+  const wholeMonth = new Map<string, number>()
   let first: string | undefined
   for (const t of transactions) {
     if (t.cancelled) continue
     const month = monthKey(t.time)
     if (!first || month < first) first = month
     const parent = parentOf.get(t.category)
-    if (!parent?.spending || new Date(t.time).getDate() > now.getDate() || (month !== current && !past.includes(month))) continue
+    if (!parent?.spending || (month !== current && !past.includes(month))) continue
     const amount = convert(t.amount, currencyOf.get(t.accountId)!, currency)
     if (amount === undefined) return undefined
+    if (month !== current) wholeMonth.set(month, (wholeMonth.get(month) ?? 0) - amount)
+    if (new Date(t.time).getDate() > now.getDate()) continue
+    add(ALL, month, amount)
     add(parent.id, month, amount)
     if (t.category !== parent.id) add(t.category, month, amount)
   }
   const months = past.filter((m) => first !== undefined && m >= first)
-  if (!months.length) return { rows: [], months: 0 }
+  if (!months.length) return { rows: [], months: 0, pace: undefined }
   // the window starts at this month a year ago
   const [lastYear] = past
   const row = (id: string, label: string, emoji?: string, subs: Row[] = []): Row => {
@@ -54,7 +63,14 @@ function thisMonth(transactions: Transaction[], accounts: Account[], categories:
     return { id, label, emoji, now: byMonth?.get(current) ?? 0, usual: median(months.map((m) => byMonth?.get(m) ?? 0)), lastYear: ago, subs }
   }
   const rows = categories.map((c) => row(c.id, c.label, c.emoji, ranked(c.subcategories.map((s) => row(s.id, s.label)))))
-  return { rows: ranked(rows), months: months.length }
+  const byDay = spent.get(ALL)
+  const sofar = byDay?.get(current) ?? 0
+  const pace = {
+    sofar,
+    projected: sofar + median(months.map((m) => (wholeMonth.get(m) ?? 0) - (byDay?.get(m) ?? 0))),
+    usualMonth: median(months.map((m) => wholeMonth.get(m) ?? 0)),
+  }
+  return { rows: ranked(rows), months: months.length, pace }
 }
 
 type ThisMonthProps = {
@@ -63,15 +79,19 @@ type ThisMonthProps = {
   categories: Category[]
   convert: Convert
   currency: Currency
+  // Runway's monthly spending, in currency; undefined without a budget
+  planned: number | undefined
 }
 
-export function ThisMonth({ transactions, accounts, categories, convert, currency }: ThisMonthProps) {
+export function ThisMonth({ transactions, accounts, categories, convert, currency, planned }: ThisMonthProps) {
   const [now] = useState(() => new Date())
   const [open, setOpen] = useState<string>()
   if (!transactions || !categories.length) return null
   const result = thisMonth(transactions, accounts, categories, convert, currency, now)
   if (!result?.rows.length) return null
-  const { rows, months } = result
+  const { rows, months, pace } = result
+  // the projection is measured against Runway's plan, or the usual month without one
+  const target = planned ?? pace?.usualMonth
   const first = new Date(now.getFullYear(), now.getMonth(), 1)
 
   const line = ({ id, label, emoji, now: spent, usual, lastYear, subs }: Row, sub = false) => {
@@ -115,6 +135,20 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
           {dayMonth.format(first)} – {dayMonth.format(now)} vs the same days, median of {months} {months === 1 ? 'month' : 'months'}
         </span>
       </div>
+
+      {pace && (
+        <p className="mt-3 text-sm text-zinc-700 tabular-nums dark:text-zinc-300">
+          Spent <span className="font-semibold text-zinc-900 dark:text-zinc-100">{wholeMoney(pace.sofar, currency)}</span> by {dayMonth.format(now)},
+          on track for{' '}
+          <span className={`font-semibold ${target !== undefined && pace.projected > target ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+            {wholeMoney(pace.projected, currency)}
+          </span>
+          <span className={muted}>
+            {' '}· usual month {wholeMoney(pace.usualMonth, currency)}
+            {planned !== undefined && ` · Runway plans ${wholeMoney(planned, currency)}`}
+          </span>
+        </p>
+      )}
 
       <table className="mt-4 w-full text-sm tabular-nums">
         <thead className={muted}>
