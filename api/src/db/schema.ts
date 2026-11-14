@@ -36,6 +36,11 @@ export const transactions = sqliteTable('transactions', {
   mcc: integer('mcc').notNull(),
   // account currency, minor units; negative = spending
   amountCents: integer('amount_cents').notNull(),
+  // Monobank's operationAmount (minor units) and currencyCode (ISO 4217 numeric): what it cost in the
+  // currency it was paid in, which pairs a cancellation with its purchase; null on manual rows and on
+  // rows synced before these columns, until a re-sync of their window fills them in
+  operationAmount: integer('operation_amount'),
+  operationCurrency: integer('operation_currency'),
   // user's category for this transaction only; wins over merchant_categories
   category: text('category', { enum: categoryIds as [string, ...string[]] }),
   // user's free-text note

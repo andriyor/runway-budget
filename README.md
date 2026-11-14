@@ -122,6 +122,9 @@ limit):
 curl -X POST "localhost:3000/api/accounts/mono/sync?to=$(date -v-31d +%s)"
 ```
 
+Re-syncing a window you already have adds nothing new but fills in each stored transaction's
+`operationAmount` and `currencyCode`, which pair foreign-currency cancellations with their purchases.
+
 ## Scripts
 
 Run from the repository root:
@@ -152,7 +155,7 @@ integer minor units (cents/kopiykas).
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
 | `GET`    | `/accounts`     | List accounts                                         |
-| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain` and `note` |
+| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note` and `cancelled` |
 | `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
 | `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
@@ -218,6 +221,16 @@ Estimates assume flat spending and salary, and ignore interest and inflation.
 - **Spending is net of refunds.** The summaries sum each category's or merchant's amounts, so a
   refund lowers what it belongs to. `Надходження`, `Між своїми рахунками` and `Інвестиції` are not
   spending and stay out of every summary and chart.
+- **A cancelled purchase counts as nothing.** Monobank sends no link between a `Скасування. X` and
+  the purchase it reverses (no field in the statement refers to another item, and cancellations have
+  no `receiptId`), so `api/src/cancellations.ts` pairs them on read: the closest earlier unpaired
+  purchase from the same merchant for the exact opposite `operationAmount` in the same `currencyCode`.
+  Not the account-currency `amount`, because each side of a foreign purchase is converted at its own
+  day's rate. Both rows come back with `cancelled: true`; the charts, summaries and cash flow skip
+  them, so a purchase on the 30th cancelled on the 2nd no longer moves spending between months, and
+  the list shows them struck through. The balance chart keeps them, since the money did move. A
+  partial refund has no exact pair and stays an ordinary refund. Rows synced before the operation
+  columns pair on `amount` until a sync of their window fills them in (see [Monobank](#monobank)).
 - **A merchant is its normalized description.** The API returns `merchant` (lowercased, `Скасування. `
   stripped), the same key merchant overrides use, so the merchant summary, filter and corrections
   agree. Different spellings of one shop (`MOLLI 1`, `Molli`) stay separate merchants.

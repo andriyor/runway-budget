@@ -4,6 +4,7 @@ import type { Account, Transaction } from '@runway-budget/shared'
 import { desc, eq, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
+import { cancelledIds } from '../../cancellations'
 import { categorize, isEssential, merchantKey, type CategoryId } from '../../categories'
 // merchant domain → lowercase name fragments; the domain is used for the icon
 import merchantKeywords from '../../data/merchants.json'
@@ -70,7 +71,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     const overrides = new Map((await fastify.db.select().from(merchantCategories))
       .map((o) => [o.merchant, o.category as CategoryId]))
     const essentials = new Map((await fastify.db.select().from(merchantEssentials)).map((o) => [o.merchant, o.essential]))
-    return rows.map(({ amountCents, category: own, essential: ownEssential, time, ...rest }): Transaction => {
+    const cancelled = cancelledIds(rows)
+    return rows.map(({ amountCents, category: own, essential: ownEssential, time, operationAmount: _op, operationCurrency: _cur, ...rest }): Transaction => {
       const key = merchantKey(rest.description)
       const merchant = overrides.get(key)
       const merchantEssential = essentials.get(key)
@@ -88,7 +90,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
         essential: ownEssential ?? merchantEssential ?? isEssential(category),
         essentialSource: ownEssential != null ? 'transaction' : merchantEssential != null ? 'merchant' : 'auto',
         mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
-        merchantDomain: merchantDomain(rest.description)
+        merchantDomain: merchantDomain(rest.description),
+        cancelled: cancelled.has(rest.id)
       }
     })
   })

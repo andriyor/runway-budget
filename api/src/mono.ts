@@ -11,7 +11,7 @@ const MONTH_S = 31 * 24 * 60 * 60
 // ISO 4217 numeric codes
 const monoCurrencies: Record<number, Currency> = { 980: 'UAH', 840: 'USD', 978: 'EUR' }
 type ClientInfo = { accounts: Array<{ id: string, creditLimit: number, currencyCode: number }> }
-type StatementItem = { id: string, time: number, description: string, mcc: number, amount: number, balance: number }
+type StatementItem = { id: string, time: number, description: string, mcc: number, amount: number, operationAmount: number, currencyCode: number, balance: number }
 
 // Pulls 31 days of the MONO_ACCOUNT statement ending at `to` (unix seconds) into its account; safe to repeat.
 // Used by POST /accounts/mono/sync and the twice-daily schedule. Failures throw HTTP errors.
@@ -56,8 +56,15 @@ export async function syncMono (fastify: FastifyInstance, log: FastifyBaseLogger
         time: new Date(i.time * 1000),
         description: i.description,
         mcc: i.mcc,
-        amountCents: i.amount
-      }))).onConflictDoNothing().run()
+        amountCents: i.amount,
+        operationAmount: i.operationAmount,
+        operationCurrency: i.currencyCode
+      })))
+        // rows synced before the operation columns get them on the next sync of their window; nothing else changes
+        .onConflictDoUpdate({
+          target: transactions.externalId,
+          set: { operationAmount: sql`excluded.operation_amount`, operationCurrency: sql`excluded.operation_currency` }
+        }).run()
       const latest = items.reduce((a, b) => (b.time > a.time ? b : a))
       // an older window must not roll the balance back
       // statement balance includes the bank's credit limit; keep only own money

@@ -196,6 +196,8 @@ export function TransactionsPage() {
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
+  // the charts and summaries skip cancelled purchases and their cancellations; the list still shows them
+  const counted = (l: Transaction[]) => l.filter((t) => !t.cancelled)
   const sorted = (listed ?? []).toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
 
   return (
@@ -290,7 +292,7 @@ export function TransactionsPage() {
       {account && shown && list!.length > 0 && (
         <>
           <MonthlySpending
-            list={base!}
+            list={counted(base!)}
             essentialOnly={essentialOnly}
             onUseMedian={!category && !merchant ? useMedian : undefined}
             currency={account.currency}
@@ -302,8 +304,8 @@ export function TransactionsPage() {
             merchant={merchant ? { key: merchant, name: merchantName || merchant } : undefined}
             onClearMerchant={() => setMerchant(undefined)}
           />
-          <CategorySpending list={shown} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
-          <MerchantSpending list={inCategory!} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
+          <CategorySpending list={counted(shown)} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
+          <MerchantSpending list={counted(inCategory!)} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-3">
@@ -337,7 +339,7 @@ export function TransactionsPage() {
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
               {sorted.slice(0, limit).map((t) => (
-                <li key={t.id} className="flex items-center gap-3 py-3">
+                <li key={t.id} className={`flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''}`}>
                   <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
@@ -442,10 +444,11 @@ export function TransactionsPage() {
                           + нотатка
                         </button>
                       )}
+                      {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
                       <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>
                     </p>
                   </div>
-                  <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                  <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
                     {format(t.amount, account.currency)}
                   </span>
                 </li>

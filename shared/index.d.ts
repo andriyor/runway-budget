@@ -41,6 +41,8 @@ export type Transaction = {
   mccDescription: string | null
   merchantDomain: string | null
   note: string | null
+  // a purchase and the «Скасування» that reversed it, paired by the API; both count as nothing
+  cancelled: boolean
 }
 
 export type Category = {

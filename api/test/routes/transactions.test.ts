@@ -53,3 +53,31 @@ test('essential comes from the category, then the merchant, then the transaction
   assert.equal((await app.inject({ method: 'PATCH', url: `/api/transactions/${shop.id}`, payload: {} })).statusCode, 400)
   assert.equal((await merchant('Rozetka', 'yes' as unknown as boolean)).statusCode, 400)
 })
+
+test('a cancellation pairs with the purchase it reverses', async (t) => {
+  const app = await build(t)
+  const [account] = app.db.insert(accounts).values({ name: 'Mono', currency: 'UAH', balanceCents: 0 }).returning().all()
+  const row = (externalId: string, time: number, description: string, amountCents: number, operationAmount?: number, operationCurrency?: number) =>
+    ({ accountId: account.id, externalId, time: new Date(time), description, mcc: 5818, amountCents, operationAmount, operationCurrency })
+  app.db.insert(transactions).values([
+    // a dollar purchase cancelled at another day's rate: pairs on the dollar amount
+    row('buy', 1000, 'Apple', -11000, -266, 840),
+    row('undo', 3000, 'Скасування. Apple', 11917, 266, 840),
+    // two equal purchases, one cancellation: only the closer earlier one pairs
+    row('old', 1000, 'LASTPASS.COM', -178000, -3480, 978),
+    row('new', 2000, 'LASTPASS.COM', -179000, -3480, 978),
+    row('drop', 4000, 'Скасування. LASTPASS.COM', 178178, 3480, 978),
+    // same amount in another currency, a partial refund, and a cancellation before its purchase pair with nothing
+    row('eur', 1000, 'Steam', -500, -500, 978),
+    row('usd', 2000, 'Скасування. Steam', 500, 500, 840),
+    row('part', 3000, 'Скасування. Apple', 4000, 100, 840),
+    row('early', 500, 'Скасування. Rozetka', 26000),
+    row('late', 600, 'Rozetka', -26000),
+    // rows synced before the operation columns pair on the account amount
+    row('silpo', 1000, 'Сільпо', -9500),
+    row('back', 2000, 'Скасування. СІЛЬПО', 9500)
+  ]).run()
+  const list = (await app.inject({ url: `/api/accounts/${account.id}/transactions` })).json()
+  assert.deepEqual(list.filter((x: { cancelled: boolean }) => x.cancelled).map((x: { externalId: string }) => x.externalId).sort(),
+    ['back', 'buy', 'drop', 'new', 'silpo', 'undo'])
+})

@@ -13,7 +13,7 @@ type Month = { month: string, income: number, spent: number }
 
 // Income and net spending per complete month, oldest first: up to MONTHS months before the running
 // one, starting at the first month with a transaction. Income is the «Надходження» category; spending
-// is every spending category, net of refunds. Own-account moves and investments are neither.
+// is every spending category, net of refunds. Own-account moves, investments and cancelled pairs are neither.
 // ponytail: today's NBU rate for every month, like the balance chart; historical rates if currency moves matter
 function cashFlow(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
@@ -25,6 +25,7 @@ function cashFlow(transactions: Transaction[], accounts: Account[], categories: 
   }
   let first: string | undefined
   for (const t of transactions) {
+    if (t.cancelled) continue
     const key = monthKey(t.time)
     if (!first || key < first) first = key
     const row = months.get(key)

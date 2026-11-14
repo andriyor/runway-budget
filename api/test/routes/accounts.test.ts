@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build } from '../helper'
-import { accounts } from '../../src/db/schema'
+import { accounts, transactions } from '../../src/db/schema'
 
 test('create, list and update accounts', async (t) => {
   const app = await build(t)
@@ -108,8 +108,8 @@ test('sync Monobank statement into one account', async (t) => {
   t.after(() => { delete process.env.MONO_TOKEN; delete process.env.MONO_ACCOUNT })
 
   const statement = [
-    { id: 'b', time: 1_700_000_200, description: 'Скасування. Сільпо', mcc: 5814, amount: -9500, balance: 100500 },
-    { id: 'a', time: 1_700_000_100, description: 'Salary', mcc: 4829, amount: 110000, balance: 110000 }
+    { id: 'b', time: 1_700_000_200, description: 'Скасування. Сільпо', mcc: 5814, amount: -9500, operationAmount: -9500, currencyCode: 980, balance: 100500 },
+    { id: 'a', time: 1_700_000_100, description: 'Salary', mcc: 4829, amount: 110000, operationAmount: 110000, currencyCode: 980, balance: 110000 }
   ]
   const info = { accounts: [{ id: 'other', creditLimit: 0, currencyCode: 840 }, { id: 'acc1', creditLimit: 50000, currencyCode: 980 }] }
   const fetchMock = t.mock.method(globalThis, 'fetch', async (url: string) =>
@@ -122,9 +122,12 @@ test('sync Monobank statement into one account', async (t) => {
   assert.equal(first.json().account.currency, 'UAH')
   assert.match(String(fetchMock.mock.calls[1].arguments[0]), /\/personal\/statement\/acc1\/\d+\/\d+$/)
 
-  // re-sync does not duplicate transactions or accounts
+  // re-sync does not duplicate transactions or accounts, and fills the operation columns of rows stored before them
+  app.db.update(transactions).set({ operationAmount: null, operationCurrency: null }).run()
   await app.inject({ method: 'POST', url: '/api/accounts/mono/sync' })
   assert.equal((await app.inject({ url: '/api/accounts' })).json().length, 1)
+  assert.deepEqual(app.db.select({ id: transactions.externalId, op: transactions.operationAmount, cur: transactions.operationCurrency })
+    .from(transactions).orderBy(transactions.externalId).all(), [{ id: 'a', op: 110000, cur: 980 }, { id: 'b', op: -9500, cur: 980 }])
 
   const list = (await app.inject({ url: `/api/accounts/${first.json().account.id}/transactions` })).json()
   assert.deepEqual(list.map((x: { externalId: string, amount: number, category: string }) => [x.externalId, x.amount, x.category]),
