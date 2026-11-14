@@ -115,7 +115,7 @@ pnpm workspace with two apps and a shared types package:
 | Path   | What                                                                       |
 | ------ | -------------------------------------------------------------------------- |
 | `api/` | [Fastify](https://fastify.dev) + TypeScript, SQLite via [Drizzle ORM](https://orm.drizzle.team) and `better-sqlite3` |
-| `web/` | React + TypeScript + [Vite](https://vite.dev), styled with [Tailwind CSS](https://tailwindcss.com) |
+| `web/` | React + TypeScript + [Vite](https://vite.dev), styled with [Tailwind CSS](https://tailwindcss.com), charts with [Recharts](https://recharts.org) |
 | `shared/` | `@runway-budget/shared`: TypeScript types for the API's JSON responses |
 
 ## Getting started
@@ -333,6 +333,29 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   range and folds the rest into one gray `Решта`, since more hues stop being distinguishable. The
   colors are CSS variables in `web/src/index.css`, checked for color-blind separation and contrast
   in light and dark mode. A selected category or merchant replaces the stack with that one series.
+- **Charts use Recharts.** Balance over time and Spending per month were first hand-drawn SVG, then
+  rebuilt with three libraries to compare (commits `7b8880a`, `3aafd8a`, `d37e8c4`). Each kept the same
+  behavior: per-segment tooltip, median line, usual range, month totals, click to select a category or
+  pick a month. Bundle sizes are the minified main chunk, 520 kB (164 kB gzip) without any chart library.
+
+  | | [Recharts](https://recharts.org) 3 | [visx](https://airbnb.io/visx) 4 | [uPlot](https://github.com/leeoniya/uPlot) 1.6 |
+  | --- | --- | --- | --- |
+  | Model | React components that draw a whole chart | d3 scales and shapes; you write the SVG | Imperative canvas, no React bindings |
+  | Stacked bars, reference lines and areas | Built in (`stackId`, `ReferenceLine`, `ReferenceArea`) | `BarStack`; lines and areas by hand | Not built in: running totals, labels and guides drawn on the canvas |
+  | Tooltips, keyboard, hit testing | Built in, custom tooltip content | All by hand | All by hand, plus finding the segment under the cursor |
+  | Theme colors | CSS variables work in SVG attributes | Same | Canvas needs them resolved with `getComputedStyle` |
+  | Bundle | 906 kB (273 kB gzip) | 564 kB (181 kB gzip) | 572 kB (187 kB gzip) |
+  | Dependencies | Redux Toolkit, react-redux, immer, reselect (an internal store per chart) | d3 modules | None |
+
+  Recharts won on the least chart code to own: the charts are declarations, not drawing and event
+  code. Its costs: the largest bundle, the Redux dependencies (see recharts/recharts#6117 for the
+  build issues they cause elsewhere; Vite builds it fine), segments are not tab stops (the chart is one
+  stop and the arrow keys move between bars) and hovering one segment no longer dims the rest. Two
+  workarounds live in the charts: a mouse click on the chart is kept from focusing it, which would
+  otherwise draw a focus box and pin the tooltip to the first bar, and each month's total is drawn by a
+  `LabelList` on the stack's topmost segment, read from the label's own entry because indexes go stale
+  while the shown months change. visx is the fallback if the bundle starts to matter; uPlot pays off
+  only for far bigger series than a year of days.
 - **Median over complete months.** The chart's median leaves out the running month, which would
   pull it down, counts months without spending as zero when a category or merchant is selected, and
   covers only the months the period filter shows (every month for all time or a week).

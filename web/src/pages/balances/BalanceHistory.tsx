@@ -1,7 +1,5 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
-import uPlot from 'uplot'
-import { UPlotChart } from '../../components/UPlotChart'
-import { cssVar, textColor } from '../../lib/canvas'
+import { useState } from 'react'
+import { Area, AreaChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { format, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import { dailyValues } from '../../lib/history'
@@ -15,14 +13,11 @@ const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 type BalanceHistoryProps = { accounts: Account[], transactions: Transaction[] | undefined, convertOn: ConvertOn, currency: Currency }
 
 export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
-  // the day under the cursor and its x position, for the tooltip
-  const [hover, setHover] = useState<{ i: number, left: number }>()
   const [today] = useState(() => new Date())
-  const chart = useRef<uPlot>(undefined)
 
   const days = transactions?.length ? dailyValues(accounts, transactions, convertOn, currency, today) : undefined
   if (!days || days.length < 2) return null
-  const points = days.map((d) => ({ day: new Date(`${d.day}T00:00:00`), value: d.value }))
+  const points = days.map((d, i) => ({ i, day: new Date(`${d.day}T00:00:00`), value: d.value }))
   const total = points.at(-1)!.value
   // what rate moves added to or took from the foreign-currency balances over the whole range
   const fromRates = days.reduce((sum, d) => sum + d.gain, 0)
@@ -34,46 +29,8 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
   // a flat line has one extreme, not two on top of each other
   const levels = high === low ? [high] : [high, low]
   const pad = (high - low) * 0.1 || Math.abs(high) * 0.1 || 1
-  const active = hover && points[hover.i]
   const change = total - points[0].value
-
-  // guides, labels and dots for the extremes, drawn on the canvas over the line
-  const drawExtremes = (u: uPlot) => {
-    const { ctx, bbox } = u
-    const px = uPlot.pxRatio
-    ctx.save()
-    ctx.font = `${12 * px}px system-ui, sans-serif`
-    levels.forEach((v, i) => {
-      const y = u.valToPos(v, 'y', true)
-      ctx.strokeStyle = textColor(u)
-      ctx.globalAlpha = 0.35
-      ctx.setLineDash([3 * px, 3 * px])
-      ctx.beginPath()
-      ctx.moveTo(bbox.left, y)
-      ctx.lineTo(bbox.left + bbox.width, y)
-      ctx.stroke()
-      ctx.globalAlpha = 0.7
-      ctx.fillStyle = textColor(u)
-      ctx.textBaseline = i ? 'top' : 'bottom'
-      ctx.fillText(wholeMoney(v, currency), bbox.left + 4 * px, y + (i ? 3 : -3) * px)
-      ctx.globalAlpha = 1
-      ctx.fillStyle = cssVar(u, '--series-1')
-      ctx.beginPath()
-      ctx.arc(u.valToPos(values.lastIndexOf(v), 'x', true), y, 4 * px, 0, 2 * Math.PI)
-      ctx.fill()
-    })
-    ctx.restore()
-  }
-
-  // arrow keys move the cursor a day at a time, starting from today
-  const step = (e: KeyboardEvent) => {
-    const by = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0
-    const u = chart.current
-    if (!by || !u) return
-    e.preventDefault()
-    const i = Math.min(points.length - 1, Math.max(0, (hover?.i ?? points.length - 1) + by))
-    u.setCursor({ left: u.valToPos(i, 'x'), top: u.valToPos(values[i], 'y') })
-  }
+  const last = points.length - 1
 
   return (
     <section className={`${card} viz`}>
@@ -89,54 +46,30 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
         </span>
       </div>
 
-      <div
-        className="relative mt-3 rounded outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-        tabIndex={0}
-        role="img"
-        aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
-        onKeyDown={step}
-        onBlur={() => chart.current?.setCursor({ left: -10, top: -10 })}
-      >
-        <UPlotChart
-          className="h-40"
-          chartRef={chart}
-          deps={`${currency}:${values.join(',')}`}
-          data={[points.map((_, i) => i), values]}
-          options={{
-            padding: [12, 0, 0, 0],
-            legend: { show: false },
-            axes: [{ show: false }, { show: false }],
-            scales: { x: { time: false }, y: { range: [low - pad, high + pad] } },
-            cursor: { y: false, points: { size: 10, fill: (u) => cssVar(u, '--series-1') } },
-            series: [
-              {},
-              {
-                stroke: (u) => cssVar(u, '--series-1'),
-                fill: (u) => `${cssVar(u, '--series-1')}1f`,
-                width: 2,
-                points: { show: false },
-              },
-            ],
-            hooks: {
-              draw: [drawExtremes],
-              setCursor: [(u) => { const i = u.cursor.idx; setHover(i == null ? undefined : { i, left: u.valToPos(i, 'x') }) }],
-            },
-          }}
-        />
-        {active && (
-          <div
-            role="tooltip"
-            className="pointer-events-none absolute top-0 z-10 w-max -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
-            style={{ left: `clamp(5rem, ${hover!.left}px, calc(100% - 5rem))` }}
-          >
-            <p className={muted}>{dayLabel.format(active.day)}</p>
-            <p className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(active.value, currency)}</p>
-          </div>
-        )}
-      </div>
-      <div className={`mt-1.5 flex justify-between text-xs ${muted}`} aria-hidden>
-        <span>{dayLabel.format(points[0].day)}</span>
-        <span>Today</span>
+      <div className="mt-3 h-48" onMouseDown={(e) => e.preventDefault()} aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}>
+        <ResponsiveContainer>
+          <AreaChart data={points} margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
+            <XAxis dataKey="i" type="number" domain={[0, last]} ticks={[0, last]} tickLine={false} fontSize={12}
+              tickFormatter={(i: number) => (i === last ? 'Today' : dayLabel.format(points[0].day))} />
+            <YAxis hide domain={[low - pad, high + pad]} />
+            {levels.map((v, n) => (
+              <ReferenceLine key={v} y={v} strokeDasharray="3 3"
+                label={{ value: wholeMoney(v, currency), position: n ? 'insideBottomLeft' : 'insideTopLeft', fontSize: 12 }} />
+            ))}
+            <Tooltip content={({ active, payload }) => {
+              const p = payload?.[0]?.payload as (typeof points)[number] | undefined
+              if (!active || !p) return null
+              return (
+                <div className="w-max rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+                  <p className={muted}>{dayLabel.format(p.day)}</p>
+                  <p className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(p.value, currency)}</p>
+                </div>
+              )
+            }} />
+            <Area dataKey="value" type="linear" stroke="var(--series-1)" strokeWidth={2} fill="var(--series-1)" fillOpacity={0.12} baseValue="dataMin" />
+            {levels.map((v) => <ReferenceDot key={v} x={values.lastIndexOf(v)} y={v} r={4} fill="var(--series-1)" stroke="white" />)}
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </section>
   )

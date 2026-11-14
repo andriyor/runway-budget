@@ -1,7 +1,5 @@
-import { useState, type KeyboardEvent } from 'react'
-import uPlot from 'uplot'
-import { UPlotChart } from '../../components/UPlotChart'
-import { cssVar, textColor } from '../../lib/canvas'
+import { useState } from 'react'
+import { Bar, BarChart, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type LabelListEntry, type XAxisTickContentProps } from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../../lib/periods'
@@ -81,9 +79,6 @@ function phoneQuarter(period: string, latest: string | undefined) {
   return latest === undefined ? undefined : quarterOf(latest)
 }
 
-// series colors are CSS variables like var(--series-1), resolved for the canvas
-const resolve = (u: uPlot, color: string) => (color.startsWith('var(') ? cssVar(u, color.slice(4, -1)) : color)
-
 const Swatch = ({ color }: { color: string }) => (
   <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={{ background: color }} />
 )
@@ -112,8 +107,6 @@ type MonthlySpendingProps = {
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
 export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
-  // the month under the cursor, and the segment when the cursor is on one
-  const [hover, setHover] = useState<{ month: string, series?: string }>()
   const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
 
@@ -186,84 +179,13 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   }))
   const barSeries = focus ? [focus] : series
   const segmentsOf = new Map(barSeries.map((s) => [s.id, s]))
+  const topSeries = (row: Row) => barSeries.findLast((s) => row.values[s.id] > 0)?.id
   const seriesTotal = (id: string) => sum(shownStacked.map((b) => b.segments.find((s) => s.id === id)?.value ?? 0))
   const label = (month: string) => (days ? longDay.format(date(month)) : shortMonth.format(firstDay(month)))
   // picking the month already selected keeps it; the day already selected goes back to its week
   const pickMonth = (month: string) => {
     const key = days ? `d:${month}` : `m:${month}`
     onPick(period === key && days ? week! : key)
-  }
-  // running totals per series, bottom of the stack first: the top edge of each segment
-  const tops = barSeries.map((_, k) => rows.map((r) => sum(barSeries.slice(0, k + 1).map((s) => r.values[s.id] ?? 0))))
-  const monthSegments = (month: string) => barSeries.filter((s) => (rows.find((r) => r.month === month)?.values[s.id] ?? 0) > 0)
-  const active = hover?.series ? rows.find((r) => r.month === hover.month) : undefined
-  const activeSegment = active && segmentsOf.get(hover!.series!)
-
-  // the column under the cursor, and the segment whose span holds the cursor's height
-  const hitTest = (u: uPlot) => {
-    const i = u.cursor.idx
-    if (i == null) return undefined
-    const value = u.posToVal(u.cursor.top!, 'y')
-    const k = tops.findIndex((top, k) => value >= (k ? tops[k - 1][i] : 0) && value < top[i])
-    return { month: rows[i].month, series: k < 0 ? undefined : barSeries[k].id }
-  }
-  // a segment selects its category (or picks the month while one is focused); elsewhere in the column, the month
-  const activate = ({ month, series: id }: { month: string, series?: string }) => {
-    if (id && !focus) {
-      if (id !== REST) toggle(id)
-    } else pickMonth(month)
-  }
-  // left and right move between months, up and down between the month's segments, Enter picks
-  const keys = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      if (hover) activate(hover)
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      const i = hover ? rows.findIndex((r) => r.month === hover.month) + (e.key === 'ArrowLeft' ? -1 : 1) : rows.length - 1
-      const month = rows[Math.min(rows.length - 1, Math.max(0, i))].month
-      const segments = monthSegments(month)
-      setHover({ month, series: segments.find((s) => s.id === hover?.series)?.id ?? segments.at(-1)?.id })
-    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && hover) {
-      const segments = monthSegments(hover.month)
-      const k = Math.min(segments.length - 1, Math.max(0, segments.findIndex((s) => s.id === hover.series) + (e.key === 'ArrowUp' ? 1 : -1)))
-      setHover({ month: hover.month, series: segments[k]?.id })
-    } else return
-    e.preventDefault()
-  }
-
-  // the usual range (middle half of the complete months) behind the bars
-  const drawRange = (u: uPlot) => {
-    if (!spread || spread.high <= 0) return
-    const { ctx, bbox } = u
-    const top = u.valToPos(spread.high, 'y', true)
-    ctx.save()
-    ctx.fillStyle = textColor(u)
-    ctx.globalAlpha = 0.08
-    ctx.fillRect(bbox.left, top, bbox.width, u.valToPos(spread.low, 'y', true) - top)
-    ctx.restore()
-  }
-  // each month's total above its bar, and the median line with its label
-  const drawLabels = (u: uPlot) => {
-    const { ctx, bbox } = u
-    const px = uPlot.pxRatio
-    ctx.save()
-    ctx.fillStyle = ctx.strokeStyle = textColor(u)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
-    ctx.font = `500 ${12 * px}px system-ui, sans-serif`
-    rows.forEach((r, i) => r.total > 0 && ctx.fillText(wholeMoney(r.total, currency), u.valToPos(i, 'x', true), u.valToPos(r.total, 'y', true) - 4 * px))
-    if (typical !== undefined && typical > 0) {
-      const y = u.valToPos(typical, 'y', true)
-      ctx.setLineDash([4 * px, 3 * px])
-      ctx.globalAlpha = 0.7
-      ctx.beginPath()
-      ctx.moveTo(bbox.left, y)
-      ctx.lineTo(bbox.left + bbox.width, y)
-      ctx.stroke()
-      ctx.textAlign = 'right'
-      ctx.font = `500 ${10.5 * px}px system-ui, sans-serif`
-      ctx.fillText(`медіана ${wholeMoney(typical, currency)}`, bbox.left + bbox.width, y - 3 * px)
-    }
-    ctx.restore()
   }
   const isPicked = (month: string) => period === `m:${month}` || period === `d:${month}`
   const toggle = (id: string) => onSelect(selected === id ? undefined : id)
@@ -320,74 +242,65 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         )}
       </ul>
 
-      <div
-        className="relative mt-5 cursor-pointer rounded outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-        tabIndex={0}
-        aria-label={`${essentialOnly ? 'Essential spending' : 'Spending'} per ${days ? 'day' : 'month'}. Arrow keys move between ${days ? 'days' : 'months'} and categories, Enter picks.`}
-        onClick={() => hover && activate(hover)}
-        onKeyDown={keys}
-        onBlur={() => setHover(undefined)}
-      >
-        <UPlotChart
-          className="h-56"
-          deps={JSON.stringify([rows, barSeries, typical, spread?.low, spread?.high, currency])}
-          data={[rows.map((_, i) => i), ...[...tops].reverse()]}
-          options={{
-            padding: [8, 0, 0, 0],
-            legend: { show: false },
-            axes: [{ show: false }, { show: false }],
-            // bars use 85% of the height at most; the scale includes the median so its line stays inside
-            scales: { x: { time: false, range: [-0.5, rows.length - 0.5] }, y: { range: [0, max / 0.85] } },
-            cursor: { x: false, y: false, points: { show: false } },
-            // stacking: each series is the running total up to it, drawn tallest first so the shorter ones paint over it
-            series: [{}, ...[...barSeries].reverse().map((s) => ({
-              fill: (u: uPlot) => resolve(u, s.color),
-              stroke: 'transparent',
-              paths: uPlot.paths.bars!({ size: [0.7, 64] }),
-              points: { show: false },
-            }))],
-            hooks: {
-              drawClear: [drawRange],
-              draw: [drawLabels],
-              setCursor: [(u) => setHover(hitTest(u))],
-            },
-          }}
-        />
-        {active && activeSegment && (
-          <SegmentTooltip
-            month={label(active.month)}
-            monthTotal={active.monthTotal}
-            segment={{ ...activeSegment, value: active.values[activeSegment.id] ?? 0 }}
-            left={(rows.indexOf(active) + 0.5) / rows.length}
-            currency={currency}
-          />
-        )}
-      </div>
-
-      <div className="mt-1.5 flex">
-        {rows.map((r) => (
-          <button
-            key={r.month}
-            type="button"
-            aria-pressed={isPicked(r.month)}
-            onClick={() => pickMonth(r.month)}
-            className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
-          >
-            {days ? weekday.format(date(r.month)) : monthOnly.format(firstDay(r.month))}
-            <span className="block text-[0.65rem] opacity-75">{days ? dayMonth.format(date(r.month)) : r.month.slice(0, 4)}</span>
-          </button>
-        ))}
+      <div className="mt-5 h-64" onMouseDown={(e) => e.preventDefault()}>
+        <ResponsiveContainer>
+          <BarChart data={rows} margin={{ top: 20, right: 0, bottom: 0, left: 0 }} barCategoryGap="15%">
+            <XAxis dataKey="month" interval={0} height={36} tickLine={false} tick={(props: XAxisTickContentProps) => (
+              <g transform={`translate(${props.x},${props.y})`} className="cursor-pointer" onClick={() => pickMonth(String(props.payload.value))}>
+                <text textAnchor="middle" dy={12} fontSize={12} fontWeight={isPicked(String(props.payload.value)) ? 700 : 400} fill="currentColor">
+                  {days ? weekday.format(date(String(props.payload.value))) : monthOnly.format(firstDay(String(props.payload.value)))}
+                </text>
+                <text textAnchor="middle" dy={26} fontSize={10} fill="currentColor" opacity={0.7}>
+                  {days ? dayMonth.format(date(String(props.payload.value))) : String(props.payload.value).slice(0, 4)}
+                </text>
+              </g>
+            )} />
+            {/* bars use 85% of the height at most; the scale includes the median so its line stays inside */}
+            <YAxis hide domain={[0, max / 0.85]} />
+            {/* the usual range: the middle half of the complete months */}
+            {spread && spread.high > 0 && <ReferenceArea y1={spread.low} y2={spread.high} fillOpacity={0.1} />}
+            {typical !== undefined && typical > 0 && (
+              <ReferenceLine y={typical} strokeDasharray="4 4" label={{ value: `медіана ${wholeMoney(typical, currency)}`, position: 'insideTopRight', fontSize: 11 }} />
+            )}
+            <Tooltip shared={false} cursor={false} content={({ active, payload }) => {
+              const item = payload?.[0]
+              const segment = item && segmentsOf.get(String(item.name))
+              if (!active || !segment) return null
+              const row = item.payload as Row
+              return <SegmentTooltip month={label(row.month)} monthTotal={row.monthTotal} segment={{ ...segment, value: Number(item.value) }} currency={currency} />
+            }} />
+            {barSeries.map((s) => (
+              <Bar
+                key={s.id}
+                name={s.id}
+                stackId="month"
+                dataKey={(r: Row) => r.values[s.id] ?? 0}
+                fill={s.color}
+                className="cursor-pointer"
+                onClick={(item) => {
+                  const month = (item.payload as Row).month
+                  if (focus) pickMonth(month)
+                  else if (s.id !== REST) toggle(s.id)
+                }}
+              >
+                {/* the month's total rides on the topmost segment of its stack */}
+                <LabelList position="top" fontSize={12} fill="currentColor"
+                  valueAccessor={(entry: LabelListEntry) => {
+                    const row = entry.payload as Row | undefined
+                    return row && topSeries(row) === s.id ? wholeMoney(row.total, currency) : undefined
+                  }} />
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </section>
   )
 }
 
-function SegmentTooltip({ month, monthTotal, segment, left, currency }: { month: string, monthTotal: number, segment: Segment, left: number, currency: Currency }) {
+function SegmentTooltip({ month, monthTotal, segment, currency }: { month: string, monthTotal: number, segment: Segment, currency: Currency }) {
   return (
-    <div
-      role="tooltip"
-      style={{ left: `clamp(7rem, ${left * 100}%, calc(100% - 7rem))` }}
-      className="pointer-events-none absolute top-0 z-10 w-max max-w-56 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+    <div className="w-max max-w-56 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
       <p className={muted}>{month} · {format(monthTotal, currency)}</p>
       <p className="mt-1 flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
         <Swatch color={segment.color} />
