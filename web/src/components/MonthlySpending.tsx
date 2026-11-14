@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
 import { usePhone } from '../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../lib/periods'
+import { median } from '../lib/stats'
 import { card, muted } from '../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../lib/types'
 
@@ -13,12 +14,6 @@ type Segment = { id: string, label: string, color: string, value: number }
 type Bar = { month: string, segments: Segment[], total: number }
 
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
-
-const median = (values: number[]) => {
-  const sorted = values.toSorted((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
-}
 
 const add = <K,>(map: Map<K, number>, key: K, value: number) => map.set(key, (map.get(key) ?? 0) + value)
 

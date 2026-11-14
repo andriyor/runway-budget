@@ -6,7 +6,7 @@ import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
 import { Skeleton } from '../components/controls'
 import { api } from '../lib/api'
-import { budgetWithMedian } from '../lib/budget'
+import { budgetWith } from '../lib/budget'
 import { format } from '../lib/format'
 import { PHONE } from '../lib/media'
 import { monthKey, periodsOf, quarterOf } from '../lib/periods'
@@ -131,12 +131,12 @@ export function TransactionsPage() {
     }
   }
 
-  // writes the chart's median into Runway (see budgetWithMedian), keeping the rest of the budget
+  // writes the chart's median into Runway (see budgetWith), keeping the rest of the budget
   async function useMedian(value: number) {
     const amount = Math.round(value)
     const currency = account!.currency
     try {
-      const body = budgetWithMedian(await api<Budget | null>('/budget'), amount, currency, essentialOnly)
+      const body = budgetWith(await api<Budget | null>('/budget'), essentialOnly ? 'minimalSpend' : 'monthlySpend', amount, currency)
       if (!body) return setError('Set "I spend per month" in Runway first')
       await api('/budget', { method: 'PUT', body: JSON.stringify(body) })
       setNotice(`Runway: ${essentialOnly ? 'extreme saving' : 'monthly spending'} set to ${format(amount, currency)} per month`)

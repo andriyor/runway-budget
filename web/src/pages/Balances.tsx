@@ -2,14 +2,16 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AccountRow } from '../components/AccountRow'
 import { Allocation } from '../components/Allocation'
 import { BalanceHistory } from '../components/BalanceHistory'
+import { CashFlow } from '../components/CashFlow'
 import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
 import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
 import { CurrencyIcon, BankIcon } from '../components/icons'
 import { api } from '../lib/api'
+import { budgetWith } from '../lib/budget'
 import { format, formatRate, symbols } from '../lib/format'
 import { card, muted, inputBox, button } from '../lib/styles'
-import { currencies, type Currency, type AccountKind, type Account, type Rates, type Budget, type Convert } from '../lib/types'
+import { currencies, type Currency, type AccountKind, type Account, type Rates, type Budget, type Convert, type Category, type Transaction } from '../lib/types'
 
 export function Balances() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -21,9 +23,24 @@ export function Balances() {
   const [kind, setKind] = useState<AccountKind>('bank')
   // undefined while loading
   const [budget, setBudget] = useState<Budget | null>()
+  // every account's transactions, for the balance chart and cash flow
+  const [fetched, setTransactions] = useState<Transaction[]>()
+  const [categories, setCategories] = useState<Category[]>([])
+  // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
+  const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
+  // the last fetch would linger after every account is deleted
+  const transactions = ids ? fetched : []
+
+  useEffect(() => {
+    if (!ids) return
+    Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
+      .then((all) => setTransactions(all.flat()))
+      .catch(() => setTransactions([]))
+  }, [ids])
 
   useEffect(() => {
     api<Budget | null>('/budget').then(setBudget).catch((e) => setError(e.message))
+    api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
     api<Account[]>('/accounts').then(setAccounts).catch((e) => setError(e.message))
     api<Rates>('/rates').then(setRates).catch((e) => setError(`Rates: ${e.message}`))
   }, [])
@@ -54,6 +71,15 @@ export function Balances() {
     } catch (err) {
       setAccounts(previous)
       setError(`Reorder: ${(err as Error).message}`)
+    }
+  }
+
+  // the cash flow's median income becomes Runway's salary, keeping the rest of the budget
+  async function salaryFromIncome(amount: number, c: Currency) {
+    try {
+      setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(budgetWith(budget!, 'salary', Math.round(amount), c)) }))
+    } catch (err) {
+      setError(`Runway: ${(err as Error).message}`)
     }
   }
 
@@ -120,12 +146,23 @@ export function Balances() {
         ))}
       </section>
 
-      <BalanceHistory accounts={accounts} convert={convert} currency={budget?.currency ?? 'UAH'} />
+      <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={budget?.currency ?? 'UAH'} />
 
       <Allocation accounts={accounts} convert={convert} />
 
+      {rates && (
+        <CashFlow
+          transactions={transactions}
+          accounts={accounts}
+          categories={categories}
+          convert={convert}
+          currency={budget?.currency ?? 'UAH'}
+          onUseIncome={budget ? salaryFromIncome : undefined}
+        />
+      )}
+
       {budget !== undefined && (
-        <Runway saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} minimalIn={minimalIn} />
+        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} minimalIn={minimalIn} />
       )}
 
       <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />
