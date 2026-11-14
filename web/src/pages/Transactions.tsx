@@ -9,8 +9,7 @@ import { ErrorBanner, Skeleton } from '../components/controls'
 import { api } from '../lib/api'
 import { budgetWith } from '../lib/budget'
 import { format } from '../lib/format'
-import { PHONE } from '../lib/media'
-import { monthKey, periodsOf, quarterOf } from '../lib/periods'
+import { monthKey, periodsOf } from '../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../lib/types'
 
@@ -89,15 +88,14 @@ export function TransactionsPage() {
     api<Transaction[]>(`/accounts/${accountId}/transactions`)
       .then((loaded) => {
         setList(loaded)
-        // open on the latest year with data, or its latest quarter on phones, where a year at once is too much;
-        // all time stays in the period filter
+        // open on the latest month with data; the chart around it still shows its year (its quarter on phones)
         const latest = loaded.length ? monthKey(loaded[0].time) : undefined
         const { current: from } = linked
         if (from.has('period') || from.has('category')) {
           setPeriod(from.get('period') ?? '')
           pickCategory(from.get('category') ?? undefined)
           linked.current = new URLSearchParams()
-        } else if (latest) setPeriod(matchMedia(PHONE).matches ? quarterOf(latest) : `y:${latest.slice(0, 4)}`)
+        } else if (latest) setPeriod(`m:${latest}`)
       })
       .catch((e) => setError(e.message))
   }, [accountId])
