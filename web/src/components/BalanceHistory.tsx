@@ -1,41 +1,26 @@
 import { useState, type KeyboardEvent } from 'react'
 import { format, wholeMoney } from '../lib/format'
 import { card, muted } from '../lib/styles'
-import type { Account, Convert, Currency, Transaction } from '../lib/types'
+import { dailyValues } from '../lib/history'
+import type { Account, ConvertOn, Currency, Transaction } from '../lib/types'
 
 const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 
-// local calendar day, so a late-evening purchase lands on the day it was made
-const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+// Total balance at the end of each day (see dailyValues): bank-synced transactions and manual ± adjustments
+// are undone backwards from today, and each day is valued at its own NBU rate, so currency moves show.
+// Accounts without any transactions stay flat in their own currency.
+type BalanceHistoryProps = { accounts: Account[], transactions: Transaction[] | undefined, convertOn: ConvertOn, currency: Currency }
 
-// Total balance at the end of each day, rebuilt backwards from today's balances by undoing
-// every later transaction: bank-synced ones and manual ± adjustments. Accounts without any stay flat.
-// ponytail: today's NBU rate for every day, so currency moves don't show; needs historical rates if they matter
-type BalanceHistoryProps = { accounts: Account[], transactions: Transaction[] | undefined, convert: Convert, currency: Currency }
-
-export function BalanceHistory({ accounts, transactions, convert, currency }: BalanceHistoryProps) {
+export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
   const [hover, setHover] = useState<number>()
   const [today] = useState(() => new Date())
 
-  const total = accounts.reduce((sum, a) => sum + (convert(a.balance, a.currency, currency) ?? NaN), 0)
-  if (!transactions?.length || Number.isNaN(total)) return null
-
-  const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const byDay = new Map<string, number>()
-  let first = today
-  for (const t of transactions) {
-    const time = new Date(t.time)
-    if (time < first) first = time
-    byDay.set(dayKey(time), (byDay.get(dayKey(time)) ?? 0) + convert(t.amount, currencyOf.get(t.accountId)!, currency)!)
-  }
-  const points: Array<{ day: Date, value: number }> = []
-  let running = total
-  for (let d = today; dayKey(d) >= dayKey(first); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)) {
-    points.push({ day: d, value: running })
-    running -= byDay.get(dayKey(d)) ?? 0
-  }
-  points.reverse()
-  if (points.length < 2) return null
+  const days = transactions?.length ? dailyValues(accounts, transactions, convertOn, currency, today) : undefined
+  if (!days || days.length < 2) return null
+  const points = days.map((d) => ({ day: new Date(`${d.day}T00:00:00`), value: d.value }))
+  const total = points.at(-1)!.value
+  // what rate moves added to or took from the foreign-currency balances over the whole range
+  const fromRates = days.reduce((sum, d) => sum + d.gain, 0)
 
   const values = points.map((p) => p.value)
   const low = Math.min(...values)
@@ -65,6 +50,11 @@ export function BalanceHistory({ accounts, transactions, convert, currency }: Ba
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Balance over time</h2>
         <span className={`tabular-nums ${muted}`}>
           {change >= 0 ? '+' : '−'}{format(Math.abs(change), currency)} since {dayLabel.format(points[0].day)}
+          {Math.round(fromRates) !== 0 && (
+            <span title="What exchange rate moves added to or took from your USD and EUR balances">
+              {' '}· {fromRates >= 0 ? '+' : '−'}{format(Math.abs(fromRates), currency)} from exchange rates
+            </span>
+          )}
         </span>
       </div>
 

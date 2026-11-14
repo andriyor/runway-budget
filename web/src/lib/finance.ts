@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
-import type { Account, Budget, Category, Convert, Currency, Rates, Transaction } from './types'
+import { dayKey } from './periods'
+import type { Account, Budget, Category, Convert, ConvertOn, Currency, Rates, RateHistory, Transaction } from './types'
 
 // Accounts, NBU rates, the Runway budget and categories, with conversions between currencies and
-// the budget-derived amounts the pages share. withTransactions also loads every account's transactions.
+// the budget-derived amounts the pages share. withTransactions also loads every account's transactions
+// and the NBU rates of every day since the first one.
 export function useFinance({ withTransactions = false } = {}) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [rates, setRates] = useState<Rates>()
@@ -12,6 +14,8 @@ export function useFinance({ withTransactions = false } = {}) {
   const [budget, setBudget] = useState<Budget | null>()
   const [fetched, setTransactions] = useState<Transaction[]>()
   const [categories, setCategories] = useState<Category[]>([])
+  // undefined while loading; {} when it failed, so conversions fall back to today's rates
+  const [history, setHistory] = useState<RateHistory>()
   // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
   const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
   // the last fetch would linger after every account is deleted
@@ -20,7 +24,15 @@ export function useFinance({ withTransactions = false } = {}) {
   useEffect(() => {
     if (!ids || !withTransactions) return
     Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
-      .then((all) => setTransactions(all.flat()))
+      .then((all) => {
+        const list = all.flat()
+        setTransactions(list)
+        const first = list.reduce((min, t) => (t.time < min ? t.time : min), new Date().toISOString())
+        return api<RateHistory>(`/rates/history?from=${dayKey(first)}`).then(setHistory).catch((e) => {
+          setHistory({})
+          setError(`Rate history: ${e.message}, so past amounts use today's rates`)
+        })
+      })
       .catch((e) => {
         setTransactions([])
         setError(`Transactions: ${e.message}`)
@@ -36,6 +48,12 @@ export function useFinance({ withTransactions = false } = {}) {
 
   // rates are UAH per unit, so convert via UAH
   const convert: Convert = (amount, from, to) => rates && (amount * rates.rates[from]) / rates.rates[to]
+  // a day's rate; today and a day the NBU has not published yet use the latest rates
+  const convertOn: ConvertOn = (amount, from, to, day) => {
+    if (!history || !rates) return undefined
+    const r = history[day] ?? rates.rates
+    return (amount * r[from]) / r[to]
+  }
   const totalIn = (target: Currency) =>
     rates && accounts.reduce((sum, a) => sum + convert(a.balance, a.currency, target)!, 0)
   const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
@@ -69,6 +87,6 @@ export function useFinance({ withTransactions = false } = {}) {
     accounts, setAccounts, rates, budget, setBudget, categories, transactions, error, setError,
     // amounts in statistics are shown in Runway's currency
     currency: budget?.currency ?? 'UAH' as Currency,
-    convert, totalIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, availableIn, forGoalsIn, cushion, netIn,
+    convert, convertOn, totalIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, availableIn, forGoalsIn, cushion, netIn,
   }
 }

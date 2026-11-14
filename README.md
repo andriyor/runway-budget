@@ -26,6 +26,8 @@ Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **P
 
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
+- **Balance over time**: the total at the end of every day since the first transaction, each day at its
+  own NBU rate, with what exchange rates added to or took from the USD and EUR balances.
 
 ### Spending
 
@@ -40,7 +42,9 @@ All accounts together, in Runway's currency.
   months across all accounts, with a per-month table. The median income can be sent to Runway as an
   `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
   Spending also shows its usual range (the middle half of the months, p25–p75)
-  and the lowest and worst months, since Runway assumes every month costs the same.
+  and the lowest and worst months, since Runway assumes every month costs the same. Each transaction
+  is converted at its day's NBU rate, and a Rates column shows what rate moves did to the USD and EUR
+  balances each month. The other Spending cards use today's rate.
 - **Recurring payments**: rent, subscriptions and regular donations, found as a merchant charged about
   once a month for a similar amount in at least 3 of the last 6 months and within the last 40 days,
   with the latest charge, the expected next date and the committed monthly total.
@@ -206,10 +210,13 @@ integer minor units (cents/kopiykas).
 | `POST`   | `/goals`        | Create goal `{ name, target, currency }`              |
 | `DELETE` | `/goals/:id`    | Delete goal                                           |
 | `GET`    | `/rates`        | NBU rates as UAH per unit, cached for an hour         |
+| `GET`    | `/rates/history?from=YYYY-MM-DD` | NBU rates for every day from `from` to today, cached for 12 hours |
 
 ## How estimates work
 
 - **Available savings** = total balance − untouchable reserve, converted at NBU rates.
+- **From exchange rates** = each day's change in total value − that day's transactions at the same rate,
+  which is yesterday's USD and EUR balances times the rate change.
 - **Runway** = available savings ÷ monthly loss (spending, or spending − all incomes). A month is 30.44 days.
 - **Usual range** = the 25th to 75th percentile of complete months' spending, shown from 4 months on,
   on the monthly spending chart as a shaded band and in both places with the lowest and worst months.
@@ -341,7 +348,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 
 ### Missing financial concepts
 
-- [ ] Historical NBU rates, so the balance chart and cash flow show currency gains and losses
+- [x] Historical NBU rates, so the balance chart and cash flow show currency gains and losses
 - [ ] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
 - [ ] Investments: track positions and value, count them in net worth, let goals assume a return
 - [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities

@@ -11,7 +11,7 @@ import { card, muted, inputBox, button } from '../lib/styles'
 import { currencies, type Currency, type AccountKind, type Account } from '../lib/types'
 
 export function Balances() {
-  const { accounts, setAccounts, rates, transactions, error, setError, currency: chartCurrency, convert, totalIn } = useFinance({ withTransactions: true })
+  const { accounts, setAccounts, rates, transactions, error, setError, currency: chartCurrency, convert, convertOn, totalIn } = useFinance({ withTransactions: true })
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
@@ -83,7 +83,7 @@ export function Balances() {
             ))}
           </section>
 
-          <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={chartCurrency} />
+          <BalanceHistory accounts={accounts} transactions={transactions} convertOn={convertOn} currency={chartCurrency} />
 
           <Allocation accounts={accounts} convert={convert} />
         </div>

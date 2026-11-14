@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
-import { monthKey } from '../lib/periods'
+import { dailyValues } from '../lib/history'
+import { dayKey, monthKey } from '../lib/periods'
 import { median, quantile } from '../lib/stats'
 import { card, muted, linkButton } from '../lib/styles'
-import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
+import type { Account, Category, ConvertOn, Currency, Transaction } from '../lib/types'
 
 // how far back the figures look, in complete months
 const MONTHS = 12
@@ -11,20 +12,23 @@ const monthLabel = new Intl.DateTimeFormat('uk-UA', { month: 'short', year: 'num
 
 const SPENDING_NOTE = 'Net of refunds: a refund lowers spending in the month it arrives (which can go below zero) and never counts as income. '
   + 'Cancelled purchases count as nothing. Own-account moves and investments are left out.'
+const RATES_NOTE = 'What exchange rate moves added to or took from your USD and EUR balances that month: not income or spending, '
+  + 'but it changes what your savings are worth in this currency.'
 
-type Month ={ month: string, income: number, spent: number }
+// fromRates: what rate moves added to the foreign-currency balances that month
+type Month = { month: string, income: number, spent: number, fromRates: number }
 
 // Income and net spending per complete month, oldest first: up to MONTHS months before the running
 // one, starting at the first month with a transaction. Income is the «Надходження» category; spending
 // is every spending category, net of refunds. Own-account moves, investments and cancelled pairs are neither.
-// ponytail: today's NBU rate for every month, like the balance chart; historical rates if currency moves matter
-function cashFlow(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
+// Each transaction is converted at the NBU rate of its day.
+function cashFlow(transactions: Transaction[], accounts: Account[], categories: Category[], convertOn: ConvertOn, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
   const months = new Map<string, Month>()
   for (let i = MONTHS; i >= 1; i--) {
     const key = monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1).toISOString())
-    months.set(key, { month: key, income: 0, spent: 0 })
+    months.set(key, { month: key, income: 0, spent: 0, fromRates: 0 })
   }
   let first: string | undefined
   for (const t of transactions) {
@@ -34,10 +38,16 @@ function cashFlow(transactions: Transaction[], accounts: Account[], categories: 
     const row = months.get(key)
     const parent = parentOf.get(t.category)
     if (!row || !parent) continue
-    const amount = convert(t.amount, currencyOf.get(t.accountId)!, currency)
+    const amount = convertOn(t.amount, currencyOf.get(t.accountId)!, currency, dayKey(t.time))
     if (amount === undefined) return undefined
     if (parent.id === 'income') row.income += amount
     else if (parent.spending) row.spent -= amount
+  }
+  const days = dailyValues(accounts, transactions, convertOn, currency, now)
+  if (!days) return undefined
+  for (const d of days) {
+    const row = months.get(d.day.slice(0, 7))
+    if (row) row.fromRates += d.gain
   }
   return [...months.values()].filter((m) => first !== undefined && m.month >= first)
 }
@@ -46,20 +56,21 @@ type CashFlowProps = {
   transactions: Transaction[] | undefined
   accounts: Account[]
   categories: Category[]
-  convert: Convert
+  convertOn: ConvertOn
   currency: Currency
   // undefined until a budget exists to hold the income
   onUseIncome: ((amount: number, currency: Currency) => void) | undefined
 }
 
-export function CashFlow({ transactions, accounts, categories, convert, currency, onUseIncome }: CashFlowProps) {
+export function CashFlow({ transactions, accounts, categories, convertOn, currency, onUseIncome }: CashFlowProps) {
   const [now] = useState(() => new Date())
   if (!transactions || !categories.length) return null
-  const months = cashFlow(transactions, accounts, categories, convert, currency, now)
+  const months = cashFlow(transactions, accounts, categories, convertOn, currency, now)
   if (!months?.length) return null
 
   const income = months.reduce((s, m) => s + m.income, 0)
   const spent = months.reduce((s, m) => s + m.spent, 0)
+  const fromRates = months.reduce((s, m) => s + m.fromRates, 0)
   // from totals rather than a median of monthly rates, which a month of tiny income would blow up
   const rate = income > 0 ? (income - spent) / income : undefined
   const typicalIncome = median(months.map((m) => m.income))
@@ -114,6 +125,11 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
               ? 'no income recorded'
               : `${income >= spent ? '+' : '−'}${format(Math.abs(income - spent) / months.length, currency)} kept per month on average`}
           </p>
+          {Math.round(fromRates) !== 0 && (
+            <p className={`mt-1 text-sm tabular-nums ${muted}`} title={RATES_NOTE}>
+              {fromRates >= 0 ? '+' : '−'}{format(Math.abs(fromRates), currency)} from exchange rates
+            </p>
+          )}
         </div>
       </div>
 
@@ -124,6 +140,7 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
             <th>Income</th>
             <th className="cursor-help" title={SPENDING_NOTE}>Spent</th>
             <th>Saved</th>
+            <th className="cursor-help" title={RATES_NOTE}>Rates</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -135,6 +152,9 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
                 <td>{wholeMoney(m.income, currency)}</td>
                 <td>{wholeMoney(m.spent, currency)}</td>
                 <td className={tone(net)}>{m.income > 0 ? `${percentOf(net / m.income)}%` : wholeMoney(net, currency)}</td>
+                <td className={Math.round(m.fromRates) === 0 ? muted : tone(m.fromRates)}>
+                  {Math.round(m.fromRates) === 0 ? '—' : `${m.fromRates > 0 ? '+' : '−'}${wholeMoney(Math.abs(m.fromRates), currency)}`}
+                </td>
               </tr>
             )
           })}

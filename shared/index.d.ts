@@ -57,6 +57,10 @@ export type Category = {
 
 export type Rates = { date: string, rates: Record<Currency, number> }
 
+// NBU rates (UAH per unit) for every calendar day from the requested one to today, keyed 'YYYY-MM-DD';
+// the NBU publishes weekends and holidays too, repeating the last working day's rate
+export type RateHistory = Record<string, Record<Currency, number>>
+
 export type Budget = {
   monthlySpend: number
   currency: Currency
