@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Bar, BarChart, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type LabelListEntry, type XAxisTickContentProps } from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../../lib/periods'
@@ -11,7 +12,9 @@ const SERIES = 7
 const REST = 'rest'
 
 type Segment = { id: string, label: string, color: string, value: number }
-type Bar = { month: string, segments: Segment[], total: number }
+type MonthBar = { month: string, segments: Segment[], total: number }
+// one chart row per bar: segment values by series id, and the whole month's spending for the tooltip
+type Row = { month: string, values: Record<string, number>, total: number, monthTotal: number }
 
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
 
@@ -45,7 +48,7 @@ function spendingByMonth(list: Transaction[], leafById: Map<string, Leaf>, bucke
 
 // one bar per month, oldest first, with a segment per series. Refunds can push a category below
 // zero in a month; a stack only shows what was spent.
-function stack(months: Map<string, Map<string, number>>, series: Omit<Segment, 'value'>[]): Bar[] {
+function stack(months: Map<string, Map<string, number>>, series: Omit<Segment, 'value'>[]): MonthBar[] {
   return [...months].sort(([a], [b]) => a.localeCompare(b)).map(([month, byCategory]) => {
     const values = new Map<string, number>()
     for (const [id, value] of byCategory) add(values, series.some((s) => s.id === id) ? id : REST, value)
@@ -86,7 +89,7 @@ type MonthlySpendingProps = {
   leafById: Map<string, Leaf>
   // current period filter: which months are shown, and the picked one
   period: string
-  // month key ("m:2026-10"), or "" for all time
+  // month key ("m:2026-10"), or a day ("d:…") or its week ("w:…") in the week view
   onPick: (period: string) => void
   // selected category or subcategory: the bars show only it
   selected?: string
@@ -104,7 +107,6 @@ type MonthlySpendingProps = {
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
 export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
-  const [hover, setHover] = useState<{ month: string, series: string }>()
   const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
 
@@ -140,7 +142,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
     (!selectedParent || t.category === selected || leafById.get(t.category)?.parent.id === selected) &&
     (!merchant || t.merchant === merchant.key)
   const focusMonths = focus ? spendingByMonth(list.filter(inFocus), leafById, bucket).months : undefined
-  const bars: Bar[] = focus
+  const bars: MonthBar[] = focus
     ? stacked.map(({ month }) => {
         const value = Math.max(0, sum([...(focusMonths!.get(month)?.values() ?? [])]))
         return { month, segments: value > 0 ? [{ ...focus, value }] : [], total: value }
@@ -168,18 +170,24 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const shownStacked = stacked.filter((b) => isShown(b.month))
   if (!stacked.some((b) => b.total > 0)) return null
 
-  // the scale includes the median so its line stays inside the plot; bars use 85% of the height at most
   const max = Math.max(...shown.map((b) => b.total), typical ?? 0)
-  const height = (value: number) => `${(value / max) * 85}%`
+  const rows: Row[] = shown.map((b) => ({
+    month: b.month,
+    values: Object.fromEntries(b.segments.map((s) => [s.id, s.value])),
+    total: b.total,
+    monthTotal: stacked.find((m) => m.month === b.month)!.total,
+  }))
+  const barSeries = focus ? [focus] : series
+  const segmentsOf = new Map(barSeries.map((s) => [s.id, s]))
+  const topSeries = (row: Row) => barSeries.findLast((s) => row.values[s.id] > 0)?.id
   const seriesTotal = (id: string) => sum(shownStacked.map((b) => b.segments.find((s) => s.id === id)?.value ?? 0))
   const label = (month: string) => (days ? longDay.format(date(month)) : shortMonth.format(firstDay(month)))
-  const active = hover && shown.find((b) => b.month === hover.month)
-  const activeSegment = active?.segments.find((s) => s.id === hover!.series)
-  // picking the month already selected goes back to all time, the day already selected to its week
+  // picking the month already selected keeps it; the day already selected goes back to its week
   const pickMonth = (month: string) => {
     const key = days ? `d:${month}` : `m:${month}`
-    onPick(period !== key ? key : days ? week! : '')
+    onPick(period === key && days ? week! : key)
   }
+  const isPicked = (month: string) => period === `m:${month}` || period === `d:${month}`
   const toggle = (id: string) => onSelect(selected === id ? undefined : id)
   const legendButton = 'flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900'
   const legendContent = (color: string, text: string, amount: number) => (
@@ -234,89 +242,65 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         )}
       </ul>
 
-      <div className="relative mt-5" onMouseLeave={() => setHover(undefined)}>
-        <div className="relative flex h-56 items-end gap-3 border-b border-zinc-200 dark:border-zinc-800">
-          {/* the usual range: the middle half of the complete months */}
-          {spread && spread.high > 0 && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 bg-zinc-500/10 dark:bg-zinc-400/10"
-              style={{ bottom: height(spread.low), height: `calc(${height(spread.high)} - ${height(spread.low)})` }}
-            />
-          )}
-          {typical !== undefined && typical > 0 && (
-            <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-zinc-500 dark:border-zinc-400" style={{ bottom: height(typical) }}>
-              <span className="absolute -top-2.5 right-0 rounded bg-white px-1 text-[0.65rem] font-medium text-zinc-600 tabular-nums dark:bg-zinc-900 dark:text-zinc-300">
-                медіана {wholeMoney(typical, currency)}
-              </span>
-            </div>
-          )}
-          {shown.map((b) => (
-            <div key={b.month} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-end">
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => pickMonth(b.month)}
-                className="mb-1 cursor-pointer text-xs font-medium text-zinc-700 tabular-nums hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+      <div className="mt-5 h-64" onMouseDown={(e) => e.preventDefault()}>
+        <ResponsiveContainer>
+          <BarChart data={rows} margin={{ top: 20, right: 0, bottom: 0, left: 0 }} barCategoryGap="15%">
+            <XAxis dataKey="month" interval={0} height={36} tickLine={false} tick={(props: XAxisTickContentProps) => (
+              <g transform={`translate(${props.x},${props.y})`} className="cursor-pointer" onClick={() => pickMonth(String(props.payload.value))}>
+                <text textAnchor="middle" dy={12} fontSize={12} fontWeight={isPicked(String(props.payload.value)) ? 700 : 400} fill="currentColor">
+                  {days ? weekday.format(date(String(props.payload.value))) : monthOnly.format(firstDay(String(props.payload.value)))}
+                </text>
+                <text textAnchor="middle" dy={26} fontSize={10} fill="currentColor" opacity={0.7}>
+                  {days ? dayMonth.format(date(String(props.payload.value))) : String(props.payload.value).slice(0, 4)}
+                </text>
+              </g>
+            )} />
+            {/* bars use 85% of the height at most; the scale includes the median so its line stays inside */}
+            <YAxis hide domain={[0, max / 0.85]} />
+            {/* the usual range: the middle half of the complete months */}
+            {spread && spread.high > 0 && <ReferenceArea y1={spread.low} y2={spread.high} fillOpacity={0.1} />}
+            {typical !== undefined && typical > 0 && (
+              <ReferenceLine y={typical} strokeDasharray="4 4" label={{ value: `медіана ${wholeMoney(typical, currency)}`, position: 'insideTopRight', fontSize: 11 }} />
+            )}
+            <Tooltip shared={false} cursor={false} content={({ active, payload }) => {
+              const item = payload?.[0]
+              const segment = item && segmentsOf.get(String(item.name))
+              if (!active || !segment) return null
+              const row = item.payload as Row
+              return <SegmentTooltip month={label(row.month)} monthTotal={row.monthTotal} segment={{ ...segment, value: Number(item.value) }} currency={currency} />
+            }} />
+            {barSeries.map((s) => (
+              <Bar
+                key={s.id}
+                name={s.id}
+                stackId="month"
+                dataKey={(r: Row) => r.values[s.id] ?? 0}
+                fill={s.color}
+                className="cursor-pointer"
+                onClick={(item) => {
+                  const month = (item.payload as Row).month
+                  if (focus) pickMonth(month)
+                  else if (s.id !== REST) toggle(s.id)
+                }}
               >
-                {wholeMoney(b.total, currency)}
-              </button>
-              <div className="flex w-full max-w-16 flex-col-reverse gap-0.5" style={{ height: height(b.total) }}>
-                {b.segments.map((s, i) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    aria-label={`${label(b.month)}, ${s.label}: ${format(s.value, currency)}`}
-                    onMouseEnter={() => setHover({ month: b.month, series: s.id })}
-                    onFocus={() => setHover({ month: b.month, series: s.id })}
-                    onBlur={() => setHover(undefined)}
-                    onClick={() => (focus ? pickMonth(b.month) : s.id !== REST && toggle(s.id))}
-                    className={`w-full min-h-px cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zinc-900 dark:focus-visible:outline-zinc-100 ${i === b.segments.length - 1 ? 'rounded-t-[4px]' : ''} ${hover && !(hover.month === b.month && hover.series === s.id) ? 'opacity-60' : ''}`}
-                    style={{ flexGrow: s.value, flexBasis: 0, background: s.color }}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-1.5 flex gap-3">
-          {shown.map((b) => (
-            <button
-              key={b.month}
-              type="button"
-              aria-pressed={period === `m:${b.month}` || period === `d:${b.month}`}
-              onClick={() => pickMonth(b.month)}
-              className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
-            >
-              {days ? weekday.format(date(b.month)) : monthOnly.format(firstDay(b.month))}
-              <span className="block text-[0.65rem] opacity-75">{days ? dayMonth.format(date(b.month)) : b.month.slice(0, 4)}</span>
-            </button>
-          ))}
-        </div>
-
-        {active && activeSegment && (
-          <Tooltip
-            month={label(active.month)}
-            // the whole month's spending, also while a single category is shown
-            monthTotal={stacked.find((b) => b.month === active.month)!.total}
-            segment={activeSegment}
-            left={(shown.indexOf(active) + 0.5) / shown.length}
-            currency={currency}
-          />
-        )}
+                {/* the month's total rides on the topmost segment of its stack */}
+                <LabelList position="top" fontSize={12} fill="currentColor"
+                  valueAccessor={(entry: LabelListEntry) => {
+                    const row = entry.payload as Row | undefined
+                    return row && topSeries(row) === s.id ? wholeMoney(row.total, currency) : undefined
+                  }} />
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </section>
   )
 }
 
-function Tooltip({ month, monthTotal, segment, left, currency }: { month: string, monthTotal: number, segment: Segment, left: number, currency: Currency }) {
+function SegmentTooltip({ month, monthTotal, segment, currency }: { month: string, monthTotal: number, segment: Segment, currency: Currency }) {
   return (
-    <div
-      role="tooltip"
-      className="pointer-events-none absolute top-0 z-10 w-max max-w-56 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
-      style={{ left: `clamp(7rem, ${left * 100}%, calc(100% - 7rem))` }}
-    >
+    <div className="w-max max-w-56 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
       <p className={muted}>{month} · {format(monthTotal, currency)}</p>
       <p className="mt-1 flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
         <Swatch color={segment.color} />
