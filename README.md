@@ -61,9 +61,13 @@ All accounts together, in Runway's currency.
 ### Plan
 
 - **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
-  currency, marked if it keeps coming when the others stop, like a pension), an optional extreme-saving
+  currency, marked if it keeps coming when the others stop, like a pension), an optional essential-spending
   budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
   without income to see the most you can spend per month.
+- **Emergency fund**: how many months of essential spending your available savings cover, against
+  Runway's "Months to cover without income" (6 if not set) and the 3-month minimum: red below 3, amber
+  below the target, green once funded. Essentials are Runway's essential spending (the usual spending
+  without one), less incomes that keep coming.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (income minus spending). Months you want to live without income are kept aside as a cushion
   and not counted toward goals.
@@ -79,7 +83,7 @@ All accounts together, in Runway's currency.
   moves between your own accounts or investments so they do not count as spending.
 - **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. The
   «Усі витрати | Необхідні» switch shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
-  monthly spending, the essential one as the extreme-saving amount.
+  monthly spending, the essential one as essential spending.
 
 ## Stack
 
@@ -341,6 +345,6 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - [ ] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
 - [ ] Investments: track positions and value, count them in net worth, let goals assume a return
 - [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities
-- [ ] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
+- [x] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
 - [ ] Category budgets: a monthly cap per category and progress against it
 - [ ] Taxes: set aside a ФОП's single tax and ЄСВ from income

@@ -1,3 +1,4 @@
+import { EmergencyFund } from '../components/EmergencyFund'
 import { Goals } from '../components/Goals'
 import { Runway } from '../components/Runway'
 import { ErrorBanner, InfoTip } from '../components/controls'
@@ -17,6 +18,17 @@ export function Plan() {
 
       {budget !== undefined && (
         <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} />
+      )}
+
+      {budget && availableIn(budget.currency) !== undefined && (
+        <EmergencyFund
+          available={availableIn(budget.currency)!}
+          essential={minimalIn(budget.currency)}
+          usual={budget.monthlySpend}
+          kept={keptIncomeIn(budget.currency)}
+          months={budget.targetMonths}
+          currency={budget.currency}
+        />
       )}
 
       <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />

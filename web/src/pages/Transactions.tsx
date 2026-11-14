@@ -146,7 +146,7 @@ export function TransactionsPage() {
       const body = budgetWith(await api<Budget | null>('/budget'), essentialOnly ? 'minimalSpend' : 'monthlySpend', amount, currency)
       if (!body) return setError('Set "I spend per month" in Runway first')
       await api('/budget', { method: 'PUT', body: JSON.stringify(body) })
-      setNotice(`Runway: ${essentialOnly ? 'extreme saving' : 'monthly spending'} set to ${format(amount, currency)} per month`)
+      setNotice(`Runway: ${essentialOnly ? 'essential spending' : 'monthly spending'} set to ${format(amount, currency)} per month`)
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
     }

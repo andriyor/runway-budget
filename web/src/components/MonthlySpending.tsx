@@ -96,7 +96,7 @@ type MonthlySpendingProps = {
   onClearMerchant: () => void
   // list holds only essential spending; the median is then the minimal month
   essentialOnly?: boolean
-  // store the median in Runway: monthly spending, or the extreme-saving amount with essentialOnly
+  // store the median in Runway: monthly spending, or essential spending with essentialOnly
   onUseMedian?: (value: number) => void
 }
 
@@ -207,7 +207,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             )}
             {onUseMedian && (
               <button type="button" onClick={() => onUseMedian(typical)} className="ml-3 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                {essentialOnly ? 'Use as extreme saving in Runway' : 'Use as monthly spending in Runway'}
+                {essentialOnly ? 'Use as essential spending in Runway' : 'Use as monthly spending in Runway'}
               </button>
             )}
           </span>

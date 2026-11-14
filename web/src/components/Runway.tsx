@@ -52,7 +52,7 @@ function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimi
         {diff >= 0 ? `${format(diff, currency)} more than you spend now` : `cut ${format(-diff, currency)} from your usual spending`}
       </p>
       {minimal !== undefined && limit < minimal && (
-        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">Below your extreme-saving budget, likely not realistic.</p>
+        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">Below your essential spending, likely not realistic.</p>
       )}
     </div>
   )
@@ -157,8 +157,8 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
           <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={form.spend} onChange={field('spend')} currency={form.currency} onCurrency={field('currency')} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-sky-600"><TrendDownIcon /></span> Extreme saving per month {optional}</span>
-          <MoneyInput id="minimal" label="Extreme saving per month" min="0.01" placeholder="bare minimum, less than usual" value={form.minimal} onChange={field('minimal')} currency={form.minimalCurrency} onCurrency={field('minimalCurrency')} />
+          <span className={fieldLabel}><span className="text-sky-600"><TrendDownIcon /></span> Essential spending per month {optional}</span>
+          <MoneyInput id="minimal" label="Essential spending per month" min="0.01" placeholder="rent, food, medicine: less than usual" value={form.minimal} onChange={field('minimal')} currency={form.minimalCurrency} onCurrency={field('minimalCurrency')} />
         </label>
         <fieldset className="flex flex-col gap-1.5">
           <legend className={`${fieldLabel} mb-1.5`}><span className="text-emerald-600"><BriefcaseIcon /></span> My income per month {optional}</legend>
@@ -203,7 +203,7 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
           <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={form.reserve} onChange={field('reserve')} currency={form.reserveCurrency} onCurrency={field('reserveCurrency')} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-violet-600"><CalendarIcon /></span> Live without income for {optional}</span>
+          <span className={fieldLabel}><span className="text-violet-600"><CalendarIcon /></span> Months to cover without income {optional}</span>
           <div className={`flex items-center ${inputBox}`}>
             <input
               id="months"
@@ -238,9 +238,9 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
               <Estimate label="Without income" total={available} burn={saved.monthlySpend - kept} currency={saved.currency} />
               {minimalInSpendCurrency !== undefined && (
                 <>
-                  <Estimate label="Extreme saving, without income" total={available} burn={minimalInSpendCurrency - kept} currency={saved.currency} />
+                  <Estimate label="Essentials only, without income" total={available} burn={minimalInSpendCurrency - kept} currency={saved.currency} />
                   {minimalInSpendCurrency >= saved.monthlySpend && (
-                    <p className="text-sm text-amber-700 dark:text-amber-400">Extreme saving is not below your usual spending.</p>
+                    <p className="text-sm text-amber-700 dark:text-amber-400">Essential spending is not below your usual spending.</p>
                   )}
                 </>
               )}
