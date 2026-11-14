@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CategoryPicker } from '../components/CategoryPicker'
 import { CategorySpending } from '../components/CategorySpending'
 import { MerchantIcon } from '../components/MerchantIcon'
 import { RefreshCw } from 'lucide-react'
@@ -43,9 +44,9 @@ export function TransactionsPage() {
   // the note being edited; Enter or leaving the field saves, Escape cancels
   const [editing, setEditing] = useState<{ id: number, draft: string }>()
   const cancelled = useRef(false)
-  // the one row whose category or essential dropdown is open; other rows show plain buttons,
+  // the one row whose essential dropdown is open; other rows show a plain button,
   // since a dropdown per row meant ~100k <option>s for a year of transactions
-  const [picking, setPicking] = useState<{ id: number, kind: 'category' | 'essential' }>()
+  const [picking, setPicking] = useState<number>()
   // rows rendered; the summaries above always use every transaction
   const [limit, setLimit] = useState(PAGE)
   const [period, setPeriod] = useState('')
@@ -170,19 +171,6 @@ export function TransactionsPage() {
   const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
   const rowPicker = 'shrink-0 cursor-pointer truncate rounded hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100'
   const essentialLabel = (t: Transaction) => `${t.essential ? '● необхідне' : '○ необов’язкове'}${t.essentialSource !== 'auto' ? ' *' : ''}`
-  const categoryOptions = (
-    <>
-      <option value="">Автоматично</option>
-      {categories.filter((c) => c.subcategories.length).map((c) => (
-        <optgroup key={c.id} label={`${c.emoji} ${c.label}`}>
-          {c.subcategories.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
-        </optgroup>
-      ))}
-      <optgroup label="Службові">
-        {categories.filter((c) => !c.subcategories.length).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-      </optgroup>
-    </>
-  )
   const essentialOptions = (
     <>
       <optgroup label="Лише ця транзакція">
@@ -378,44 +366,27 @@ export function TransactionsPage() {
                       </button>
                     )}
                     <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
-                      {picking?.id === t.id && picking.kind === 'category' ? (
-                        <select
-                          ref={openPicker}
-                          aria-label={`Category of ${t.description}`}
-                          value={t.category}
-                          onBlur={() => setPicking(undefined)}
-                          onChange={(e) => {
-                            setPicking(undefined)
-                            setKept({ id: t.id, view })
-                            changeCategory(t, [setOwn(t, e.target.value || null)])
-                          }}
-                          className="field-sizing-content max-w-48 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
+                      {/* one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it */}
+                      <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        <button
+                          type="button"
+                          title={`Статистика: ${selectionLabel(t.category)}`}
+                          onClick={() => { pickCategory(t.category); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                          className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
                         >
-                          {categoryOptions}
-                        </select>
-                      ) : (
-                        // one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it
-                        <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                          <button
-                            type="button"
-                            title={`Статистика: ${selectionLabel(t.category)}`}
-                            onClick={() => { pickCategory(t.category); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                            className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
-                          >
-                            {leafById.get(t.category)?.label ?? t.category}
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
-                            title="Змінити категорію"
-                            onClick={() => setPicking({ id: t.id, kind: 'category' })}
-                            className="cursor-pointer py-0.5 pr-2 pl-1.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
-                          >
-                            <svg aria-hidden viewBox="0 0 16 16" className="size-3 fill-current"><path d="M4.2 6.2a.75.75 0 0 1 1.06 0L8 8.94l2.74-2.74a.75.75 0 1 1 1.06 1.06l-3.27 3.27a.75.75 0 0 1-1.06 0L4.2 7.26a.75.75 0 0 1 0-1.06Z" /></svg>
-                          </button>
-                        </span>
-                      )}
-                      {picking?.id === t.id && picking.kind === 'essential' ? (
+                          {leafById.get(t.category)?.label ?? t.category}
+                        </button>
+                        <CategoryPicker
+                          label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
+                          value={t.categorySource === 'auto' ? '' : t.category}
+                          categories={categories}
+                          onPick={(category, forMerchant) => {
+                            setKept({ id: t.id, view })
+                            changeCategory(t, forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)])
+                          }}
+                        />
+                      </span>
+                      {picking === t.id ? (
                         <select
                           ref={openPicker}
                           aria-label={`Essential: ${t.description}`}
@@ -431,7 +402,7 @@ export function TransactionsPage() {
                         <button
                           type="button"
                           aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
-                          onClick={() => setPicking({ id: t.id, kind: 'essential' })}
+                          onClick={() => setPicking(t.id)}
                           className={`${rowPicker} ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
                         >
                           {essentialLabel(t)} <span aria-hidden>▾</span>
