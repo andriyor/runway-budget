@@ -6,6 +6,7 @@ import { format, wholeMoney } from '../lib/format'
 import { monthKey } from '../lib/periods'
 import { card, muted, inputBox, button } from '../lib/styles'
 import type { Account, Category, CategoryBudget, Convert, Currency, Transaction } from '../lib/types'
+import { parentsById } from '../lib/categories'
 
 type CategoryBudgetsProps = {
   transactions: Transaction[] | undefined
@@ -69,11 +70,11 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
 
   if (!transactions) return null
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const parentOf = new Map(categories.flatMap((c) => [[c.id, c.id] as const, ...c.subcategories.map((s) => [s.id, c.id] as const)]))
+  const parentOf = parentsById(categories)
   const current = monthKey(now.toISOString())
   const spent = new Map<string, number>()
   for (const t of transactions) {
-    const parent = parentOf.get(t.category)
+    const parent = parentOf.get(t.category)?.id
     if (t.cancelled || !parent || monthKey(t.time) !== current) continue
     spent.set(parent, (spent.get(parent) ?? 0) - (convert(t.amount, currencyOf.get(t.accountId)!, currency) ?? 0))
   }

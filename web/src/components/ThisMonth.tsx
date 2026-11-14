@@ -5,6 +5,7 @@ import { monthKey } from '../lib/periods'
 import { median } from '../lib/stats'
 import { card, muted } from '../lib/styles'
 import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
+import { parentsById } from '../lib/categories'
 
 // how far back "usual" looks, in complete months
 const MONTHS = 12
@@ -27,7 +28,7 @@ const ranked = (rows: Row[]) =>
 // so rent paid on the 2nd is not stretched over the month the way spent ÷ days × 30 would.
 function thisMonth(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
+  const parentOf = parentsById(categories)
   const current = monthKey(now.toISOString())
   const past = Array.from({ length: MONTHS }, (_, i) => monthKey(new Date(now.getFullYear(), now.getMonth() - MONTHS + i, 1).toISOString()))
   // category or subcategory id → month key → spent by this day of that month

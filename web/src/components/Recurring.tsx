@@ -5,6 +5,7 @@ import { monthKey } from '../lib/periods'
 import { median } from '../lib/stats'
 import { card, muted } from '../lib/styles'
 import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
+import { parentsById } from '../lib/categories'
 
 // complete months looked at, besides the running one
 const MONTHS = 6
@@ -25,7 +26,7 @@ type Payment = { latest: Transaction, emoji: string, amount: number, next: Date 
 // ponytail: monthly cycles only; yearly or weekly payments need their own period detection
 function recurring(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
+  const parentOf = parentsById(categories)
   const since = new Date(now.getFullYear(), now.getMonth() - MONTHS, 1)
   // merchant key → its charges in the window, in the budget currency
   const charges = new Map<string, Array<{ t: Transaction, amount: number }>>()

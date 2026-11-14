@@ -6,6 +6,7 @@ import { dayKey, monthKey } from '../lib/periods'
 import { median, quantile } from '../lib/stats'
 import { card, muted, linkButton } from '../lib/styles'
 import type { Account, Category, ConvertOn, Currency, Inflation, Transaction } from '../lib/types'
+import { parentsById } from '../lib/categories'
 
 // how far back the figures look, in complete months
 const MONTHS = 12
@@ -25,7 +26,7 @@ type Month = { month: string, income: number, spent: number, fromRates: number }
 // Each transaction is converted at the NBU rate of its day.
 function cashFlow(transactions: Transaction[], accounts: Account[], categories: Category[], convertOn: ConvertOn, currency: Currency, now: Date) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
-  const parentOf = new Map(categories.flatMap((c) => [[c.id, c] as const, ...c.subcategories.map((s) => [s.id, c] as const)]))
+  const parentOf = parentsById(categories)
   const months = new Map<string, Month>()
   for (let i = MONTHS; i >= 1; i--) {
     const key = monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1).toISOString())
