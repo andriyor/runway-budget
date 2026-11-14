@@ -1,7 +1,8 @@
 # Runway Budget
 
 Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at the official
-[National Bank of Ukraine](https://bank.gov.ua) rate, and it estimates how long your savings last
+[National Bank of Ukraine](https://bank.gov.ua) rate. It analyses spending from Monobank transactions
+(against the usual, budgets, recurring payments, inflation) and estimates how long your savings last
 and when you reach your goals.
 
 ![Spending per month and by category](docs/screenshots/transactions.png)
@@ -26,8 +27,11 @@ Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **P
 
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
+- **Allocation**: the share of the total by currency and by account type (bank or cash).
 - **Balance over time**: the total at the end of every day since the first transaction, each day at its
   own NBU rate, with what exchange rates added to or took from the USD and EUR balances.
+
+On desktop the overview sits on the left and the accounts list beside it, staying in view while you scroll.
 
 ### Spending
 
@@ -86,8 +90,8 @@ All accounts together, in Runway's currency.
 
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them, on demand and automatically at 09:00 and 21:00.
-- **Phones**: a bottom tab bar, compact balance cards and account rows, and a Transactions page that
-  opens on the latest quarter, with the monthly chart showing that quarter.
+- **Phones**: a bottom tab bar with icons, one line per currency total, two-line account rows, and a
+  Transactions page that opens on the latest quarter, with the monthly chart showing that quarter.
 - **Categories**: transactions are sorted into categories and subcategories automatically from their
   MCC. Correct one transaction or every transaction from a merchant, and mark transfers as income,
   moves between your own accounts or investments so they do not count as spending.
@@ -335,10 +339,15 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   and the chart showing one quarter) read the same breakpoint from `web/src/lib/media.ts`. On a
   phone the chart's median still covers every complete month in the filter's scope, not only the
   quarter shown.
-- **No router library.** The web app switches pages on `location.hash` (`#/`, `#/transactions`);
-  a query after it carries page state, e.g. `#/transactions?account=3` opens that account.
-- **Web layout:** `web/src/pages/` for the two pages, `components/` for their parts, `lib/` for
-  types, API calls, formatting and shared class names.
+- **No router library.** The web app switches pages on `location.hash` (`#/`, `#/spending`,
+  `#/transactions`, `#/plan`); a query after it carries page state, e.g. `#/transactions?account=3`
+  opens that account and `?category=groceries&period=m:2026-11` filters it on load.
+- **Web layout:** `web/src/pages/` for the four pages, `components/` for their parts, `lib/` for
+  types, API calls, formatting and shared class names. `lib/finance.ts` is the hook the Balances,
+  Spending and Plan pages share: it loads accounts, rates, the budget and, when asked, transactions,
+  rate history and CPI, and does the currency and budget calculations.
+- **Container queries for account rows.** They lay out by the accounts list's width rather than the
+  screen's, so the same row fits the desktop sidebar and a phone.
 - **Dev watcher ignores `data.db`.** `pnpm dev` restarts the API on file changes in `api/`; writes to
   the database are excluded so saving a category does not restart the server mid-request.
 
