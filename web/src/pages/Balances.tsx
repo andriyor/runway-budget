@@ -4,6 +4,7 @@ import { Allocation } from '../components/Allocation'
 import { BalanceHistory } from '../components/BalanceHistory'
 import { CashFlow } from '../components/CashFlow'
 import { Goals } from '../components/Goals'
+import { Recurring } from '../components/Recurring'
 import { Runway } from '../components/Runway'
 import { ThisMonth } from '../components/ThisMonth'
 import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
@@ -173,6 +174,10 @@ export function Balances() {
 
       {rates && (
         <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
+      )}
+
+      {rates && (
+        <Recurring transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
       )}
 
       {budget !== undefined && (

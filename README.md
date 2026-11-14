@@ -32,6 +32,9 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **This month against the usual**: each category's spending from the 1st to today next to the median
   of the same days in the last 12 complete months, with the change in percent («Продукти +34%»).
   Same days rather than whole months, so a half-gone month does not look cheap.
+- **Recurring payments**: rent, subscriptions and regular donations, found as a merchant charged about
+  once a month for a similar amount in at least 3 of the last 6 months and within the last 40 days,
+  with the latest charge, the expected next date and the committed monthly total.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (income minus spending). Months you want to live without income are kept aside as a cushion
   and not counted toward goals.
@@ -301,7 +304,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 ### Missing statistics
 
 - [x] This month against the usual: each category's spending vs its median («Продукти +34%»)
-- [ ] Recurring payments: detect subscriptions (same merchant, similar amount each month) and show the
+- [x] Recurring payments: detect subscriptions (same merchant, similar amount each month) and show the
   committed monthly total
 - [ ] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
 - [ ] Year-over-year: same month last year and yearly totals per category
