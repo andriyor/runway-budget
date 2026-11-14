@@ -68,7 +68,9 @@ export function TransactionsPage() {
     api<Account[]>('/accounts')
       .then((all) => {
         setAccounts(all)
-        setAccountId((all.find((a) => a.monoAccountId) ?? all[0])?.id)
+        // an account linked from the Balances list, else the synced one, else the first
+        const linked = Number(new URLSearchParams(location.hash.split('?')[1]).get('account'))
+        setAccountId((all.find((a) => a.id === linked) ?? all.find((a) => a.monoAccountId) ?? all[0])?.id)
       })
       .catch((e) => setError(e.message))
     api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
@@ -216,7 +218,11 @@ export function TransactionsPage() {
             <select
               aria-label="Account"
               value={accountId ?? ''}
-              onChange={(e) => { setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value)) }}
+              onChange={(e) => {
+                setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value))
+                // keep the link in step so a reload stays on this account; replaceState fires no hashchange
+                history.replaceState(null, '', `#/transactions?account=${e.target.value}`)
+              }}
               className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none max-sm:basis-full dark:text-zinc-100 ${inputBox}`}
             >
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}

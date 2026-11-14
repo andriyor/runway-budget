@@ -24,6 +24,7 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
   const [currency, setCurrency] = useState(account.currency)
   const [kind, setKind] = useState(account.kind)
   const [error, setError] = useState('')
+  const transactionsHref = `#/transactions?account=${account.id}`
   const dirty = name.trim() !== account.name
     || Number(balance) !== account.balance
     || currency !== account.currency
@@ -85,7 +86,9 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             <ChevronIcon />
           </button>
         </div>
-        <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
+        <a href={transactionsHref} aria-label={`${account.name} transactions`} title="Show transactions" className="rounded-full hover:ring-2 hover:ring-indigo-500 hover:ring-offset-2 dark:hover:ring-offset-zinc-900">
+          <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
+        </a>
         <div className="min-w-32 flex-1">
           <input
             value={name}
@@ -99,6 +102,8 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
           />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
+            {' · '}
+            <a href={transactionsHref} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Transactions →</a>
           </p>
         </div>
         {/* phones: delete sits on the name line and the controls take a full second line;

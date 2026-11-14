@@ -11,10 +11,13 @@ export default function App() {
     return () => removeEventListener('hashchange', onHash)
   }, [])
 
+  // the part before ? picks the page; the query is the page's own state, e.g. #/transactions?account=3
+  const path = page.split('?')[0]
+
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10">
-      <Nav page={page} />
-      {page === '#/transactions' ? <TransactionsPage /> : <Balances />}
+      <Nav page={path} />
+      {path === '#/transactions' ? <TransactionsPage /> : <Balances />}
     </main>
   )
 }
