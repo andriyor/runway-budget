@@ -35,7 +35,10 @@ export function Balances() {
     if (!ids) return
     Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
       .then((all) => setTransactions(all.flat()))
-      .catch(() => setTransactions([]))
+      .catch((e) => {
+        setTransactions([])
+        setError(`Transactions: ${e.message}`)
+      })
   }, [ids])
 
   useEffect(() => {

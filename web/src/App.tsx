@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { Nav } from './components/Nav'
 import { Balances } from './pages/Balances'
 import { TransactionsPage } from './pages/Transactions'
@@ -17,7 +18,10 @@ export default function App() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10">
       <Nav page={path} />
-      {path === '#/transactions' ? <TransactionsPage /> : <Balances />}
+      {/* keyed by page so switching pages clears an error */}
+      <ErrorBoundary key={path}>
+        {path === '#/transactions' ? <TransactionsPage /> : <Balances />}
+      </ErrorBoundary>
     </main>
   )
 }
