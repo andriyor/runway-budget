@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build } from '../helper'
+import { accounts } from '../../src/db/schema'
 
 test('create, list and update accounts', async (t) => {
   const app = await build(t)
@@ -41,6 +42,13 @@ test('adjust adds to or subtracts from the balance', async (t) => {
   assert.equal((await adjust(-0.1)).json().balance, 150.15)
   assert.equal((await adjust(0)).statusCode, 400)
   assert.equal((await app.inject({ method: 'POST', url: '/api/accounts/999/adjust', payload: { amount: 1 } })).statusCode, 404)
+
+  // each adjustment is a transaction, so the balance history can undo it
+  const recorded = (await app.inject({ url: `/api/accounts/${id}/transactions` })).json()
+  assert.deepEqual(recorded.map((x: { amount: number, category: string }) => [x.amount, x.category]), [[-0.1, 'other_expenses'], [50.25, 'income']])
+
+  const [synced] = app.db.insert(accounts).values({ name: 'Mono', currency: 'UAH', balanceCents: 0, monoAccountId: 'acc' }).returning().all()
+  assert.equal((await app.inject({ method: 'POST', url: `/api/accounts/${synced.id}/adjust`, payload: { amount: 1 } })).statusCode, 400)
 })
 
 test('account kind defaults to bank and can be changed', async (t) => {

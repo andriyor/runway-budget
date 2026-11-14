@@ -145,7 +145,8 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
               <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
             )}
           </div>
-          <button
+          {/* synced accounts take their balance from the bank */}
+          {!account.monoAccountId && <button
             type="button"
             onClick={() => { setAdjusting(!adjusting); setDelta('') }}
             aria-pressed={adjusting}
@@ -154,7 +155,7 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             className="size-9 shrink-0 rounded-lg text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 aria-pressed:bg-zinc-100 aria-pressed:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-zinc-800 dark:aria-pressed:text-zinc-100"
           >
             {adjusting ? '×' : '±'}
-          </button>
+          </button>}
           <button className={button} disabled={!dirty}>Save</button>
         </div>
       </form>

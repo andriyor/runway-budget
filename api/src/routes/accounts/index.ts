@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { type FastifyPluginAsync } from 'fastify'
 import type { Account, Transaction } from '@runway-budget/shared'
 import { desc, eq, sql } from 'drizzle-orm'
@@ -148,7 +149,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     return toDto(row)
   })
 
-  // adds `amount` (negative subtracts) to the stored balance in one statement, so it can't race a concurrent edit
+  // adds `amount` (negative subtracts) to the stored balance and records it as a transaction, so the balance
+  // history and spending see it. Not for bank-synced accounts: the next sync resets their balance to the bank's.
   fastify.post<{ Params: { id: number }, Body: { amount: number } }>('/:id/adjust', {
     schema: {
       params: { type: 'object', properties: { id: { type: 'integer' } } },
@@ -160,11 +162,28 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
   }, async (request, reply) => {
-    const [row] = await fastify.db.update(accounts)
-      .set({ balanceCents: sql`${accounts.balanceCents} + ${toCents(request.body.amount)}` })
-      .where(eq(accounts.id, request.params.id))
-      .returning()
-    if (!row) return reply.notFound()
+    const { id } = request.params
+    const amountCents = toCents(request.body.amount)
+    const existing = fastify.db.select().from(accounts).where(eq(accounts.id, id)).get()
+    if (!existing) return reply.notFound()
+    if (existing.monoAccountId) return reply.badRequest('Synced accounts take their balance from the bank')
+    const row = fastify.db.transaction((tx) => {
+      tx.insert(transactions).values({
+        accountId: id,
+        externalId: `manual:${randomUUID()}`,
+        time: new Date(),
+        description: 'Manual adjustment',
+        // no merchant code; money added counts as income, money taken falls to "other expenses"
+        mcc: 0,
+        amountCents,
+        category: amountCents > 0 ? 'income' : null
+      }).run()
+      // in SQL, so it can't race a concurrent edit
+      return tx.update(accounts)
+        .set({ balanceCents: sql`${accounts.balanceCents} + ${amountCents}` })
+        .where(eq(accounts.id, id))
+        .returning().get()
+    })
     return toDto(row)
   })
 
