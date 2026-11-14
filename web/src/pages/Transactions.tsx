@@ -4,6 +4,7 @@ import { MerchantIcon } from '../components/MerchantIcon'
 import { SyncIcon } from '../components/icons'
 import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
+import { PeriodPicker } from '../components/PeriodPicker'
 import { ErrorBanner, Skeleton } from '../components/controls'
 import { api } from '../lib/api'
 import { budgetWith } from '../lib/budget'
@@ -201,13 +202,12 @@ export function TransactionsPage() {
 
   const periods = new Map<string, string>()
   for (const t of list ?? []) for (const [key, label] of periodsOf(t)) periods.set(key, label)
-  // keys sort chronologically as text; newest first
-  const periodOptions = (prefix: string) => [...periods].filter(([key]) => key.startsWith(prefix)).sort(([a], [b]) => b.localeCompare(a))
   const base = essentialOnly ? list?.filter((t) => t.essential || isKept(t)) : list
   const shown = period ? base?.filter((t) => periodsOf(t).some(([key]) => key === period)) : base
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
+  const chip = 'inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900 dark:hover:bg-indigo-950'
   // the charts and summaries skip cancelled purchases and their cancellations; the list still shows them
   const counted = (l: Transaction[]) => l.filter((t) => !t.cancelled)
   const sorted = (listed ?? []).toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
@@ -221,44 +221,41 @@ export function TransactionsPage() {
         </p>
       )}
       <ErrorBanner>{error}</ErrorBanner>
-      <section className={card}>
+      {/* desktop: stays at the top while the charts and the list scroll under it */}
+      <section className={`${card} flex flex-col gap-3 lg:sticky lg:top-4 lg:z-20 lg:shadow-md`}>
+        {/* the account: which one, its balance, syncing it */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* what is shown: account, period and which spending */}
-          <div className="flex min-w-0 flex-1 basis-96 flex-wrap items-center gap-2 sm:gap-3">
-            <select
-              aria-label="Account"
-              value={accountId ?? ''}
-              onChange={(e) => {
-                setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value))
-                // keep the link in step so a reload stays on this account; replaceState fires no hashchange
-                history.replaceState(null, '', `#/transactions?account=${e.target.value}`)
-              }}
-              className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none max-sm:basis-full dark:text-zinc-100 ${inputBox}`}
-            >
-              {offered.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
-            </select>
-            <select
-              aria-label="Period"
-              value={period}
-              onChange={(e) => { pickCategory(undefined); setPeriod(e.target.value) }}
-              className={`min-w-0 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none sm:w-52 sm:flex-none dark:text-zinc-100 ${inputBox}`}
-            >
-              <option value="">Увесь час</option>
-              {/* days are picked from the week chart, too many to list; only the picked one shows */}
-              {period.startsWith('d:') && <option value={period}>{periods.get(period)}</option>}
-              <optgroup label="Місяць">
-                {periodOptions('m:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </optgroup>
-              <optgroup label="Квартал">
-                {periodOptions('q:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </optgroup>
-              <optgroup label="Рік">
-                {periodOptions('y:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </optgroup>
-              <optgroup label="Тиждень">
-                {periodOptions('w:').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </optgroup>
-            </select>
+          <select
+            aria-label="Account"
+            value={accountId ?? ''}
+            onChange={(e) => {
+              setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value))
+              // keep the link in step so a reload stays on this account; replaceState fires no hashchange
+              history.replaceState(null, '', `#/transactions?account=${e.target.value}`)
+            }}
+            className={`min-w-40 flex-1 px-3 py-2 text-sm font-medium text-zinc-900 outline-none sm:max-w-xs dark:text-zinc-100 ${inputBox}`}
+          >
+            {offered.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+          </select>
+          <div className="ml-auto flex items-center gap-3">
+            {account && (
+              <p className="flex flex-col text-right leading-tight">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
+                <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+              </p>
+            )}
+            {/* icon only on phones, the name stays for screen readers and as a tooltip */}
+            <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
+              <SyncIcon spinning={syncing} />
+              <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* what is shown: the period and which spending */}
+        {account && list && list.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <PeriodPicker period={period} periods={periods} reference={shown?.[0]} onChange={(p) => { pickCategory(undefined); setPeriod(p) }} />
             <div role="group" aria-label="Spending shown" className="inline-flex shrink-0 rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-800">
               {([false, true] as const).map((only) => (
                 <button
@@ -277,21 +274,26 @@ export function TransactionsPage() {
               ))}
             </div>
           </div>
-          {/* the account itself: its balance and syncing it */}
-          <div className="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
-            {account && (
-              <p className="flex flex-col leading-tight">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
-                <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
-              </p>
+        )}
+
+        {/* the category and merchant picked in the charts, each removable */}
+        {(category || merchant) && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className={muted}>Filtered by</span>
+            {category && (
+              <button type="button" onClick={() => setCategory(undefined)} aria-label={`Remove filter ${selectionLabel(category)}`} className={chip}>
+                {leafById.get(category)?.parent.emoji ?? categories.find((c) => c.id === category)?.emoji} {selectionLabel(category)} <span aria-hidden>×</span>
+              </button>
             )}
-            {/* icon only on phones, the name stays for screen readers and as a tooltip */}
-            <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
-              <SyncIcon spinning={syncing} />
-              <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
-            </button>
+            {merchant && (
+              <button type="button" onClick={() => setMerchant(undefined)} aria-label={`Remove filter ${merchantName || merchant}`} className={chip}>
+                {merchantName || merchant} <span aria-hidden>×</span>
+              </button>
+            )}
+            {/* clears the merchant too */}
+            <button type="button" onClick={() => pickCategory(undefined)} className={`${linkButton} text-sm`}>Clear all</button>
           </div>
-        </div>
+        )}
 
         {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
         {account && !list && <div className="mt-4"><Skeleton /></div>}

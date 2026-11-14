@@ -67,6 +67,11 @@ All accounts together, in Runway's currency.
 - spending by category with a drill-down into subcategories;
 - spending by merchant;
 - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
+  the period picker chooses the kind (Усе, Рік, Квартал, Місяць, Тиждень), steps with ‹ › and lists
+  only that kind's periods ([Base UI](https://base-ui.com) toggle group and select);
+- the filter card: the account with its balance and Sync on top, the period and «Усі витрати | Необхідні»
+  under it, and the category and merchant picked in the charts as removable chips; on desktop it stays
+  at the top while the page scrolls;
 - sorting by date or amount and a note on any transaction.
 - opens on the latest year with transactions; «Увесь час» in the period filter shows everything.
 - the account picker lists only accounts with transactions (bank-synced or manually adjusted).
