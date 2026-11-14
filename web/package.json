@@ -11,12 +11,10 @@
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
-    "@visx/responsive": "^4.0.0",
-    "@visx/scale": "^4.0.0",
-    "@visx/shape": "^4.0.0",
     "lucide-react": "^1.72.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "uplot": "^1.6.32"
   },
   "devDependencies": {
     "@runway-budget/shared": "workspace:*",

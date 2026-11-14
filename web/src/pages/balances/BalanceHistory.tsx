@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent } from 'react'
-import { scaleLinear } from '@visx/scale'
-import { AreaClosed, LinePath } from '@visx/shape'
+import { useRef, useState, type KeyboardEvent } from 'react'
+import uPlot from 'uplot'
+import { UPlotChart } from '../../components/UPlotChart'
+import { cssVar, textColor } from '../../lib/canvas'
 import { format, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import { dailyValues } from '../../lib/history'
@@ -14,8 +15,10 @@ const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 type BalanceHistoryProps = { accounts: Account[], transactions: Transaction[] | undefined, convertOn: ConvertOn, currency: Currency }
 
 export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
-  const [hover, setHover] = useState<number>()
+  // the day under the cursor and its x position, for the tooltip
+  const [hover, setHover] = useState<{ i: number, left: number }>()
   const [today] = useState(() => new Date())
+  const chart = useRef<uPlot>(undefined)
 
   const days = transactions?.length ? dailyValues(accounts, transactions, convertOn, currency, today) : undefined
   if (!days || days.length < 2) return null
@@ -27,25 +30,49 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
   const values = points.map((p) => p.value)
   const low = Math.min(...values)
   const high = Math.max(...values)
-  // the extremes get a dot on the line and a guide to their axis label; the last one wins a tie
+  // the extremes get a dot on the line and a guide with its label; the last one wins a tie
   // a flat line has one extreme, not two on top of each other
   const levels = high === low ? [high] : [high, low]
-  const extremes = levels.map((v) => values.lastIndexOf(v))
   const pad = (high - low) * 0.1 || Math.abs(high) * 0.1 || 1
-  const [min, max] = [low - pad, high + pad]
-  // both scales map into the 0–100 viewBox, so the HTML overlays below can use them as percentages
-  const xScale = scaleLinear({ domain: [0, points.length - 1], range: [0, 100] })
-  const yScale = scaleLinear({ domain: [min, max], range: [100, 0] })
-  const x = (i: number) => xScale(i)
-  const y = (v: number) => yScale(v)
-  const active = hover === undefined ? undefined : points[hover]
+  const active = hover && points[hover.i]
   const change = total - points[0].value
 
+  // guides, labels and dots for the extremes, drawn on the canvas over the line
+  const drawExtremes = (u: uPlot) => {
+    const { ctx, bbox } = u
+    const px = uPlot.pxRatio
+    ctx.save()
+    ctx.font = `${12 * px}px system-ui, sans-serif`
+    levels.forEach((v, i) => {
+      const y = u.valToPos(v, 'y', true)
+      ctx.strokeStyle = textColor(u)
+      ctx.globalAlpha = 0.35
+      ctx.setLineDash([3 * px, 3 * px])
+      ctx.beginPath()
+      ctx.moveTo(bbox.left, y)
+      ctx.lineTo(bbox.left + bbox.width, y)
+      ctx.stroke()
+      ctx.globalAlpha = 0.7
+      ctx.fillStyle = textColor(u)
+      ctx.textBaseline = i ? 'top' : 'bottom'
+      ctx.fillText(wholeMoney(v, currency), bbox.left + 4 * px, y + (i ? 3 : -3) * px)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = cssVar(u, '--series-1')
+      ctx.beginPath()
+      ctx.arc(u.valToPos(values.lastIndexOf(v), 'x', true), y, 4 * px, 0, 2 * Math.PI)
+      ctx.fill()
+    })
+    ctx.restore()
+  }
+
+  // arrow keys move the cursor a day at a time, starting from today
   const step = (e: KeyboardEvent) => {
     const by = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0
-    if (!by) return
+    const u = chart.current
+    if (!by || !u) return
     e.preventDefault()
-    setHover((h) => Math.min(points.length - 1, Math.max(0, (h ?? points.length - 1) + by)))
+    const i = Math.min(points.length - 1, Math.max(0, (hover?.i ?? points.length - 1) + by))
+    u.setCursor({ left: u.valToPos(i, 'x'), top: u.valToPos(values[i], 'y') })
   }
 
   return (
@@ -62,63 +89,50 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
         </span>
       </div>
 
-      <div className="mt-3">
-        <div
-          className="relative h-40 cursor-crosshair rounded border-b border-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800"
-          tabIndex={0}
-          role="img"
-          aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
-          onMouseMove={(e) => {
-            const box = e.currentTarget.getBoundingClientRect()
-            setHover(Math.round(((e.clientX - box.left) / box.width) * (points.length - 1)))
+      <div
+        className="relative mt-3 rounded outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        tabIndex={0}
+        role="img"
+        aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
+        onKeyDown={step}
+        onBlur={() => chart.current?.setCursor({ left: -10, top: -10 })}
+      >
+        <UPlotChart
+          className="h-40"
+          chartRef={chart}
+          deps={`${currency}:${values.join(',')}`}
+          data={[points.map((_, i) => i), values]}
+          options={{
+            padding: [12, 0, 0, 0],
+            legend: { show: false },
+            axes: [{ show: false }, { show: false }],
+            scales: { x: { time: false }, y: { range: [low - pad, high + pad] } },
+            cursor: { y: false, points: { size: 10, fill: (u) => cssVar(u, '--series-1') } },
+            series: [
+              {},
+              {
+                stroke: (u) => cssVar(u, '--series-1'),
+                fill: (u) => `${cssVar(u, '--series-1')}1f`,
+                width: 2,
+                points: { show: false },
+              },
+            ],
+            hooks: {
+              draw: [drawExtremes],
+              setCursor: [(u) => { const i = u.cursor.idx; setHover(i == null ? undefined : { i, left: u.valToPos(i, 'x') }) }],
+            },
           }}
-          onMouseLeave={() => setHover(undefined)}
-          onKeyDown={step}
-          onBlur={() => setHover(undefined)}
-        >
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden>
-            {levels.map((v, i) => (
-              <line key={i} x1={0} x2={100} y1={y(v)} y2={y(v)} stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" className="text-zinc-300 dark:text-zinc-700" />
-            ))}
-            <AreaClosed data={values} x={(_, i) => x(i)} y={y} yScale={yScale} fill="var(--series-1)" opacity={0.12} />
-            <LinePath data={values} x={(_, i) => x(i)} y={y} stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          </svg>
-          {/* labels ride on their guides inside the plot (high above, low below) so mobile keeps the full width */}
-          {levels.map((v, i) => (
-            <span
-              key={v}
-              aria-hidden
-              className={`pointer-events-none absolute left-0 rounded bg-white/80 px-1 text-xs tabular-nums dark:bg-zinc-900/80 ${muted} ${i ? '' : '-translate-y-full'}`}
-              style={{ top: `${y(v)}%` }}
-            >{wholeMoney(v, currency)}</span>
-          ))}
-          {extremes.map((i) => (
-            <div
-              key={i}
-              aria-hidden
-              className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900"
-              style={{ left: `${x(i)}%`, top: `${y(values[i])}%`, background: 'var(--series-1)' }}
-            />
-          ))}
-          {active && (
-            <>
-              <div aria-hidden className="pointer-events-none absolute inset-y-0 border-l border-zinc-400 dark:border-zinc-500" style={{ left: `${x(hover!)}%` }} />
-              <div
-                aria-hidden
-                className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900"
-                style={{ left: `${x(hover!)}%`, top: `${y(active.value)}%`, background: 'var(--series-1)' }}
-              />
-              <div
-                role="tooltip"
-                className="pointer-events-none absolute top-0 z-10 w-max -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
-                style={{ left: `clamp(5rem, ${x(hover!)}%, calc(100% - 5rem))` }}
-              >
-                <p className={muted}>{dayLabel.format(active.day)}</p>
-                <p className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(active.value, currency)}</p>
-              </div>
-            </>
-          )}
-        </div>
+        />
+        {active && (
+          <div
+            role="tooltip"
+            className="pointer-events-none absolute top-0 z-10 w-max -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
+            style={{ left: `clamp(5rem, ${hover!.left}px, calc(100% - 5rem))` }}
+          >
+            <p className={muted}>{dayLabel.format(active.day)}</p>
+            <p className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(active.value, currency)}</p>
+          </div>
+        )}
       </div>
       <div className={`mt-1.5 flex justify-between text-xs ${muted}`} aria-hidden>
         <span>{dayLabel.format(points[0].day)}</span>

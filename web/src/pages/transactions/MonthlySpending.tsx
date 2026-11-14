@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { useParentSize } from '@visx/responsive'
-import { scaleBand, scaleLinear } from '@visx/scale'
-import { BarStack } from '@visx/shape'
+import { useState, type KeyboardEvent } from 'react'
+import uPlot from 'uplot'
+import { UPlotChart } from '../../components/UPlotChart'
+import { cssVar, textColor } from '../../lib/canvas'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../../lib/periods'
@@ -11,7 +11,6 @@ import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
 
 // categories with their own color; the rest fold into one neutral segment
 const SERIES = 7
-const CHART_HEIGHT = 224
 const REST = 'rest'
 
 type Segment = { id: string, label: string, color: string, value: number }
@@ -82,6 +81,9 @@ function phoneQuarter(period: string, latest: string | undefined) {
   return latest === undefined ? undefined : quarterOf(latest)
 }
 
+// series colors are CSS variables like var(--series-1), resolved for the canvas
+const resolve = (u: uPlot, color: string) => (color.startsWith('var(') ? cssVar(u, color.slice(4, -1)) : color)
+
 const Swatch = ({ color }: { color: string }) => (
   <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={{ background: color }} />
 )
@@ -110,8 +112,8 @@ type MonthlySpendingProps = {
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
 export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
-  const [hover, setHover] = useState<{ month: string, series: string }>()
-  const { parentRef, width } = useParentSize({ debounceTime: 0 })
+  // the month under the cursor, and the segment when the cursor is on one
+  const [hover, setHover] = useState<{ month: string, series?: string }>()
   const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
 
@@ -191,6 +193,78 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
     const key = days ? `d:${month}` : `m:${month}`
     onPick(period === key && days ? week! : key)
   }
+  // running totals per series, bottom of the stack first: the top edge of each segment
+  const tops = barSeries.map((_, k) => rows.map((r) => sum(barSeries.slice(0, k + 1).map((s) => r.values[s.id] ?? 0))))
+  const monthSegments = (month: string) => barSeries.filter((s) => (rows.find((r) => r.month === month)?.values[s.id] ?? 0) > 0)
+  const active = hover?.series ? rows.find((r) => r.month === hover.month) : undefined
+  const activeSegment = active && segmentsOf.get(hover!.series!)
+
+  // the column under the cursor, and the segment whose span holds the cursor's height
+  const hitTest = (u: uPlot) => {
+    const i = u.cursor.idx
+    if (i == null) return undefined
+    const value = u.posToVal(u.cursor.top!, 'y')
+    const k = tops.findIndex((top, k) => value >= (k ? tops[k - 1][i] : 0) && value < top[i])
+    return { month: rows[i].month, series: k < 0 ? undefined : barSeries[k].id }
+  }
+  // a segment selects its category (or picks the month while one is focused); elsewhere in the column, the month
+  const activate = ({ month, series: id }: { month: string, series?: string }) => {
+    if (id && !focus) {
+      if (id !== REST) toggle(id)
+    } else pickMonth(month)
+  }
+  // left and right move between months, up and down between the month's segments, Enter picks
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (hover) activate(hover)
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const i = hover ? rows.findIndex((r) => r.month === hover.month) + (e.key === 'ArrowLeft' ? -1 : 1) : rows.length - 1
+      const month = rows[Math.min(rows.length - 1, Math.max(0, i))].month
+      const segments = monthSegments(month)
+      setHover({ month, series: segments.find((s) => s.id === hover?.series)?.id ?? segments.at(-1)?.id })
+    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && hover) {
+      const segments = monthSegments(hover.month)
+      const k = Math.min(segments.length - 1, Math.max(0, segments.findIndex((s) => s.id === hover.series) + (e.key === 'ArrowUp' ? 1 : -1)))
+      setHover({ month: hover.month, series: segments[k]?.id })
+    } else return
+    e.preventDefault()
+  }
+
+  // the usual range (middle half of the complete months) behind the bars
+  const drawRange = (u: uPlot) => {
+    if (!spread || spread.high <= 0) return
+    const { ctx, bbox } = u
+    const top = u.valToPos(spread.high, 'y', true)
+    ctx.save()
+    ctx.fillStyle = textColor(u)
+    ctx.globalAlpha = 0.08
+    ctx.fillRect(bbox.left, top, bbox.width, u.valToPos(spread.low, 'y', true) - top)
+    ctx.restore()
+  }
+  // each month's total above its bar, and the median line with its label
+  const drawLabels = (u: uPlot) => {
+    const { ctx, bbox } = u
+    const px = uPlot.pxRatio
+    ctx.save()
+    ctx.fillStyle = ctx.strokeStyle = textColor(u)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.font = `500 ${12 * px}px system-ui, sans-serif`
+    rows.forEach((r, i) => r.total > 0 && ctx.fillText(wholeMoney(r.total, currency), u.valToPos(i, 'x', true), u.valToPos(r.total, 'y', true) - 4 * px))
+    if (typical !== undefined && typical > 0) {
+      const y = u.valToPos(typical, 'y', true)
+      ctx.setLineDash([4 * px, 3 * px])
+      ctx.globalAlpha = 0.7
+      ctx.beginPath()
+      ctx.moveTo(bbox.left, y)
+      ctx.lineTo(bbox.left + bbox.width, y)
+      ctx.stroke()
+      ctx.textAlign = 'right'
+      ctx.font = `500 ${10.5 * px}px system-ui, sans-serif`
+      ctx.fillText(`медіана ${wholeMoney(typical, currency)}`, bbox.left + bbox.width, y - 3 * px)
+    }
+    ctx.restore()
+  }
   const isPicked = (month: string) => period === `m:${month}` || period === `d:${month}`
   const toggle = (id: string) => onSelect(selected === id ? undefined : id)
   const legendButton = 'flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900'
@@ -246,94 +320,63 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         )}
       </ul>
 
-      <div ref={parentRef} className="relative mt-5" onMouseLeave={() => setHover(undefined)}>
-        {width > 0 && (() => {
-          const x = scaleBand({ domain: rows.map((r) => r.month), range: [0, width], paddingInner: 0.15 })
-          // bars use 85% of the height at most; the scale includes the median so its line stays inside
-          const y = scaleLinear({ domain: [0, max / 0.85], range: [CHART_HEIGHT, 0] })
-          const barWidth = Math.min(x.bandwidth(), 64)
-          const center = (month: string) => x(month)! + x.bandwidth() / 2
-          const active = hover && rows.find((r) => r.month === hover.month)
-          const activeSegment = active && segmentsOf.get(hover!.series)
-          return (
-            <>
-              <svg width={width} height={CHART_HEIGHT} className="overflow-visible">
-                {/* the usual range: the middle half of the complete months */}
-                {spread && spread.high > 0 && (
-                  <rect x={0} width={width} y={y(spread.high)} height={y(spread.low) - y(spread.high)} className="fill-zinc-500/10 dark:fill-zinc-400/10" />
-                )}
-                <BarStack data={rows} keys={barSeries.map((s) => s.id)} value={(r, id) => r.values[id] ?? 0} x={(r) => r.month}
-                  xScale={x} yScale={y} color={(id) => segmentsOf.get(id)!.color}>
-                  {(stacks) => stacks.flatMap((stack) => stack.bars.filter((bar) => bar.height > 0).map((bar) => {
-                    const month = bar.bar.data.month
-                    const segment = segmentsOf.get(stack.key)!
-                    const pick = () => (focus ? pickMonth(month) : stack.key !== REST && toggle(stack.key))
-                    return (
-                      <rect
-                        key={`${month}-${stack.key}`}
-                        x={center(month) - barWidth / 2}
-                        y={bar.y}
-                        width={barWidth}
-                        height={Math.max(1, bar.height - 1)}
-                        fill={bar.color}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`${label(month)}, ${segment.label}: ${format(bar.bar[1] - bar.bar[0], currency)}`}
-                        onMouseEnter={() => setHover({ month, series: stack.key })}
-                        onFocus={() => setHover({ month, series: stack.key })}
-                        onBlur={() => setHover(undefined)}
-                        onClick={pick}
-                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pick())}
-                        className={`cursor-pointer outline-none focus-visible:stroke-zinc-900 focus-visible:stroke-2 dark:focus-visible:stroke-zinc-100 ${hover && !(hover.month === month && hover.series === stack.key) ? 'opacity-60' : ''}`}
-                      />
-                    )
-                  }))}
-                </BarStack>
-                {rows.map((r) => r.total > 0 && (
-                  <text key={r.month} x={center(r.month)} y={y(r.total) - 6} textAnchor="middle" onClick={() => pickMonth(r.month)}
-                    className="cursor-pointer fill-zinc-700 text-xs font-medium tabular-nums hover:fill-zinc-950 dark:fill-zinc-300 dark:hover:fill-white">
-                    {wholeMoney(r.total, currency)}
-                  </text>
-                ))}
-                {typical !== undefined && typical > 0 && (
-                  <g className="pointer-events-none">
-                    <line x1={0} x2={width} y1={y(typical)} y2={y(typical)} strokeDasharray="4 3" className="stroke-zinc-500 dark:stroke-zinc-400" />
-                    <text x={width} y={y(typical) - 4} textAnchor="end" className="fill-zinc-600 text-[0.65rem] font-medium tabular-nums dark:fill-zinc-300">
-                      медіана {wholeMoney(typical, currency)}
-                    </text>
-                  </g>
-                )}
-                <line x1={0} x2={width} y1={CHART_HEIGHT} y2={CHART_HEIGHT} className="stroke-zinc-200 dark:stroke-zinc-800" />
-              </svg>
+      <div
+        className="relative mt-5 cursor-pointer rounded outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        tabIndex={0}
+        aria-label={`${essentialOnly ? 'Essential spending' : 'Spending'} per ${days ? 'day' : 'month'}. Arrow keys move between ${days ? 'days' : 'months'} and categories, Enter picks.`}
+        onClick={() => hover && activate(hover)}
+        onKeyDown={keys}
+        onBlur={() => setHover(undefined)}
+      >
+        <UPlotChart
+          className="h-56"
+          deps={JSON.stringify([rows, barSeries, typical, spread?.low, spread?.high, currency])}
+          data={[rows.map((_, i) => i), ...[...tops].reverse()]}
+          options={{
+            padding: [8, 0, 0, 0],
+            legend: { show: false },
+            axes: [{ show: false }, { show: false }],
+            // bars use 85% of the height at most; the scale includes the median so its line stays inside
+            scales: { x: { time: false, range: [-0.5, rows.length - 0.5] }, y: { range: [0, max / 0.85] } },
+            cursor: { x: false, y: false, points: { show: false } },
+            // stacking: each series is the running total up to it, drawn tallest first so the shorter ones paint over it
+            series: [{}, ...[...barSeries].reverse().map((s) => ({
+              fill: (u: uPlot) => resolve(u, s.color),
+              stroke: 'transparent',
+              paths: uPlot.paths.bars!({ size: [0.7, 64] }),
+              points: { show: false },
+            }))],
+            hooks: {
+              drawClear: [drawRange],
+              draw: [drawLabels],
+              setCursor: [(u) => setHover(hitTest(u))],
+            },
+          }}
+        />
+        {active && activeSegment && (
+          <SegmentTooltip
+            month={label(active.month)}
+            monthTotal={active.monthTotal}
+            segment={{ ...activeSegment, value: active.values[activeSegment.id] ?? 0 }}
+            left={(rows.indexOf(active) + 0.5) / rows.length}
+            currency={currency}
+          />
+        )}
+      </div>
 
-              <div className="relative mt-1.5 h-8">
-                {rows.map((r) => (
-                  <button
-                    key={r.month}
-                    type="button"
-                    aria-pressed={isPicked(r.month)}
-                    onClick={() => pickMonth(r.month)}
-                    style={{ left: x(r.month), width: x.bandwidth() }}
-                    className="absolute top-0 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
-                  >
-                    {days ? weekday.format(date(r.month)) : monthOnly.format(firstDay(r.month))}
-                    <span className="block text-[0.65rem] opacity-75">{days ? dayMonth.format(date(r.month)) : r.month.slice(0, 4)}</span>
-                  </button>
-                ))}
-              </div>
-
-              {active && activeSegment && (
-                <SegmentTooltip
-                  month={label(active.month)}
-                  monthTotal={active.monthTotal}
-                  segment={{ ...activeSegment, value: active.values[activeSegment.id] ?? 0 }}
-                  left={center(active.month)}
-                  currency={currency}
-                />
-              )}
-            </>
-          )
-        })()}
+      <div className="mt-1.5 flex">
+        {rows.map((r) => (
+          <button
+            key={r.month}
+            type="button"
+            aria-pressed={isPicked(r.month)}
+            onClick={() => pickMonth(r.month)}
+            className="min-w-0 flex-1 cursor-pointer truncate rounded-md py-0.5 text-center text-xs leading-tight text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:text-indigo-300"
+          >
+            {days ? weekday.format(date(r.month)) : monthOnly.format(firstDay(r.month))}
+            <span className="block text-[0.65rem] opacity-75">{days ? dayMonth.format(date(r.month)) : r.month.slice(0, 4)}</span>
+          </button>
+        ))}
       </div>
     </section>
   )
@@ -343,7 +386,7 @@ function SegmentTooltip({ month, monthTotal, segment, left, currency }: { month:
   return (
     <div
       role="tooltip"
-      style={{ left: `clamp(7rem, ${left}px, calc(100% - 7rem))` }}
+      style={{ left: `clamp(7rem, ${left * 100}%, calc(100% - 7rem))` }}
       className="pointer-events-none absolute top-0 z-10 w-max max-w-56 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
       <p className={muted}>{month} · {format(monthTotal, currency)}</p>
       <p className="mt-1 flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
