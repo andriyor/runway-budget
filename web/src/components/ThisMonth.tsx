@@ -10,7 +10,8 @@ import type { Account, Category, Convert, Currency, Transaction } from '../lib/t
 const MONTHS = 12
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long' })
 
-type Row = { id: string, label: string, emoji?: string, now: number, usual: number, subs: Row[] }
+// lastYear: the same days of this month a year ago; undefined before the transactions start
+type Row = { id: string, label: string, emoji?: string, now: number, usual: number, lastYear: number | undefined, subs: Row[] }
 
 // biggest change in money first; rows with nothing now and nothing usual are dropped
 const ranked = (rows: Row[]) =>
@@ -45,9 +46,12 @@ function thisMonth(transactions: Transaction[], accounts: Account[], categories:
   }
   const months = past.filter((m) => first !== undefined && m >= first)
   if (!months.length) return { rows: [], months: 0 }
+  // the window starts at this month a year ago
+  const [lastYear] = past
   const row = (id: string, label: string, emoji?: string, subs: Row[] = []): Row => {
     const byMonth = spent.get(id)
-    return { id, label, emoji, now: byMonth?.get(current) ?? 0, usual: median(months.map((m) => byMonth?.get(m) ?? 0)), subs }
+    const ago = months.includes(lastYear) ? byMonth?.get(lastYear) ?? 0 : undefined
+    return { id, label, emoji, now: byMonth?.get(current) ?? 0, usual: median(months.map((m) => byMonth?.get(m) ?? 0)), lastYear: ago, subs }
   }
   const rows = categories.map((c) => row(c.id, c.label, c.emoji, ranked(c.subcategories.map((s) => row(s.id, s.label)))))
   return { rows: ranked(rows), months: months.length }
@@ -70,7 +74,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
   const { rows, months } = result
   const first = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const line = ({ id, label, emoji, now: spent, usual, subs }: Row, sub = false) => {
+  const line = ({ id, label, emoji, now: spent, usual, lastYear, subs }: Row, sub = false) => {
     const over = spent > usual
     const change = spent === usual ? '0%' : usual > 0 ? `${over ? '+' : '−'}${percentOf(Math.abs(spent - usual) / usual)}%` : 'new'
     return (
@@ -97,6 +101,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
         </td>
         <td>{wholeMoney(spent, currency)}</td>
         <td className="text-zinc-500 dark:text-zinc-400">{wholeMoney(usual, currency)}</td>
+        <td className="text-zinc-500 dark:text-zinc-400">{lastYear === undefined ? '—' : wholeMoney(lastYear, currency)}</td>
         <td className={spent === usual ? muted : over ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}>{change}</td>
       </tr>
     )
@@ -117,6 +122,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
             <th className="text-left">Category</th>
             <th>This month</th>
             <th>Usual</th>
+            <th>Last year</th>
             <th className="w-20">Change</th>
           </tr>
         </thead>

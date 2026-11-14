@@ -7,6 +7,7 @@ import { Goals } from '../components/Goals'
 import { Recurring } from '../components/Recurring'
 import { Runway } from '../components/Runway'
 import { ThisMonth } from '../components/ThisMonth'
+import { YearOverYear } from '../components/YearOverYear'
 import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
 import { CurrencyIcon, BankIcon } from '../components/icons'
 import { api } from '../lib/api'
@@ -174,6 +175,10 @@ export function Balances() {
 
       {rates && (
         <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
+      )}
+
+      {rates && (
+        <YearOverYear transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
       )}
 
       {rates && (
