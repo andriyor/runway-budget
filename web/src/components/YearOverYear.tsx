@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { percentOf, wholeMoney } from '../lib/format'
 import { card, muted } from '../lib/styles'
 import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
@@ -60,6 +60,8 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
   const year = now.getFullYear()
   // a change needs last year's data from 1 January
   const comparable = years.includes(year - 1) && first <= new Date(year - 1, 0, 1, 23, 59)
+  // when comparable, last year shows only to date, the part the change is taken against
+  const shown = comparable ? years.filter((y) => y !== year - 1) : years
   const total = (y: number) => rows.reduce((sum, r) => sum + (r.byYear.get(y) ?? 0), 0)
   const lastYearToDate = rows.reduce((sum, r) => sum + r.lastYearToDate, 0)
 
@@ -72,6 +74,8 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
       </td>
     )
   }
+  // last year's same days, next to this year's so far: the base the change is taken against
+  const toDateCell = (before: number) => <td className="text-zinc-500 dark:text-zinc-400">{wholeMoney(before, currency)}</td>
 
   return (
     <section className={card}>
@@ -87,13 +91,16 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
           <thead className={muted}>
             <tr className="text-right [&>th]:pb-1 [&>th]:font-normal">
               <th className="text-left">Category</th>
-              {years.map((y) => (
-                <th key={y}>
-                  {y === year ? `${y} to date` : y}
-                  {y === first.getFullYear() && (first.getMonth() > 0 || first.getDate() > 1) && (
-                    <span className="block text-xs">from {dayMonth.format(first)}</span>
-                  )}
-                </th>
+              {shown.map((y) => (
+                <Fragment key={y}>
+                  {y === year && comparable && <th>{year - 1} to date</th>}
+                  <th>
+                    {y === year ? `${y} to date` : y}
+                    {y === first.getFullYear() && (first.getMonth() > 0 || first.getDate() > 1) && (
+                      <span className="block text-xs">from {dayMonth.format(first)}</span>
+                    )}
+                  </th>
+                </Fragment>
               ))}
               {comparable && <th className="w-20">Change</th>}
             </tr>
@@ -108,8 +115,11 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
                     {category.label}
                   </a>
                 </td>
-                {years.map((y) => (
-                  <td key={y} className={y === year ? undefined : 'text-zinc-500 dark:text-zinc-400'}>{wholeMoney(byYear.get(y) ?? 0, currency)}</td>
+                {shown.map((y) => (
+                  <Fragment key={y}>
+                    {y === year && comparable && toDateCell(before)}
+                    <td className={y === year ? undefined : 'text-zinc-500 dark:text-zinc-400'}>{wholeMoney(byYear.get(y) ?? 0, currency)}</td>
+                  </Fragment>
                 ))}
                 {comparable && change(byYear.get(year) ?? 0, before)}
               </tr>
@@ -118,7 +128,12 @@ export function YearOverYear({ transactions, accounts, categories, convert, curr
           <tfoot className="border-t border-zinc-200 font-semibold dark:border-zinc-700">
             <tr className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:pt-2">
               <td className="text-left">Total</td>
-              {years.map((y) => <td key={y}>{wholeMoney(total(y), currency)}</td>)}
+              {shown.map((y) => (
+                <Fragment key={y}>
+                  {y === year && comparable && <td>{wholeMoney(lastYearToDate, currency)}</td>}
+                  <td>{wholeMoney(total(y), currency)}</td>
+                </Fragment>
+              ))}
               {comparable && change(total(year), lastYearToDate)}
             </tr>
           </tfoot>
