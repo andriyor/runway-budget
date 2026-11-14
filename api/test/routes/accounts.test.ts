@@ -32,6 +32,17 @@ test('create, list and update accounts', async (t) => {
   assert.equal(missing.statusCode, 404)
 })
 
+test('adjust adds to or subtracts from the balance', async (t) => {
+  const app = await build(t)
+  const { id } = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Wallet', currency: 'UAH', balance: 100 } })).json()
+  const adjust = (amount: number) => app.inject({ method: 'POST', url: `/api/accounts/${id}/adjust`, payload: { amount } })
+
+  assert.equal((await adjust(50.25)).json().balance, 150.25)
+  assert.equal((await adjust(-0.1)).json().balance, 150.15)
+  assert.equal((await adjust(0)).statusCode, 400)
+  assert.equal((await app.inject({ method: 'POST', url: '/api/accounts/999/adjust', payload: { amount: 1 } })).statusCode, 404)
+})
+
 test('account kind defaults to bank and can be changed', async (t) => {
   const app = await build(t)
   const bank = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Mono', currency: 'UAH', balance: 1 } })).json()

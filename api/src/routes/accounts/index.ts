@@ -148,6 +148,26 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     return toDto(row)
   })
 
+  // adds `amount` (negative subtracts) to the stored balance in one statement, so it can't race a concurrent edit
+  fastify.post<{ Params: { id: number }, Body: { amount: number } }>('/:id/adjust', {
+    schema: {
+      params: { type: 'object', properties: { id: { type: 'integer' } } },
+      body: {
+        type: 'object',
+        required: ['amount'],
+        additionalProperties: false,
+        properties: { amount: { type: 'number', not: { const: 0 } } }
+      }
+    }
+  }, async (request, reply) => {
+    const [row] = await fastify.db.update(accounts)
+      .set({ balanceCents: sql`${accounts.balanceCents} + ${toCents(request.body.amount)}` })
+      .where(eq(accounts.id, request.params.id))
+      .returning()
+    if (!row) return reply.notFound()
+    return toDto(row)
+  })
+
   fastify.delete<{ Params: { id: number } }>('/:id', {
     schema: { params: { type: 'object', properties: { id: { type: 'integer' } } } }
   }, async (request, reply) => {

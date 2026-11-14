@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { KindToggle, ErrorText, MoneyInput } from './controls'
 import { CurrencyIcon, ChevronIcon, TrashIcon } from './icons'
 import { api } from '../lib/api'
-import { button } from '../lib/styles'
+import { button, inputBox } from '../lib/styles'
+import { format, symbols } from '../lib/format'
 import type { Account } from '../lib/types'
 
 type AccountRowProps = {
@@ -14,7 +15,8 @@ type AccountRowProps = {
   onMoveDown?: () => void
 }
 
-const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+const stepButton = 'w-9 text-lg leading-none text-zinc-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400'
+const moveButton ='rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
 export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }: AccountRowProps) {
   const [name, setName] = useState(account.name)
@@ -39,6 +41,28 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
       setError((err as Error).message)
     }
   }
+
+  const [delta, setDelta] = useState('')
+  const [busy, setBusy] = useState(false)
+  // swaps the balance field for a −/+ amount stepper
+  const [adjusting, setAdjusting] = useState(false)
+
+  // sign: 1 adds, -1 subtracts; the list re-keys the row on updatedAt, so it remounts with the new balance
+  async function adjust(sign: 1 | -1) {
+    setBusy(true)
+    try {
+      onSaved(await api<Account>(`/accounts/${account.id}/adjust`, {
+        method: 'POST',
+        body: JSON.stringify({ amount: sign * Number(delta) }),
+      }))
+      setError('')
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const canAdjust = Number(delta) > 0
 
   async function remove() {
     if (!confirm(`Delete account "${account.name}"? Its balance will no longer be counted.`)) return
@@ -90,11 +114,52 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
         <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
           <KindToggle value={kind} onChange={setKind} />
           <div className="min-w-0 flex-1 sm:w-56 sm:flex-none">
-            <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+            {adjusting ? (
+              <div className={`flex h-9 items-stretch ${inputBox}`}>
+                <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(-1)} aria-label={`Subtract from ${account.name}`} className={`rounded-l-lg border-r border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950`}>
+                  −
+                </button>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  autoFocus
+                  placeholder={`Amount, ${symbols[account.currency]}`}
+                  aria-label={`Amount to add to or subtract from ${account.name}`}
+                  value={delta}
+                  onChange={(e) => setDelta(e.target.value)}
+                  // Enter would submit the row's Save
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+                  className="w-full min-w-0 flex-1 bg-transparent px-3 text-center text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+                />
+                <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(1)} aria-label={`Add to ${account.name}`} className={`rounded-r-lg border-l border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950`}>
+                  +
+                </button>
+              </div>
+            ) : (
+              <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => { setAdjusting(!adjusting); setDelta('') }}
+            aria-pressed={adjusting}
+            aria-label={adjusting ? 'Back to editing the balance' : `Add to or subtract from ${account.name}`}
+            title={adjusting ? 'Back to balance' : 'Add or subtract an amount'}
+            className="size-9 shrink-0 rounded-lg text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 aria-pressed:bg-zinc-100 aria-pressed:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-zinc-800 dark:aria-pressed:text-zinc-100"
+          >
+            {adjusting ? '×' : '±'}
+          </button>
           <button className={button} disabled={!dirty}>Save</button>
         </div>
       </form>
+      {adjusting && canAdjust && (
+        <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums dark:text-zinc-400" aria-live="polite">
+          − <span className="text-rose-600 dark:text-rose-400">{format(account.balance - Number(delta), account.currency)}</span>
+          {' · '}
+          + <span className="text-emerald-600 dark:text-emerald-400">{format(account.balance + Number(delta), account.currency)}</span>
+        </p>
+      )}
       <ErrorText>{error}</ErrorText>
     </li>
   )
