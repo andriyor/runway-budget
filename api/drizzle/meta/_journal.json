@@ -113,6 +113,20 @@
       "when": 1794650230976,
       "tag": "0015_loving_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1794663838835,
+      "tag": "0016_incomes",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1794663839889,
+      "tag": "0017_drop_salary",
+      "breakpoints": true
     }
   ]
 }

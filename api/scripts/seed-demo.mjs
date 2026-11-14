@@ -38,9 +38,9 @@ const ids = accounts.map(([name, currency, kind, balance, mono], position) =>
   account.run(name, currency, kind, cents(balance), position, mono, now).lastInsertRowid)
 const mono = ids[0]
 
-sqlite.prepare(`insert into budget (id, monthly_spend_cents, currency, salary_cents, salary_currency, reserve_cents, reserve_currency,
-  minimal_spend_cents, minimal_spend_currency, target_months) values (1, ?, 'UAH', ?, 'UAH', ?, 'USD', ?, 'UAH', 6)`)
-  .run(cents(45000), cents(95000), cents(2000), cents(22000))
+sqlite.prepare(`insert into budget (id, monthly_spend_cents, currency, incomes, reserve_cents, reserve_currency,
+  minimal_spend_cents, minimal_spend_currency, target_months) values (1, ?, 'UAH', ?, ?, 'USD', ?, 'UAH', 6)`)
+  .run(cents(45000), JSON.stringify([{ name: 'Зарплата', amountCents: cents(95000), currency: 'UAH' }]), cents(2000), cents(22000))
 const goal = sqlite.prepare('insert into goals (name, target_cents, currency) values (?, ?, ?)')
 goal.run('Відпустка в Карпатах', cents(1500), 'EUR')
 goal.run('Новий автомобіль', cents(12000), 'USD')

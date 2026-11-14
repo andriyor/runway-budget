@@ -77,10 +77,10 @@ export function Balances() {
     }
   }
 
-  // the cash flow's median income becomes Runway's salary, keeping the rest of the budget
-  async function salaryFromIncome(amount: number, c: Currency) {
+  // the cash flow's median income becomes one of Runway's incomes, keeping the rest of the budget
+  async function incomeFromCashFlow(amount: number, c: Currency) {
     try {
-      setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(budgetWith(budget!, 'salary', Math.round(amount), c)) }))
+      setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(budgetWith(budget!, 'income', Math.round(amount), c)) }))
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
     }
@@ -97,7 +97,9 @@ export function Balances() {
   const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
     amount != null && from ? convert(amount, from, to) : undefined
   const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
-  const salaryIn = (c: Currency) => fromBudget(budget?.salary, budget?.salaryCurrency, c)
+  // all incomes together; undefined when there are none or rates are missing
+  const incomeIn = (c: Currency) =>
+    budget?.incomes.length && rates ? budget.incomes.reduce((sum, i) => sum + convert(i.amount, i.currency, c)!, 0) : undefined
   const minimalIn = (c: Currency) => fromBudget(budget?.minimalSpend, budget?.minimalSpendCurrency, c)
   const availableIn = (c: Currency) => {
     const total = totalIn(c)
@@ -113,7 +115,7 @@ export function Balances() {
     ? { months: budget.targetMonths, amount: cushionIn(budget.currency), available: availableIn(budget.currency)!, currency: budget.currency }
     : undefined
   const netIn = (c: Currency) =>
-    budget && rates ? (salaryIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
+    budget && rates ? (incomeIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return (
     <>
@@ -160,12 +162,12 @@ export function Balances() {
           categories={categories}
           convert={convert}
           currency={budget?.currency ?? 'UAH'}
-          onUseIncome={budget ? salaryFromIncome : undefined}
+          onUseIncome={budget ? incomeFromCashFlow : undefined}
         />
       )}
 
       {budget !== undefined && (
-        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} salaryIn={salaryIn} minimalIn={minimalIn} />
+        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} minimalIn={minimalIn} />
       )}
 
       <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />

@@ -10,10 +10,10 @@ import type { Currency, Goal } from '../lib/types'
 type Cushion = { months: number, amount: number, available: number, currency: Currency }
 
 type GoalsProps = {
-  // available savings minus the months-without-salary cushion
+  // available savings minus the months-without-income cushion
   forGoalsIn: (c: Currency) => number | undefined
   cushion: Cushion | undefined
-  // salary minus spending per month; undefined when spending is not set
+  // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
 }
 
@@ -58,7 +58,7 @@ export function Goals({ forGoalsIn, cushion, netIn }: GoalsProps) {
   function status(goal: Goal, have: number) {
     if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
     const net = netIn(goal.currency)
-    if (net === undefined) return <span className={muted}>Set monthly spending and salary to see when.</span>
+    if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
     if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
     const months = (goal.target - have) / net
     const when = new Date(now + months * AVG_DAYS_IN_MONTH * 864e5)

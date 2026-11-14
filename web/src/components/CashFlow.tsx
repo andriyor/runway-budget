@@ -48,7 +48,7 @@ type CashFlowProps = {
   categories: Category[]
   convert: Convert
   currency: Currency
-  // undefined until a budget exists to hold the salary
+  // undefined until a budget exists to hold the income
   onUseIncome: ((amount: number, currency: Currency) => void) | undefined
 }
 
@@ -82,7 +82,7 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
           <p className={`mt-1 text-sm ${muted}`}>median</p>
           {onUseIncome && typicalIncome > 0 && (
             <button type="button" className={`mt-1 text-sm ${linkButton}`} onClick={() => onUseIncome(typicalIncome, currency)}>
-              Use as salary in Runway
+              Use as income in Runway
             </button>
           )}
         </div>

@@ -60,13 +60,15 @@ export type Rates = { date: string, rates: Record<Currency, number> }
 export type Budget = {
   monthlySpend: number
   currency: Currency
-  salary: number | null
-  salaryCurrency: Currency | null
+  // monthly incomes, e.g. a salary and a side job; empty when none
+  incomes: Income[]
   reserve: number | null
   reserveCurrency: Currency | null
   minimalSpend: number | null
   minimalSpendCurrency: Currency | null
   targetMonths: number | null
 }
+
+export type Income = { name: string, amount: number, currency: Currency }
 
 export type Goal = { id: number, name: string, target: number, currency: Currency }

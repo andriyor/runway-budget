@@ -1,12 +1,11 @@
 import { type FastifyPluginAsync } from 'fastify'
-import type { Budget } from '@runway-budget/shared'
+import type { Budget, Income } from '@runway-budget/shared'
 import { budget, currencies, type Currency } from '../../db/schema'
 
 type BudgetInput = {
   monthlySpend: number
   currency: Currency
-  salary?: number
-  salaryCurrency?: Currency
+  incomes?: Income[]
   reserve?: number
   reserveCurrency?: Currency
   minimalSpend?: number
@@ -23,8 +22,7 @@ const toDto = (row?: typeof budget.$inferSelect): Budget | null =>
     ? {
         monthlySpend: row.monthlySpendCents / 100,
         currency: row.currency,
-        salary: fromCents(row.salaryCents),
-        salaryCurrency: row.salaryCurrency,
+        incomes: row.incomes.map(({ amountCents, ...rest }) => ({ ...rest, amount: amountCents / 100 })),
         reserve: fromCents(row.reserveCents),
         reserveCurrency: row.reserveCurrency,
         minimalSpend: fromCents(row.minimalSpendCents),
@@ -48,8 +46,20 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
         properties: {
           monthlySpend: { type: 'number', exclusiveMinimum: 0 },
           currency: { type: 'string', enum: currencies },
-          salary: { type: 'number', minimum: 0 },
-          salaryCurrency: { type: 'string', enum: currencies },
+          incomes: {
+            type: 'array',
+            maxItems: 20,
+            items: {
+              type: 'object',
+              required: ['name', 'amount', 'currency'],
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string', minLength: 1, maxLength: 100 },
+                amount: { type: 'number', exclusiveMinimum: 0 },
+                currency: { type: 'string', enum: currencies }
+              }
+            }
+          },
           reserve: { type: 'number', minimum: 0 },
           reserveCurrency: { type: 'string', enum: currencies },
           minimalSpend: { type: 'number', exclusiveMinimum: 0 },
@@ -57,19 +67,17 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
           targetMonths: { type: 'integer', minimum: 1 }
         },
         dependencies: {
-          salary: ['salaryCurrency'],
           reserve: ['reserveCurrency'],
           minimalSpend: ['minimalSpendCurrency']
         }
       }
     }
   }, async (request) => {
-    const { monthlySpend, currency, salary, salaryCurrency, reserve, reserveCurrency, minimalSpend, minimalSpendCurrency, targetMonths } = request.body
+    const { monthlySpend, currency, incomes = [], reserve, reserveCurrency, minimalSpend, minimalSpendCurrency, targetMonths } = request.body
     const values = {
       monthlySpendCents: Math.round(monthlySpend * 100),
       currency,
-      salaryCents: toCents(salary),
-      salaryCurrency: salary === undefined ? null : salaryCurrency!,
+      incomes: incomes.map(({ amount, ...rest }) => ({ ...rest, amountCents: Math.round(amount * 100) })),
       reserveCents: toCents(reserve),
       reserveCurrency: reserve === undefined ? null : reserveCurrency!,
       minimalSpendCents: toCents(minimalSpend),

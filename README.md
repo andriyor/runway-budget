@@ -22,14 +22,15 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
-- **Runway**: enter monthly spending, an optional salary, an optional extreme-saving budget and an optional untouchable reserve, and see
-  how many months your savings last with and without salary. Enter how many months you want to live
-  without salary to see the most you can spend per month.
+- **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
+  currency), an optional extreme-saving budget and an optional untouchable reserve, and see
+  how many months your savings last with and without income. Enter how many months you want to live
+  without income to see the most you can spend per month.
 - **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
-  months across all accounts, with a per-month table. The median income can be sent to Runway as salary,
-  so runway and goal dates use what you actually earn.
+  months across all accounts, with a per-month table. The median income can be sent to Runway as an
+  `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
-  surplus (salary minus spending). Months you want to live without salary are kept aside as a cushion
+  surplus (income minus spending). Months you want to live without income are kept aside as a cushion
   and not counted toward goals.
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them, on demand and automatically at 09:00 and 21:00.
@@ -166,8 +167,8 @@ integer minor units (cents/kopiykas).
 | `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
 | `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
 | `DELETE` | `/accounts/:id` | Delete account                                        |
-| `GET`    | `/budget`       | Monthly spend, salary and reserve, or `null`          |
-| `PUT`    | `/budget`       | Set `{ monthlySpend, currency, salary?, salaryCurrency?, reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }` |
+| `GET`    | `/budget`       | Monthly spend, incomes and reserve, or `null`         |
+| `PUT`    | `/budget`       | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }` |
 | `GET`    | `/goals`        | List goals                                            |
 | `POST`   | `/goals`        | Create goal `{ name, target, currency }`              |
 | `DELETE` | `/goals/:id`    | Delete goal                                           |
@@ -176,14 +177,14 @@ integer minor units (cents/kopiykas).
 ## How estimates work
 
 - **Available savings** = total balance − untouchable reserve, converted at NBU rates.
-- **Runway** = available savings ÷ monthly loss (spending, or spending − salary). A month is 30.44 days.
+- **Runway** = available savings ÷ monthly loss (spending, or spending − all incomes). A month is 30.44 days.
 - **Savings rate** = (income − spending) ÷ income, summed over the shown months rather than a median
   of monthly rates, so one month of tiny income cannot skew it. Moves between your own accounts and
   investments count as neither income nor spending.
 - **Goal ETA** = (target − available savings) ÷ monthly surplus. Each goal is measured on its own,
   as if the whole surplus goes to it.
 
-Estimates assume flat spending and salary, and ignore interest and inflation.
+Estimates assume flat spending and income, and ignore interest and inflation.
 
 ## Technical decisions
 
