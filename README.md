@@ -69,6 +69,7 @@ All accounts together, in Runway's currency.
 - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
 - sorting by date or amount and a note on any transaction.
 - opens on the latest year with transactions; «Увесь час» in the period filter shows everything.
+- the account picker lists only accounts with transactions (bank-synced or manually adjusted).
 
 ### Plan
 
@@ -202,7 +203,7 @@ integer minor units (cents/kopiykas).
 
 | Method   | Path            | What                                                  |
 | -------- | --------------- | ----------------------------------------------------- |
-| `GET`    | `/accounts`     | List accounts                                         |
+| `GET`    | `/accounts`     | List accounts, each with its `transactionCount`        |
 | `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note` and `cancelled` |
 | `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }` |
 | `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |

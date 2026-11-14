@@ -35,11 +35,15 @@ test('create, list and update accounts', async (t) => {
 
 test('adjust adds to or subtracts from the balance', async (t) => {
   const app = await build(t)
-  const { id } = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Wallet', currency: 'UAH', balance: 100 } })).json()
+  const created = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Wallet', currency: 'UAH', balance: 100 } })).json()
+  const { id } = created
   const adjust = (amount: number) => app.inject({ method: 'POST', url: `/api/accounts/${id}/adjust`, payload: { amount } })
+  assert.equal(created.transactionCount, 0)
 
   assert.equal((await adjust(50.25)).json().balance, 150.25)
-  assert.equal((await adjust(-0.1)).json().balance, 150.15)
+  const second = (await adjust(-0.1)).json()
+  assert.equal(second.balance, 150.15)
+  assert.equal(second.transactionCount, 2)
   assert.equal((await adjust(0)).statusCode, 400)
   assert.equal((await app.inject({ method: 'POST', url: '/api/accounts/999/adjust', payload: { amount: 1 } })).statusCode, 404)
 
@@ -49,6 +53,10 @@ test('adjust adds to or subtracts from the balance', async (t) => {
 
   const [synced] = app.db.insert(accounts).values({ name: 'Mono', currency: 'UAH', balanceCents: 0, monoAccountId: 'acc' }).returning().all()
   assert.equal((await app.inject({ method: 'POST', url: `/api/accounts/${synced.id}/adjust`, payload: { amount: 1 } })).statusCode, 400)
+
+  // the list counts each account's transactions, 0 for one without any
+  const listed = (await app.inject({ url: '/api/accounts' })).json()
+  assert.deepEqual(listed.map((a: { name: string, transactionCount: number }) => [a.name, a.transactionCount]), [['Wallet', 2], ['Mono', 0]])
 })
 
 test('account kind defaults to bank and can be changed', async (t) => {

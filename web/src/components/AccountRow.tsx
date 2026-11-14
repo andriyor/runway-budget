@@ -86,9 +86,14 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             <ChevronIcon />
           </button>
         </div>
-        <a href={transactionsHref} aria-label={`${account.name} transactions`} title="Show transactions" className="rounded-full hover:ring-2 hover:ring-indigo-500 hover:ring-offset-2 dark:hover:ring-offset-zinc-900">
-          <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
-        </a>
+        {/* links to the account's transactions only when it has any */}
+        {account.transactionCount > 0
+          ? (
+            <a href={transactionsHref} aria-label={`${account.name} transactions`} title="Show transactions" className="rounded-full hover:ring-2 hover:ring-indigo-500 hover:ring-offset-2 dark:hover:ring-offset-zinc-900">
+              <CurrencyIcon currency={account.currency} className="size-9 text-sm" />
+            </a>
+            )
+          : <CurrencyIcon currency={account.currency} className="size-9 text-sm" />}
         <div className="min-w-32 flex-1">
           <input
             value={name}
@@ -102,8 +107,12 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
           />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
-            {' · '}
-            <a href={transactionsHref} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Transactions →</a>
+            {account.transactionCount > 0 && (
+              <>
+                {' · '}
+                <a href={transactionsHref} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Transactions →</a>
+              </>
+            )}
           </p>
         </div>
         {/* a narrow list (phones, the desktop sidebar): delete sits on the name line and the controls take

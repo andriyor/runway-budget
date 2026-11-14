@@ -23,6 +23,9 @@ const openPicker = (el: HTMLSelectElement | null) => {
   try { el.showPicker() } catch { /* unsupported: focused, opens on the next click or key */ }
 }
 
+// the account picker leaves out accounts without transactions, unless none has any, so the page still shows one
+const withTransactions = (list: Account[]) => (list.some((a) => a.transactionCount > 0) ? list.filter((a) => a.transactionCount > 0) : list)
+
 export function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState<number>()
@@ -53,6 +56,7 @@ export function TransactionsPage() {
   // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; applied on the first load only
   const linked = useRef(new URLSearchParams(location.hash.split('?')[1]))
   const account = accounts.find((a) => a.id === accountId)
+  const offered = withTransactions(accounts)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
     c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
   // a selection is a category (matches all its subcategories) or a single subcategory
@@ -72,7 +76,8 @@ export function TransactionsPage() {
         setAccounts(all)
         // an account linked from the Balances list, else the synced one, else the first
         const linkedId = Number(linked.current.get('account'))
-        setAccountId((all.find((a) => a.id === linkedId) ?? all.find((a) => a.monoAccountId) ?? all[0])?.id)
+        const offered = withTransactions(all)
+        setAccountId((offered.find((a) => a.id === linkedId) ?? offered.find((a) => a.monoAccountId) ?? offered[0])?.id)
       })
       .catch((e) => setError(e.message))
     api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
@@ -230,7 +235,7 @@ export function TransactionsPage() {
               }}
               className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none max-sm:basis-full dark:text-zinc-100 ${inputBox}`}
             >
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+              {offered.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
             </select>
             <select
               aria-label="Period"

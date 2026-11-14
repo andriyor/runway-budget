@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { type FastifyPluginAsync } from 'fastify'
 import type { Account, Transaction } from '@runway-budget/shared'
-import { desc, eq, sql } from 'drizzle-orm'
+import { count, desc, eq, sql } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from '../../data/mcc.json'
 import { cancelledIds } from '../../cancellations'
@@ -14,8 +14,8 @@ import { accounts, accountKinds, currencies, merchantCategories, merchantEssenti
 type AccountRow = typeof accounts.$inferSelect
 type AccountInput = { name: string, currency: Currency, balance: number, kind?: AccountKind }
 
-const toDto = ({ balanceCents, position: _position, updatedAt, ...rest }: AccountRow): Account =>
-  ({ ...rest, updatedAt: updatedAt.toISOString(), balance: balanceCents / 100 })
+const toDto = ({ balanceCents, position: _position, updatedAt, ...rest }: AccountRow, transactionCount: number): Account =>
+  ({ ...rest, updatedAt: updatedAt.toISOString(), balance: balanceCents / 100, transactionCount })
 const toCents = (balance: number) => Math.round(balance * 100)
 
 const merchants = Object.entries(merchantKeywords as Record<string, string[]>)
@@ -33,9 +33,14 @@ const inputProps = {
 }
 
 const accountsRoutes: FastifyPluginAsync = async (fastify) => {
+  const countOf = (id: number) =>
+    fastify.db.select({ n: count() }).from(transactions).where(eq(transactions.accountId, id)).get()!.n
+
   fastify.get('/', async () => {
     const rows = await fastify.db.select().from(accounts).orderBy(accounts.position, accounts.id)
-    return rows.map(toDto)
+    const counts = new Map((await fastify.db.select({ id: transactions.accountId, n: count() }).from(transactions)
+      .groupBy(transactions.accountId)).map((c) => [c.id, c.n]))
+    return rows.map((row) => toDto(row, counts.get(row.id) ?? 0))
   })
 
   fastify.post<{ Body: AccountInput }>('/', {
@@ -59,7 +64,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
         position: sql`(select coalesce(max(${accounts.position}), -1) + 1 from ${accounts})`
       })
       .returning()
-    return reply.code(201).send(toDto(row))
+    return reply.code(201).send(toDto(row, 0))
   })
 
   fastify.get<{ Params: { id: number } }>('/:id/transactions', {
@@ -101,7 +106,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: { querystring: { type: 'object', additionalProperties: false, properties: { to: { type: 'integer', minimum: 0 } } } }
   }, async (request) => {
     const { account, fetched } = await syncMono(fastify, request.log, request.query.to)
-    return { account: toDto(account), fetched }
+    return { account: toDto(account, countOf(account.id)), fetched }
   })
 
   // body is every account id in the desired order
@@ -149,7 +154,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
       .where(eq(accounts.id, request.params.id))
       .returning()
     if (!row) return reply.notFound()
-    return toDto(row)
+    return toDto(row, countOf(row.id))
   })
 
   // adds `amount` (negative subtracts) to the stored balance and records it as a transaction, so the balance
@@ -187,7 +192,7 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(accounts.id, id))
         .returning().get()
     })
-    return toDto(row)
+    return toDto(row, countOf(id))
   })
 
   fastify.delete<{ Params: { id: number } }>('/:id', {

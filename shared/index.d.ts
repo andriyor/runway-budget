@@ -17,6 +17,8 @@ export type Account = {
   // ISO 8601
   updatedAt: string
   monoAccountId: string | null
+  // synced and manually adjusted ones; 0 means the Transactions page has nothing to show for it
+  transactionCount: number
 }
 
 export type Transaction = {
