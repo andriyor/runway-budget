@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { ErrorText, MoneyInput } from './controls'
+import { ErrorText, MoneyInput } from '../../components/controls'
 import { Briefcase, Calendar, Lock, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
-import { api } from '../lib/api'
-import { format } from '../lib/format'
-import { monthsLasting } from '../lib/inflation'
-import { card, muted, inputBox, button, linkButton } from '../lib/styles'
-import { type Currency, type Budget } from '../lib/types'
+import { api } from '../../lib/api'
+import { format } from '../../lib/format'
+import { monthsLasting } from '../../lib/inflation'
+import { card, muted, inputBox, button, linkButton } from '../../lib/styles'
+import { type Currency, type Budget } from '../../lib/types'
 
 export const AVG_DAYS_IN_MONTH = 30.44
 

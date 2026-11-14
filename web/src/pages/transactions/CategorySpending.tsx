@@ -1,6 +1,6 @@
-import { format, percentOf } from '../lib/format'
-import { card, muted } from '../lib/styles'
-import type { Currency, Transaction, Leaf } from '../lib/types'
+import { format, percentOf } from '../../lib/format'
+import { card, muted } from '../../lib/styles'
+import type { Currency, Transaction, Leaf } from '../../lib/types'
 
 type CategorySpendingProps = {
   list: Transaction[]

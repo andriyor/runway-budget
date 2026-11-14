@@ -1,6 +1,6 @@
-import { format } from '../lib/format'
-import { card, muted } from '../lib/styles'
-import type { Currency } from '../lib/types'
+import { format } from '../../lib/format'
+import { card, muted } from '../../lib/styles'
+import type { Currency } from '../../lib/types'
 
 // the usual rule: 3 to 6 months of essential spending
 const MINIMUM = 3

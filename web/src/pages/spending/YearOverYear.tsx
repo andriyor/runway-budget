@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api } from '../lib/api'
-import { percentOf, wholeMoney } from '../lib/format'
-import { card, muted } from '../lib/styles'
-import type { Category, Currency, SpendingPerYear, Transaction } from '../lib/types'
+import { api } from '../../lib/api'
+import { percentOf, wholeMoney } from '../../lib/format'
+import { card, muted } from '../../lib/styles'
+import type { Category, Currency, SpendingPerYear, Transaction } from '../../lib/types'
 
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone

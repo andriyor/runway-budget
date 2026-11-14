@@ -1,9 +1,9 @@
-import { kindIcons, kindLabels } from '../lib/display'
-import { iconColors } from '../lib/format'
-import { CurrencyIcon } from './icons'
-import { format, percentOf } from '../lib/format'
-import { card, muted } from '../lib/styles'
-import { currencies, accountKinds, type AccountKind, type Account, type Convert } from '../lib/types'
+import { kindIcons, kindLabels } from '../../lib/display'
+import { iconColors } from '../../lib/format'
+import { CurrencyIcon } from '../../components/icons'
+import { format, percentOf } from '../../lib/format'
+import { card, muted } from '../../lib/styles'
+import { currencies, accountKinds, type AccountKind, type Account, type Convert } from '../../lib/types'
 
 type Slice = {
   key: string

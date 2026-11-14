@@ -353,7 +353,8 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - **No router library.** The web app switches pages on `location.hash` (`#/`, `#/spending`,
   `#/transactions`, `#/plan`); a query after it carries page state, e.g. `#/transactions?account=3`
   opens that account and `?category=groceries&period=m:2026-11` filters it on load.
-- **Web layout:** `web/src/pages/` for the four pages, `components/` for their parts, `lib/` for
+- **Web layout:** a folder per page in `web/src/pages/` (`balances`, `spending`, `transactions`, `plan`)
+  holding the page and the parts only it uses; `components/` for parts several pages share; `lib/` for
   types, API calls, formatting and shared class names. `lib/finance.ts` is the hook the Balances,
   Spending and Plan pages share: it loads accounts, rates, the budget and, when asked, transactions,
   rate history and CPI, and does the currency and budget calculations.
@@ -406,5 +407,5 @@ Deliberate shortcuts, each fine at today's size, with what would make it worth f
   and refetched after a restart; store them in a table if the NBU gets slow or rate-limits.
 - [ ] **Merchant icons come from Google's favicon service** (`web/src/components/MerchantIcon.tsx`), so
   Google sees which merchant domains are shown; proxy them through the API if that matters.
-- [ ] **Recurring payments detect monthly cycles only** (`web/src/components/Recurring.tsx`); yearly
+- [ ] **Recurring payments detect monthly cycles only** (`web/src/pages/spending/Recurring.tsx`); yearly
   and weekly payments need their own period detection.

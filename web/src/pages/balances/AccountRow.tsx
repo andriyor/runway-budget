@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { KindToggle, ErrorText, MoneyInput } from './controls'
+import { KindToggle, ErrorText, MoneyInput } from '../../components/controls'
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
-import { CurrencyIcon } from './icons'
-import { api } from '../lib/api'
-import { button, inputBox } from '../lib/styles'
-import { format, symbols } from '../lib/format'
-import type { Account } from '../lib/types'
+import { CurrencyIcon } from '../../components/icons'
+import { api } from '../../lib/api'
+import { button, inputBox } from '../../lib/styles'
+import { format, symbols } from '../../lib/format'
+import type { Account } from '../../lib/types'
 
 type AccountRowProps = {
   account: Account

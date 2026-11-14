@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { percentOf, wholeMoney } from '../lib/format'
-import { monthKey } from '../lib/periods'
-import { median } from '../lib/stats'
-import { card, muted } from '../lib/styles'
-import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
-import { parentsById } from '../lib/categories'
+import { percentOf, wholeMoney } from '../../lib/format'
+import { monthKey } from '../../lib/periods'
+import { median } from '../../lib/stats'
+import { card, muted } from '../../lib/styles'
+import type { Account, Category, Convert, Currency, Transaction } from '../../lib/types'
+import { parentsById } from '../../lib/categories'
 
 // how far back "usual" looks, in complete months
 const MONTHS = 12

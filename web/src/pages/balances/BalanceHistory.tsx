@@ -1,8 +1,8 @@
 import { useState, type KeyboardEvent } from 'react'
-import { format, wholeMoney } from '../lib/format'
-import { card, muted } from '../lib/styles'
-import { dailyValues } from '../lib/history'
-import type { Account, ConvertOn, Currency, Transaction } from '../lib/types'
+import { format, wholeMoney } from '../../lib/format'
+import { card, muted } from '../../lib/styles'
+import { dailyValues } from '../../lib/history'
+import type { Account, ConvertOn, Currency, Transaction } from '../../lib/types'
 
 const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 

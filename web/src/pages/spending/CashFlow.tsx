@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { format, percentOf, wholeMoney } from '../lib/format'
-import { dailyValues } from '../lib/history'
-import { inLatestPrices } from '../lib/inflation'
-import { dayKey, monthKey } from '../lib/periods'
-import { median, quantile } from '../lib/stats'
-import { card, muted, linkButton } from '../lib/styles'
-import type { Account, Category, ConvertOn, Currency, Inflation, Transaction } from '../lib/types'
-import { parentsById } from '../lib/categories'
+import { format, percentOf, wholeMoney } from '../../lib/format'
+import { dailyValues } from '../../lib/history'
+import { inLatestPrices } from '../../lib/inflation'
+import { dayKey, monthKey } from '../../lib/periods'
+import { median, quantile } from '../../lib/stats'
+import { card, muted, linkButton } from '../../lib/styles'
+import type { Account, Category, ConvertOn, Currency, Inflation, Transaction } from '../../lib/types'
+import { parentsById } from '../../lib/categories'
 
 // how far back the figures look, in complete months
 const MONTHS = 12

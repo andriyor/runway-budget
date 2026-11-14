@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AVG_DAYS_IN_MONTH } from './Runway'
-import { Skeleton, ErrorText, MoneyInput } from './controls'
+import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
 import { Calendar, Trash2 } from 'lucide-react'
-import { CurrencyIcon } from './icons'
-import { api } from '../lib/api'
-import { format } from '../lib/format'
-import { monthsToSave } from '../lib/inflation'
-import { card, muted, inputBox, button } from '../lib/styles'
-import type { Currency, Goal } from '../lib/types'
+import { CurrencyIcon } from '../../components/icons'
+import { api } from '../../lib/api'
+import { format } from '../../lib/format'
+import { monthsToSave } from '../../lib/inflation'
+import { card, muted, inputBox, button } from '../../lib/styles'
+import type { Currency, Goal } from '../../lib/types'
 
 type Cushion = { months: number, amount: number, available: number, currency: Currency }
 

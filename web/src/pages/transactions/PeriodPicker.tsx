@@ -2,9 +2,9 @@ import { Select } from '@base-ui/react/select'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
-import { periodsOf } from '../lib/periods'
-import { inputBox } from '../lib/styles'
-import type { Transaction } from '../lib/types'
+import { periodsOf } from '../../lib/periods'
+import { inputBox } from '../../lib/styles'
+import type { Transaction } from '../../lib/types'
 
 // period kinds by key prefix; '' is all time. A day ('d:') is picked from the week chart, not here.
 const KINDS = [

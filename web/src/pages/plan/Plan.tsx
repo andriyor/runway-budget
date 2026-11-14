@@ -1,10 +1,10 @@
-import { EmergencyFund } from '../components/EmergencyFund'
-import { Goals } from '../components/Goals'
-import { Runway } from '../components/Runway'
-import { ErrorBanner, InfoTip } from '../components/controls'
-import { useFinance } from '../lib/finance'
-import { annualRate } from '../lib/inflation'
-import type { Currency } from '../lib/types'
+import { EmergencyFund } from './EmergencyFund'
+import { Goals } from './Goals'
+import { Runway } from './Runway'
+import { ErrorBanner, InfoTip } from '../../components/controls'
+import { useFinance } from '../../lib/finance'
+import { annualRate } from '../../lib/inflation'
+import type { Currency } from '../../lib/types'
 
 export function Plan() {
   const { budget, setBudget, inflation: cpi, error, convert, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, forGoalsIn, cushion, netIn } = useFinance({ withInflation: true })

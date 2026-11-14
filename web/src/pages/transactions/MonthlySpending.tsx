@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { format, percentOf, wholeMoney } from '../lib/format'
-import { usePhone } from '../lib/media'
-import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../lib/periods'
-import { median, quantile } from '../lib/stats'
-import { card, muted } from '../lib/styles'
-import type { Category, Currency, Transaction, Leaf } from '../lib/types'
+import { format, percentOf, wholeMoney } from '../../lib/format'
+import { usePhone } from '../../lib/media'
+import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../../lib/periods'
+import { median, quantile } from '../../lib/stats'
+import { card, muted } from '../../lib/styles'
+import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
 
 // categories with their own color; the rest fold into one neutral segment
 const SERIES = 7

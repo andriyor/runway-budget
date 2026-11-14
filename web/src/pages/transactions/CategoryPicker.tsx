@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Combobox } from '@base-ui/react/combobox'
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react'
-import { muted } from '../lib/styles'
-import type { Category } from '../lib/types'
+import { muted } from '../../lib/styles'
+import type { Category } from '../../lib/types'
 
 // search also holds the parent's name, so «продукти» finds every grocery subcategory
 type Item = { value: string, label: string, search: string }

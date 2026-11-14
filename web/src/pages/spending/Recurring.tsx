@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { MerchantIcon } from './MerchantIcon'
-import { format } from '../lib/format'
-import { monthKey } from '../lib/periods'
-import { median } from '../lib/stats'
-import { card, muted } from '../lib/styles'
-import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
-import { parentsById } from '../lib/categories'
+import { MerchantIcon } from '../../components/MerchantIcon'
+import { format } from '../../lib/format'
+import { monthKey } from '../../lib/periods'
+import { median } from '../../lib/stats'
+import { card, muted } from '../../lib/styles'
+import type { Account, Category, Convert, Currency, Transaction } from '../../lib/types'
+import { parentsById } from '../../lib/categories'
 
 // complete months looked at, besides the running one
 const MONTHS = 6

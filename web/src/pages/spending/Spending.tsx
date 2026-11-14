@@ -1,13 +1,13 @@
-import { CashFlow } from '../components/CashFlow'
-import { CategoryBudgets } from '../components/CategoryBudgets'
-import { Recurring } from '../components/Recurring'
-import { ThisMonth } from '../components/ThisMonth'
-import { YearOverYear } from '../components/YearOverYear'
-import { ErrorBanner, InfoTip } from '../components/controls'
-import { api } from '../lib/api'
-import { budgetWith } from '../lib/budget'
-import { useFinance } from '../lib/finance'
-import type { Budget, Currency } from '../lib/types'
+import { CashFlow } from './CashFlow'
+import { CategoryBudgets } from './CategoryBudgets'
+import { Recurring } from './Recurring'
+import { ThisMonth } from './ThisMonth'
+import { YearOverYear } from './YearOverYear'
+import { ErrorBanner, InfoTip } from '../../components/controls'
+import { api } from '../../lib/api'
+import { budgetWith } from '../../lib/budget'
+import { useFinance } from '../../lib/finance'
+import type { Budget, Currency } from '../../lib/types'
 
 export function Spending() {
   const { accounts, rates, budget, setBudget, categories, transactions, inflation, error, setError, currency, convert, convertOn } = useFinance({ withTransactions: true, withInflation: true })

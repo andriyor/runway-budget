@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ErrorText, MoneyInput } from './controls'
+import { ErrorText, MoneyInput } from '../../components/controls'
 import { Trash2 } from 'lucide-react'
-import { api } from '../lib/api'
-import { format, wholeMoney } from '../lib/format'
-import { monthKey } from '../lib/periods'
-import { card, muted, inputBox, button } from '../lib/styles'
-import type { Account, Category, CategoryBudget, Convert, Currency, Transaction } from '../lib/types'
-import { parentsById } from '../lib/categories'
+import { api } from '../../lib/api'
+import { format, wholeMoney } from '../../lib/format'
+import { monthKey } from '../../lib/periods'
+import { card, muted, inputBox, button } from '../../lib/styles'
+import type { Account, Category, CategoryBudget, Convert, Currency, Transaction } from '../../lib/types'
+import { parentsById } from '../../lib/categories'
 
 type CategoryBudgetsProps = {
   transactions: Transaction[] | undefined

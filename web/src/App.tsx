@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Nav } from './components/Nav'
-import { Balances } from './pages/Balances'
-import { Plan } from './pages/Plan'
-import { Spending } from './pages/Spending'
-import { TransactionsPage } from './pages/Transactions'
+import { Balances } from './pages/balances/Balances'
+import { Plan } from './pages/plan/Plan'
+import { Spending } from './pages/spending/Spending'
+import { TransactionsPage } from './pages/transactions/Transactions'
 
 export default function App() {
   const [page, setPage] = useState(location.hash || '#/')

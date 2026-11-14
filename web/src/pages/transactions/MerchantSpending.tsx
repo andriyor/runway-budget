@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { MerchantIcon } from './MerchantIcon'
-import { format, percentOf } from '../lib/format'
-import { card, linkButton, muted } from '../lib/styles'
-import type { Currency, Leaf, Transaction } from '../lib/types'
+import { MerchantIcon } from '../../components/MerchantIcon'
+import { format, percentOf } from '../../lib/format'
+import { card, linkButton, muted } from '../../lib/styles'
+import type { Currency, Leaf, Transaction } from '../../lib/types'
 
 const TOP = 10
 
