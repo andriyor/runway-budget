@@ -15,7 +15,7 @@ and when you reach your goals.
 | ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/6e6d28a3-1d85-4005-bb8c-57c2fc5265c4) | ![Plan: runway, emergency fund and goals](https://github.com/user-attachments/assets/b855b0ac-c7c2-40fd-aa4b-f7d4ab375c7e) |
 | ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/f01ddaba-42ad-40b3-958b-494687923089) | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/b52bda7b-55d1-4ee9-a6ec-63d21293ffa0) |
 | ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/30a041b9-02ce-48bf-99db-26baa0022958) | ![Essential spending only, with its median](https://github.com/user-attachments/assets/6f5f2994-372b-4eec-98d6-d0ba0abc8a83) |
-| ![Balances on a phone](https://github.com/user-attachments/assets/b0c4f010-8fd9-4a9a-9e30-32c4aad2aac8) | |
+| ![Balances on a phone](https://github.com/user-attachments/assets/017acbef-b289-4472-80fa-2d52ed7f5ce2) | |
 
 </details>
 
