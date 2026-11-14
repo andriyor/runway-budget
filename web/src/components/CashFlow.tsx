@@ -9,7 +9,10 @@ import type { Account, Category, Convert, Currency, Transaction } from '../lib/t
 const MONTHS = 12
 const monthLabel = new Intl.DateTimeFormat('uk-UA', { month: 'short', year: 'numeric' })
 
-type Month = { month: string, income: number, spent: number }
+const SPENDING_NOTE = 'Net of refunds: a refund lowers spending in the month it arrives (which can go below zero) and never counts as income. '
+  + 'Cancelled purchases count as nothing. Own-account moves and investments are left out.'
+
+type Month ={ month: string, income: number, spent: number }
 
 // Income and net spending per complete month, oldest first: up to MONTHS months before the running
 // one, starting at the first month with a transaction. Income is the «Надходження» category; spending
@@ -84,7 +87,9 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
           )}
         </div>
         <div className={tile}>
-          <p className={muted}>Spending per month</p>
+          <p className={muted}>
+            <span className="cursor-help underline decoration-dotted underline-offset-2" title={SPENDING_NOTE}>Spending per month</span>
+          </p>
           <p className={`${big} text-zinc-900 dark:text-zinc-100`}>{format(typicalSpent, currency)}</p>
           <p className={`mt-1 text-sm ${muted}`}>median</p>
         </div>
@@ -104,7 +109,7 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
           <tr className="text-right [&>th]:pb-1 [&>th]:font-normal">
             <th className="text-left">Month</th>
             <th>Income</th>
-            <th>Spent</th>
+            <th className="cursor-help" title={SPENDING_NOTE}>Spent</th>
             <th>Saved</th>
           </tr>
         </thead>
