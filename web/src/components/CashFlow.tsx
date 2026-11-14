@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
 import { monthKey } from '../lib/periods'
-import { median } from '../lib/stats'
+import { median, quantile } from '../lib/stats'
 import { card, muted, linkButton } from '../lib/styles'
 import type { Account, Category, Convert, Currency, Transaction } from '../lib/types'
 
@@ -64,6 +64,10 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
   const rate = income > 0 ? (income - spent) / income : undefined
   const typicalIncome = median(months.map((m) => m.income))
   const typicalSpent = median(months.map((m) => m.spent))
+  // Runway assumes every month costs the median; the middle half of months, the lowest and the worst one show how far off that can be
+  const spread = months.length >= 4
+    ? { low: quantile(months.map((m) => m.spent), 0.25), high: quantile(months.map((m) => m.spent), 0.75), lowest: months.reduce((a, b) => (b.spent < a.spent ? b : a)), worst: months.reduce((a, b) => (b.spent > a.spent ? b : a)) }
+    : undefined
   const tone = (x: number) => (x >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')
   const tile = 'rounded-xl bg-zinc-50 p-3 sm:p-4 dark:bg-zinc-800/50'
   const big = 'mt-1 text-xl font-semibold tabular-nums sm:text-2xl'
@@ -92,6 +96,15 @@ export function CashFlow({ transactions, accounts, categories, convert, currency
           </p>
           <p className={`${big} text-zinc-900 dark:text-zinc-100`}>{format(typicalSpent, currency)}</p>
           <p className={`mt-1 text-sm ${muted}`}>median</p>
+          {spread && (
+            <p className={`mt-1 text-sm tabular-nums ${muted}`}>
+              usually {wholeMoney(spread.low, currency)}–{wholeMoney(spread.high, currency)}
+              <br />
+              lowest {wholeMoney(spread.lowest.spent, currency)} in {monthLabel.format(new Date(`${spread.lowest.month}-01T00:00:00`))}
+              <br />
+              worst {wholeMoney(spread.worst.spent, currency)} in {monthLabel.format(new Date(`${spread.worst.month}-01T00:00:00`))}
+            </p>
+          )}
         </div>
         <div className={tile}>
           <p className={muted}>Savings rate</p>

@@ -1,5 +1,9 @@
-export const median = (values: number[]) => {
+// value below which a share q (0–1) of the values fall, interpolating between the two nearest
+export const quantile = (values: number[], q: number) => {
   const sorted = values.toSorted((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+  const at = (sorted.length - 1) * q
+  const below = Math.floor(at)
+  return sorted[below] + (sorted[Math.ceil(at)] - sorted[below]) * (at - below)
 }
+
+export const median = (values: number[]) => quantile(values, 0.5)

@@ -29,6 +29,8 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
   months across all accounts, with a per-month table. The median income can be sent to Runway as an
   `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
+  Spending also shows its usual range (the middle half of the months, p25–p75)
+  and the lowest and worst months, since Runway assumes every month costs the same.
 - **This month against the usual**: each category's spending from the 1st to today next to the median
   of the same days in the last 12 complete months, with the change in percent («Продукти +34%»).
   Same days rather than whole months, so a half-gone month does not look cheap.
@@ -41,7 +43,7 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them, on demand and automatically at 09:00 and 21:00.
 - **Transactions page**:
-  - a stacked chart of spending per month by category, with a median line over complete months;
+  - a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
     picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
     filter shows only its months (a picked month shows its year);
   - spending by category with a drill-down into subcategories;
@@ -184,6 +186,8 @@ integer minor units (cents/kopiykas).
 
 - **Available savings** = total balance − untouchable reserve, converted at NBU rates.
 - **Runway** = available savings ÷ monthly loss (spending, or spending − all incomes). A month is 30.44 days.
+- **Usual range** = the 25th to 75th percentile of complete months' spending, shown from 4 months on,
+  on the monthly spending chart as a shaded band and in both places with the lowest and worst months.
 - **Savings rate** = (income − spending) ÷ income, summed over the shown months rather than a median
   of monthly rates, so one month of tiny income cannot skew it. Moves between your own accounts and
   investments count as neither income nor spending.
@@ -306,7 +310,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - [x] This month against the usual: each category's spending vs its median («Продукти +34%»)
 - [x] Recurring payments: detect subscriptions (same merchant, similar amount each month) and show the
   committed monthly total
-- [ ] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
+- [x] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
 - [ ] Year-over-year: same month last year and yearly totals per category
 - [ ] Pace within the month: «spent X by the 14th, on track for Y»
 

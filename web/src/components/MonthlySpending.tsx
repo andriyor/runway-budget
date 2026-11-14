@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { format, percentOf, wholeMoney } from '../lib/format'
 import { usePhone } from '../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../lib/periods'
-import { median } from '../lib/stats'
+import { median, quantile } from '../lib/stats'
 import { card, muted } from '../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../lib/types'
 
@@ -153,6 +153,15 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const complete = scoped.filter((b) => b.month !== thisMonth)
   // the median is a monthly figure, so a week of days has none
   const typical = !days && complete.length ? median(complete.map((b) => b.total)) : undefined
+  // the usual range (middle half of the complete months), the lowest and the worst one; too few months make no range
+  const spread = typical !== undefined && complete.length >= 4
+    ? {
+        low: quantile(complete.map((b) => b.total), 0.25),
+        high: quantile(complete.map((b) => b.total), 0.75),
+        lowest: complete.reduce((a, b) => (b.total < a.total ? b : a)),
+        worst: complete.reduce((a, b) => (b.total > a.total ? b : a)),
+      }
+    : undefined
   const quarter = phone && !days ? phoneQuarter(period, scoped.at(-1)?.month) : undefined
   const isShown = (month: string) => inScope(period, month) && (!phone || days !== undefined || (quarter !== undefined && inQuarter(quarter, month)))
   const shown = bars.filter((b) => isShown(b.month))
@@ -189,6 +198,13 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
           <span className={`tabular-nums ${muted}`}>
             Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
             {' '}за місяць · {complete.length} повних міс.{quarter && ` · показано ${quarterLabel(quarter)}`}
+            {spread && (
+              <span className="block sm:inline">
+                {' '}· звично {wholeMoney(spread.low, currency)}–{wholeMoney(spread.high, currency)}
+                {' '}· найменший {wholeMoney(spread.lowest.total, currency)} ({shortMonth.format(firstDay(spread.lowest.month))})
+                {' '}· найгірший {wholeMoney(spread.worst.total, currency)} ({shortMonth.format(firstDay(spread.worst.month))})
+              </span>
+            )}
             {onUseMedian && (
               <button type="button" onClick={() => onUseMedian(typical)} className="ml-3 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
                 {essentialOnly ? 'Use as extreme saving in Runway' : 'Use as monthly spending in Runway'}
@@ -220,6 +236,14 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
       <div className="relative mt-5" onMouseLeave={() => setHover(undefined)}>
         <div className="relative flex h-56 items-end gap-3 border-b border-zinc-200 dark:border-zinc-800">
+          {/* the usual range: the middle half of the complete months */}
+          {spread && spread.high > 0 && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bg-zinc-500/10 dark:bg-zinc-400/10"
+              style={{ bottom: height(spread.low), height: `calc(${height(spread.high)} - ${height(spread.low)})` }}
+            />
+          )}
           {typical !== undefined && typical > 0 && (
             <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-zinc-500 dark:border-zinc-400" style={{ bottom: height(typical) }}>
               <span className="absolute -top-2.5 right-0 rounded bg-white px-1 text-[0.65rem] font-medium text-zinc-600 tabular-nums dark:bg-zinc-900 dark:text-zinc-300">
@@ -228,7 +252,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             </div>
           )}
           {shown.map((b) => (
-            <div key={b.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
+            <div key={b.month} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-end">
               <button
                 type="button"
                 tabIndex={-1}
