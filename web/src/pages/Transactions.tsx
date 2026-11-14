@@ -4,7 +4,7 @@ import { MerchantIcon } from '../components/MerchantIcon'
 import { SyncIcon } from '../components/icons'
 import { MerchantSpending } from '../components/MerchantSpending'
 import { MonthlySpending } from '../components/MonthlySpending'
-import { Skeleton } from '../components/controls'
+import { ErrorBanner, Skeleton } from '../components/controls'
 import { api } from '../lib/api'
 import { budgetWith } from '../lib/budget'
 import { format } from '../lib/format'
@@ -215,11 +215,7 @@ export function TransactionsPage() {
           <button type="button" onClick={() => setNotice('')} className="shrink-0 font-medium hover:underline">OK</button>
         </p>
       )}
-      {error && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
-          {error}
-        </p>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
       <section className={card}>
         <div className="flex flex-wrap items-center gap-3">
           {/* what is shown: account, period and which spending */}

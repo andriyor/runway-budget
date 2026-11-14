@@ -108,6 +108,24 @@ export function WalletIcon() {
   )
 }
 
+export function ChartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20h16M7 16v-5M12 16V7M17 16v-8" />
+    </svg>
+  )
+}
+
+export function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 12h.01" />
+    </svg>
+  )
+}
+
 export function ListIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

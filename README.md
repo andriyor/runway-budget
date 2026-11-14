@@ -20,41 +20,58 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)).
 
 ## Features
 
+Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **Plan**.
+
+### Balances
+
 - **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
-- **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
-  currency, marked if it keeps coming when the others stop, like a pension), an optional extreme-saving
-  budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
-  without income to see the most you can spend per month.
-- **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
-  months across all accounts, with a per-month table. The median income can be sent to Runway as an
-  `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
-  Spending also shows its usual range (the middle half of the months, p25–p75)
-  and the lowest and worst months, since Runway assumes every month costs the same.
+
+### Spending
+
+All accounts together, in Runway's currency.
+
 - **This month against the usual**: each category's spending from the 1st to today next to the median
   of the same days in the last 12 complete months, with the change in percent («Продукти +34%»), and
   the same days a year ago. Same days rather than whole months, so a half-gone month does not look cheap.
   Above it, the pace: «spent X by 14 листопада, on track for Y», where Y is X plus the median of what past
   months spent after that day, red when above Runway's monthly spending (or the usual month without a budget).
-- **Spending per year**: each category's total for the last 3 calendar years, this one to date, with the
-  change from the same part of last year (1 January to today).
+- **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
+  months across all accounts, with a per-month table. The median income can be sent to Runway as an
+  `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
+  Spending also shows its usual range (the middle half of the months, p25–p75)
+  and the lowest and worst months, since Runway assumes every month costs the same.
 - **Recurring payments**: rent, subscriptions and regular donations, found as a merchant charged about
   once a month for a similar amount in at least 3 of the last 6 months and within the last 40 days,
   with the latest charge, the expected next date and the committed monthly total.
+- **Spending per year**: each category's total for the last 3 calendar years, this one to date, with the
+  change from the same part of last year (1 January to today).
+
+### Transactions
+
+- a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
+  picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
+  filter shows only its months (a picked month shows its year);
+- spending by category with a drill-down into subcategories;
+- spending by merchant;
+- filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
+- sorting by date or amount and a note on any transaction.
+- opens on the latest year with transactions; «Увесь час» in the period filter shows everything.
+
+### Plan
+
+- **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
+  currency, marked if it keeps coming when the others stop, like a pension), an optional extreme-saving
+  budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
+  without income to see the most you can spend per month.
 - **Goals**: set a target amount and see progress and the date you reach it at your current monthly
   surplus (income minus spending). Months you want to live without income are kept aside as a cushion
   and not counted toward goals.
+
+### Everywhere
+
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them, on demand and automatically at 09:00 and 21:00.
-- **Transactions page**:
-  - a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
-    picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
-    filter shows only its months (a picked month shows its year);
-  - spending by category with a drill-down into subcategories;
-  - spending by merchant;
-  - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
-  - sorting by date or amount and a note on any transaction.
-  - opens on the latest year with transactions; «Увесь час» in the period filter shows everything.
 - **Phones**: a bottom tab bar, compact balance cards and account rows, and a Transactions page that
   opens on the latest quarter, with the monthly chart showing that quarter.
 - **Categories**: transactions are sorted into categories and subcategories automatically from their

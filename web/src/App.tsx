@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Nav } from './components/Nav'
 import { Balances } from './pages/Balances'
+import { Plan } from './pages/Plan'
+import { Spending } from './pages/Spending'
 import { TransactionsPage } from './pages/Transactions'
 
 export default function App() {
@@ -20,7 +22,7 @@ export default function App() {
       <Nav page={path} />
       {/* keyed by page so switching pages clears an error */}
       <ErrorBoundary key={path}>
-        {path === '#/transactions' ? <TransactionsPage /> : <Balances />}
+        {path === '#/transactions' ? <TransactionsPage /> : path === '#/spending' ? <Spending /> : path === '#/plan' ? <Plan /> : <Balances />}
       </ErrorBoundary>
     </main>
   )

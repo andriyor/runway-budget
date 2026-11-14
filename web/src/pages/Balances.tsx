@@ -1,55 +1,21 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { AccountRow } from '../components/AccountRow'
 import { Allocation } from '../components/Allocation'
 import { BalanceHistory } from '../components/BalanceHistory'
-import { CashFlow } from '../components/CashFlow'
-import { Goals } from '../components/Goals'
-import { Recurring } from '../components/Recurring'
-import { Runway } from '../components/Runway'
-import { ThisMonth } from '../components/ThisMonth'
-import { YearOverYear } from '../components/YearOverYear'
-import { InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
+import { ErrorBanner, InfoTip, KindToggle, Skeleton, MoneyInput } from '../components/controls'
 import { CurrencyIcon, BankIcon } from '../components/icons'
 import { api } from '../lib/api'
-import { budgetWith } from '../lib/budget'
+import { useFinance } from '../lib/finance'
 import { format, formatRate, symbols } from '../lib/format'
 import { card, muted, inputBox, button } from '../lib/styles'
-import { currencies, type Currency, type AccountKind, type Account, type Rates, type Budget, type Convert, type Category, type Transaction } from '../lib/types'
+import { currencies, type Currency, type AccountKind, type Account } from '../lib/types'
 
 export function Balances() {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [rates, setRates] = useState<Rates>()
-  const [error, setError] = useState('')
+  const { accounts, setAccounts, rates, transactions, error, setError, currency: chartCurrency, convert, totalIn } = useFinance({ withTransactions: true })
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
   const [kind, setKind] = useState<AccountKind>('bank')
-  // undefined while loading
-  const [budget, setBudget] = useState<Budget | null>()
-  // every account's transactions, for the balance chart and cash flow
-  const [fetched, setTransactions] = useState<Transaction[]>()
-  const [categories, setCategories] = useState<Category[]>([])
-  // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
-  const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
-  // the last fetch would linger after every account is deleted
-  const transactions = ids ? fetched : []
-
-  useEffect(() => {
-    if (!ids) return
-    Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
-      .then((all) => setTransactions(all.flat()))
-      .catch((e) => {
-        setTransactions([])
-        setError(`Transactions: ${e.message}`)
-      })
-  }, [ids])
-
-  useEffect(() => {
-    api<Budget | null>('/budget').then(setBudget).catch((e) => setError(e.message))
-    api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
-    api<Account[]>('/accounts').then(setAccounts).catch((e) => setError(e.message))
-    api<Rates>('/rates').then(setRates).catch((e) => setError(`Rates: ${e.message}`))
-  }, [])
 
   async function add(e: FormEvent) {
     e.preventDefault()
@@ -80,49 +46,9 @@ export function Balances() {
     }
   }
 
-  // the cash flow's median income becomes one of Runway's incomes, keeping the rest of the budget
-  async function incomeFromCashFlow(amount: number, c: Currency) {
-    try {
-      setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(budgetWith(budget!, 'income', Math.round(amount), c)) }))
-    } catch (err) {
-      setError(`Runway: ${(err as Error).message}`)
-    }
-  }
-
   const removeAccount = (id: number) => setAccounts((list) => list.filter((a) => a.id !== id))
   const replace = (updated: Account) =>
     setAccounts((list) => list.map((a) => (a.id === updated.id ? updated : a)))
-
-  // rates are UAH per unit, so convert via UAH
-  const convert: Convert = (amount, from, to) => rates && (amount * rates.rates[from]) / rates.rates[to]
-  const totalIn = (target: Currency) =>
-    rates && accounts.reduce((sum, a) => sum + convert(a.balance, a.currency, target)!, 0)
-  const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
-    amount != null && from ? convert(amount, from, to) : undefined
-  const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
-  // all incomes together; undefined when there are none or rates are missing
-  const incomeIn = (c: Currency) =>
-    budget?.incomes.length && rates ? budget.incomes.reduce((sum, i) => sum + convert(i.amount, i.currency, c)!, 0) : undefined
-  // incomes that keep coming in the "without income" estimates, e.g. rent
-  const keptIncomeIn = (c: Currency) =>
-    rates ? (budget?.incomes ?? []).filter((i) => i.keeps).reduce((sum, i) => sum + convert(i.amount, i.currency, c)!, 0) : 0
-  const minimalIn = (c: Currency) => fromBudget(budget?.minimalSpend, budget?.minimalSpendCurrency, c)
-  const availableIn = (c: Currency) => {
-    const total = totalIn(c)
-    return total === undefined ? undefined : total - reserveIn(c)
-  }
-  // months without income, covering what the incomes that keep coming do not
-  const cushionIn = (c: Currency) =>
-    budget?.targetMonths ? budget.targetMonths * Math.max(0, fromBudget(budget.monthlySpend, budget.currency, c)! - keptIncomeIn(c)) : 0
-  const forGoalsIn = (c: Currency) => {
-    const available = availableIn(c)
-    return available === undefined ? undefined : available - cushionIn(c)
-  }
-  const cushion = budget?.targetMonths && rates
-    ? { months: budget.targetMonths, amount: cushionIn(budget.currency), available: availableIn(budget.currency)!, currency: budget.currency }
-    : undefined
-  const netIn = (c: Currency) =>
-    budget && rates ? (incomeIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return (
     <>
@@ -131,11 +57,7 @@ export function Balances() {
         <InfoTip label="About balances">USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</InfoTip>
       </header>
 
-      {error && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
-          {error}
-        </p>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
 
       {/* phones: one line per currency; the rate footer only shows from sm up */}
       <section className="grid gap-2 sm:grid-cols-3 sm:gap-4">
@@ -158,38 +80,9 @@ export function Balances() {
         ))}
       </section>
 
-      <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={budget?.currency ?? 'UAH'} />
+      <BalanceHistory accounts={accounts} transactions={transactions} convert={convert} currency={chartCurrency} />
 
       <Allocation accounts={accounts} convert={convert} />
-
-      {rates && (
-        <CashFlow
-          transactions={transactions}
-          accounts={accounts}
-          categories={categories}
-          convert={convert}
-          currency={budget?.currency ?? 'UAH'}
-          onUseIncome={budget ? incomeFromCashFlow : undefined}
-        />
-      )}
-
-      {rates && (
-        <ThisMonth transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} planned={budget?.monthlySpend} />
-      )}
-
-      {rates && (
-        <YearOverYear transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
-      )}
-
-      {rates && (
-        <Recurring transactions={transactions} accounts={accounts} categories={categories} convert={convert} currency={budget?.currency ?? 'UAH'} />
-      )}
-
-      {budget !== undefined && (
-        <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} />
-      )}
-
-      <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} />
 
       <section className={card}>
         <div className="flex items-baseline justify-between">
