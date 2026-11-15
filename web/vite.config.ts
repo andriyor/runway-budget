@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  devtools: { embeddedVisibility: 'passive' },
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
