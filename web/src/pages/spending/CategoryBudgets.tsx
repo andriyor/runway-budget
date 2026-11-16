@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ErrorText, MoneyInput } from '../../components/controls'
 import { Trash2 } from 'lucide-react'
-import { api, cached } from '../../lib/api'
+import { api, useApi } from '../../lib/api'
 import { format, wholeMoney } from '../../lib/format'
 import { monthKey } from '../../lib/periods'
 import { card, muted, inputBox, button } from '../../lib/styles'
@@ -20,16 +20,16 @@ type CategoryBudgetsProps = {
 // cancelled pairs left out, at today's rate. The tick on each bar is an even pace: the cap × the share of
 // the month gone. Amber once ahead of that pace, red once over the cap.
 export function CategoryBudgets({ transactions, accounts, categories, convert, currency }: CategoryBudgetsProps) {
-  const [budgets, setBudgets] = useState<CategoryBudget[]>(() => cached('/category-budgets') ?? [])
+  const query = useApi<CategoryBudget[]>('/category-budgets')
+  const budgets = query.data ?? []
   const [category, setCategory] = useState('')
   const [amount, setAmount] = useState('')
   const [amountCurrency, setAmountCurrency] = useState<Currency>(currency)
-  const [error, setError] = useState('')
+  // a failed save, else a failed load
+  const [saveError, setError] = useState('')
+  const error = saveError || query.error?.message || ''
   const [now] = useState(() => new Date())
 
-  useEffect(() => {
-    api<CategoryBudget[]>('/category-budgets').then(setBudgets).catch((e) => setError(e.message))
-  }, [])
 
   const spending = categories.filter((c) => c.spending)
   // picking a category that has a cap fills in its amount, so the form edits it
@@ -45,11 +45,10 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
   async function save(e: FormEvent) {
     e.preventDefault()
     try {
-      const saved = await api<CategoryBudget>(`/category-budgets/${category}`, {
+      await api<CategoryBudget>(`/category-budgets/${category}`, {
         method: 'PUT',
         body: JSON.stringify({ amount: Number(amount), currency: amountCurrency }),
       })
-      setBudgets((list) => [...list.filter((b) => b.category !== saved.category), saved])
       setCategory('')
       setAmount('')
       setError('')
@@ -62,7 +61,6 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
     if (!confirm(`Remove the budget for ${label}?`)) return
     try {
       await api(`/category-budgets/${budget.category}`, { method: 'DELETE' })
-      setBudgets((list) => list.filter((b) => b.category !== budget.category))
     } catch (err) {
       setError((err as Error).message)
     }

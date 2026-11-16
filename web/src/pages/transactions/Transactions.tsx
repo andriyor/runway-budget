@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { CategoryPicker } from './CategoryPicker'
 import { CategorySpending } from './CategorySpending'
 import { MerchantIcon } from '../../components/MerchantIcon'
@@ -7,7 +7,7 @@ import { MerchantSpending } from './MerchantSpending'
 import { MonthlySpending } from './MonthlySpending'
 import { PeriodPicker } from './PeriodPicker'
 import { ErrorBanner, Skeleton } from '../../components/controls'
-import { api, cached } from '../../lib/api'
+import { api, useApi } from '../../lib/api'
 import { budgetWith } from '../../lib/budget'
 import { format } from '../../lib/format'
 import { monthKey, periodsOf } from '../../lib/periods'
@@ -43,15 +43,22 @@ const openingPeriod = (list: Transaction[], linked: URLSearchParams) =>
     : list.length ? `m:${monthKey(list[0].time)}` : ''
 
 export function TransactionsPage() {
-  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; applied on the first load only
-  const linked = useRef(linkParams())
-  // the page starts from the last responses (see cached), so opening it again does not flash empty
-  const [accounts, setAccounts] = useState<Account[]>(() => cached('/accounts') ?? [])
-  const [accountId, setAccountId] = useState(() => openingAccount(accounts, linkParams()))
-  const [list, setList] = useState<Transaction[] | undefined>(() => cached(`/accounts/${accountId}/transactions`))
-  const [error, setError] = useState('')
+  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; dropped on picking another account
+  const [link, setLink] = useState(linkParams)
+  const accountsQuery = useApi<Account[]>('/accounts')
+  const categoriesQuery = useApi<Category[]>('/categories')
+  const accounts = accountsQuery.data ?? []
+  const categories = categoriesQuery.data ?? []
+  // the opening account until one is picked
+  const [pickedAccount, setAccountId] = useState<number>()
+  const accountId = pickedAccount ?? (accountsQuery.data && openingAccount(accountsQuery.data, link))
+  const listQuery = useApi<Transaction[]>(`/accounts/${accountId}/transactions`, accountId !== undefined)
+  const list = listQuery.data
+  // a failed save, else a failed load
+  const [saveError, setError] = useState('')
+  const error = saveError || (accountsQuery.error ?? categoriesQuery.error ?? listQuery.error)?.message || ''
   const [syncing, setSyncing] = useState(false)
-  const [category, setCategory] = useState(() => (list ? linkParams().get('category') ?? undefined : undefined))
+  const [category, setCategory] = useState(() => link.get('category') ?? undefined)
   // merchant key from the API; cleared whenever the category, period or account changes
   const [merchant, setMerchant] = useState<string>()
   const pickCategory = (c?: string) => { setCategory(c); setMerchant(undefined) }
@@ -67,11 +74,12 @@ export function TransactionsPage() {
   const [picking, setPicking] = useState<number>()
   // rows rendered; the summaries above always use every transaction
   const [limit, setLimit] = useState(PAGE)
-  const [period, setPeriod] = useState(() => (list ? openingPeriod(list, linkParams()) : ''))
+  // the opening period until one is picked
+  const [pickedPeriod, setPeriod] = useState<string>()
+  const period = pickedPeriod ?? (list ? openingPeriod(list, link) : '')
   // only spending needed to live: the chart's median becomes the minimal month
   const [essentialOnly, setEssentialOnly] = useState(false)
   const [notice, setNotice] = useState('')
-  const [categories, setCategories] = useState<Category[]>(() => cached('/categories') ?? [])
   const account = accounts.find((a) => a.id === accountId)
   const offered = withTransactions(accounts)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
@@ -87,36 +95,11 @@ export function TransactionsPage() {
     return leaf.id === leaf.parent.id ? leaf.label : `${leaf.parent.label} › ${leaf.label}`
   }
 
-  useEffect(() => {
-    api<Account[]>('/accounts')
-      .then((all) => {
-        setAccounts(all)
-        setAccountId(openingAccount(all, linked.current))
-      })
-      .catch((e) => setError(e.message))
-    api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
-  }, [])
-
-  useEffect(() => {
-    if (accountId === undefined) return
-    api<Transaction[]>(`/accounts/${accountId}/transactions`)
-      .then((loaded) => {
-        setList(loaded)
-        setPeriod(openingPeriod(loaded, linked.current))
-        if (linked.current.has('period') || linked.current.has('category')) {
-          pickCategory(linked.current.get('category') ?? undefined)
-          linked.current = new URLSearchParams()
-        }
-      })
-      .catch((e) => setError(e.message))
-  }, [accountId])
-
   async function sync() {
     setSyncing(true)
     try {
       const { account: synced } = await api<{ account: Account }>('/accounts/mono/sync', { method: 'POST' })
-      setAccounts((all) => (all.some((a) => a.id === synced.id) ? all.map((a) => (a.id === synced.id ? synced : a)) : [...all, synced]))
-      setList(await api<Transaction[]>(`/accounts/${synced.id}/transactions`))
+      // the sync has refetched the accounts and their transactions (see api)
       setAccountId(synced.id)
       setError('')
     } catch (err) {
@@ -126,11 +109,10 @@ export function TransactionsPage() {
     }
   }
 
-  // A merchant change touches other rows, so reload the list after any change
-  async function changeCategory(t: Transaction, steps: Array<{ path: string, body: object }>) {
+  // a merchant change touches other rows; each write refetches the list (see api)
+  async function changeCategory(steps: Array<{ path: string, body: object }>) {
     try {
       for (const { path, body } of steps) await api(path, { method: 'PUT', body: JSON.stringify(body) })
-      setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
     } catch (err) {
       setError(`Category: ${(err as Error).message}`)
     }
@@ -147,7 +129,6 @@ export function TransactionsPage() {
       await (scope === 't'
         ? api(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ essential }) })
         : api('/categories/merchants/essential', { method: 'PUT', body: JSON.stringify({ description: t.description, essential }) }))
-      setList(await api<Transaction[]>(`/accounts/${t.accountId}/transactions`))
     } catch (err) {
       setError(`Essential: ${(err as Error).message}`)
     }
@@ -171,8 +152,7 @@ export function TransactionsPage() {
     setEditing(undefined)
     if (draft.trim() === (t.note ?? '')) return
     try {
-      const { note } = await api<{ note: string | null }>(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ note: draft }) })
-      setList((all) => all?.map((x) => (x.id === t.id ? { ...x, note } : x)))
+      await api(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ note: draft }) })
     } catch (err) {
       setError(`Note: ${(err as Error).message}`)
     }
@@ -225,7 +205,7 @@ export function TransactionsPage() {
             aria-label="Account"
             value={accountId ?? ''}
             onChange={(e) => {
-              setList(undefined); pickCategory(undefined); setPeriod(''); setAccountId(Number(e.target.value))
+              pickCategory(undefined); setPeriod(undefined); setLink(new URLSearchParams()); setAccountId(Number(e.target.value))
               // keep the link in step so a reload stays on this account; replaceState fires no hashchange
               history.replaceState(null, '', `#/transactions?account=${e.target.value}`)
             }}
@@ -392,7 +372,7 @@ export function TransactionsPage() {
                           categories={categories}
                           onPick={(category, forMerchant) => {
                             setKept({ id: t.id, view })
-                            changeCategory(t, forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)])
+                            changeCategory(forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)])
                           }}
                         />
                       </span>
@@ -419,12 +399,12 @@ export function TransactionsPage() {
                         </button>
                       )}
                       {t.categorySource === 'transaction' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchantCategory(t, t.category), setOwn(t, null)])}>
+                        <button type="button" className={linkButton} onClick={() => changeCategory([setMerchantCategory(t, t.category), setOwn(t, null)])}>
                           усім від продавця
                         </button>
                       )}
                       {t.categorySource === 'merchant' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory(t, [setMerchantCategory(t, null)])}>
+                        <button type="button" className={linkButton} onClick={() => changeCategory([setMerchantCategory(t, null)])}>
                           скинути для продавця
                         </button>
                       )}

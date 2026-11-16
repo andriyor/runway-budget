@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { api, cached } from '../../lib/api'
+import { useEffect } from 'react'
+import { useApi } from '../../lib/api'
 import { percentOf, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import type { Category, Currency, SpendingPerYear, Transaction } from '../../lib/types'
@@ -13,7 +13,7 @@ type Row = SpendingPerYear['rows'][number] & { info: Category }
 type Column = { key: string, label: string, value: (r: Row) => number, current?: boolean, from?: boolean }
 
 type YearOverYearProps = {
-  // only to refetch when they reload; the API does the summing
+  // only to wait for them; the API does the summing
   transactions: Transaction[] | undefined
   categories: Category[]
   currency: Currency
@@ -22,13 +22,11 @@ type YearOverYearProps = {
 
 export function YearOverYear({ transactions, categories, currency, onError }: YearOverYearProps) {
   const path = `/stats/spending-per-year?currency=${currency}&tz=${encodeURIComponent(timeZone)}`
-  const [result, setResult] = useState<SpendingPerYear | undefined>(() => cached(path))
+  // waits for the transactions to load; a write that changes them refetches it too (see api)
+  const { data: result, error } = useApi<SpendingPerYear>(path, transactions !== undefined)
   useEffect(() => {
-    if (!transactions) return
-    api<SpendingPerYear>(path)
-      .then(setResult)
-      .catch((e) => onError(`Spending per year: ${e.message}`))
-  }, [transactions, path, onError])
+    if (error) onError(`Spending per year: ${error.message}`)
+  }, [error, onError])
   if (!result?.first || !categories.length) return null
   const { years, comparable } = result
   const now = new Date(`${result.today}T00:00`)

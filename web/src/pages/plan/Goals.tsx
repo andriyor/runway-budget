@@ -1,9 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { AVG_DAYS_IN_MONTH } from './Runway'
 import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
 import { Calendar, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
-import { api, cached } from '../../lib/api'
+import { api, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
 import { monthsToSave } from '../../lib/inflation'
 import { card, muted, inputBox, button } from '../../lib/styles'
@@ -24,25 +24,24 @@ type GoalsProps = {
 }
 
 export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsProps) {
-  const [goals, setGoals] = useState<Goal[]>(() => cached('/goals') ?? [])
+  const query = useApi<Goal[]>('/goals')
+  const goals = query.data ?? []
   const [name, setName] = useState('')
   const [target, setTarget] = useState('')
   const [currency, setCurrency] = useState<Currency>('USD')
-  const [error, setError] = useState('')
+  // a failed save, else a failed load
+  const [saveError, setError] = useState('')
+  const error = saveError || query.error?.message || ''
   const [now] = useState(Date.now)
 
-  useEffect(() => {
-    api<Goal[]>('/goals').then(setGoals).catch((e) => setError(e.message))
-  }, [])
 
   async function add(e: FormEvent) {
     e.preventDefault()
     try {
-      const created = await api<Goal>('/goals', {
+      await api<Goal>('/goals', {
         method: 'POST',
         body: JSON.stringify({ name, target: Number(target), currency }),
       })
-      setGoals((list) => [...list, created])
       setName('')
       setTarget('')
       setError('')
@@ -55,7 +54,6 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
     if (!confirm(`Delete goal "${goal.name}"?`)) return
     try {
       await api(`/goals/${goal.id}`, { method: 'DELETE' })
-      setGoals((list) => list.filter((g) => g.id !== goal.id))
     } catch (err) {
       setError((err as Error).message)
     }

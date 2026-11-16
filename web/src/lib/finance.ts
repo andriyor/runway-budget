@@ -1,70 +1,64 @@
-import { useEffect, useState } from 'react'
-import { api, cached } from './api'
+import { useState } from 'react'
+import { useQueries, type UseQueryResult } from '@tanstack/react-query'
+import { api, setCached, useApi } from './api'
 import { dayKey, monthKey } from './periods'
 import type { Account, Budget, Category, Convert, ConvertOn, Currency, Inflation, Rates, RateHistory, Transaction } from './types'
 
 // the earliest transaction's time, or now without any
 const firstTime = (list: Transaction[]) => list.reduce((min, t) => (t.time < min ? t.time : min), new Date().toISOString())
 
+// every account's transactions as one list once all are in; module-level so useQueries keeps its result stable
+const allTransactions = (results: UseQueryResult<Transaction[]>[]) => ({
+  list: results.every((r) => r.data) ? results.flatMap((r) => r.data!) : undefined,
+  error: results.find((r) => r.error)?.error,
+})
+
 // Accounts, NBU rates, the Runway budget and categories, with conversions between currencies and
 // the budget-derived amounts the pages share. withTransactions also loads every account's transactions
 // and the NBU rates of every day since the first one. withInflation loads monthly CPI since the first
 // transaction, or at least the last 13 months, enough for a yearly rate.
 export function useFinance({ withTransactions = false, withInflation = false } = {}) {
-  // everything starts from the last responses (see cached), so a page opened again does not flash empty;
-  // the effects below refresh it all the same
-  const [accounts, setAccounts] = useState<Account[]>(() => cached('/accounts') ?? [])
-  const [rates, setRates] = useState<Rates | undefined>(() => cached('/rates'))
+  const accountsQuery = useApi<Account[]>('/accounts')
+  const ratesQuery = useApi<Rates>('/rates')
+  // null when there is none; undefined while loading
+  const budgetQuery = useApi<Budget | null>('/budget')
+  const categoriesQuery = useApi<Category[]>('/categories')
+  const accounts = accountsQuery.data ?? []
+  const rates = ratesQuery.data
+  const budget = budgetQuery.data
+  const categories = categoriesQuery.data ?? []
+  // errors of the page itself, e.g. a failed save; load errors come from the queries
   const [error, setError] = useState('')
-  // undefined while loading
-  const [budget, setBudget] = useState<Budget | null | undefined>(() => cached('/budget'))
-  const [fetched, setTransactions] = useState<Transaction[] | undefined>(() => {
-    const lists = (cached<Account[]>('/accounts') ?? []).map((a) => cached<Transaction[]>(`/accounts/${a.id}/transactions`))
-    return withTransactions && lists.every(Boolean) ? lists.flat() as Transaction[] : undefined
-  })
-  const [categories, setCategories] = useState<Category[]>(() => cached('/categories') ?? [])
-  // undefined while loading; {} when it failed, so conversions fall back to today's rates
-  const [history, setHistory] = useState<RateHistory | undefined>(() => fetched && cached(`/rates/history?from=${dayKey(firstTime(fetched))}`))
-  // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
-  const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
-  // the last fetch would linger after every account is deleted
-  const transactions = ids ? fetched : []
 
-  useEffect(() => {
-    if (!ids || !withTransactions) return
-    Promise.all(ids.split(',').map((key) => api<Transaction[]>(`/accounts/${key.split('@')[0]}/transactions`)))
-      .then((all) => {
-        const list = all.flat()
-        setTransactions(list)
-        return api<RateHistory>(`/rates/history?from=${dayKey(firstTime(list))}`).then(setHistory).catch((e) => {
-          setHistory({})
-          setError(`Rate history: ${e.message}, so past amounts use today's rates`)
-        })
-      })
-      .catch((e) => {
-        setTransactions([])
-        setError(`Transactions: ${e.message}`)
-      })
-  }, [ids, withTransactions])
+  const fetched = useQueries({
+    queries: withTransactions && accountsQuery.data
+      ? accountsQuery.data.map((a) => ({ queryKey: [`/accounts/${a.id}/transactions`], queryFn: () => api<Transaction[]>(`/accounts/${a.id}/transactions`) }))
+      : [],
+    combine: allTransactions,
+  })
+  // undefined while loading; [] when it failed, as before
+  const transactions = !withTransactions ? undefined : fetched.error ? [] : accountsQuery.data && fetched.list
+  // undefined while loading; {} when it failed, so conversions fall back to today's rates
+  const historyQuery = useApi<RateHistory>(`/rates/history?from=${dayKey(firstTime(transactions ?? []))}`, transactions !== undefined && !fetched.error)
+  const history = historyQuery.error ? {} : historyQuery.data
 
   // waits for the transactions when they are loaded, so the CPI reaches back to the first one
   const [yearAgo] = useState(() => monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 13, 1).toISOString()))
   const inflationFrom = !withInflation ? undefined
     : !withTransactions ? yearAgo
-    : fetched ? fetched.reduce((min, t) => (monthKey(t.time) < min ? monthKey(t.time) : min), yearAgo)
+    : transactions ? transactions.reduce((min, t) => (monthKey(t.time) < min ? monthKey(t.time) : min), yearAgo)
     : undefined
-  const [inflation, setInflation] = useState<Inflation | undefined>(() => (inflationFrom ? cached(`/inflation?from=${inflationFrom}`) : undefined))
-  useEffect(() => {
-    if (!inflationFrom) return
-    api<Inflation>(`/inflation?from=${inflationFrom}`).then(setInflation).catch((e) => setError(`Inflation: ${e.message}`))
-  }, [inflationFrom])
+  const inflationQuery = useApi<Inflation>(`/inflation?from=${inflationFrom}`, inflationFrom !== undefined)
+  const inflation = inflationQuery.data
 
-  useEffect(() => {
-    api<Budget | null>('/budget').then(setBudget).catch((e) => setError(e.message))
-    api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
-    api<Account[]>('/accounts').then(setAccounts).catch((e) => setError(e.message))
-    api<Rates>('/rates').then(setRates).catch((e) => setError(`Rates: ${e.message}`))
-  }, [])
+  const loadError = (budgetQuery.error ?? categoriesQuery.error ?? accountsQuery.error)?.message
+    ?? (ratesQuery.error && `Rates: ${ratesQuery.error.message}`)
+    ?? (fetched.error && `Transactions: ${fetched.error.message}`)
+    ?? (historyQuery.error && `Rate history: ${historyQuery.error.message}, so past amounts use today's rates`)
+    ?? (inflationQuery.error && `Inflation: ${inflationQuery.error.message}`)
+  // edits show at once; the write then refetches everything (see api)
+  const setAccounts = (next: Account[] | ((old: Account[]) => Account[])) => setCached('/accounts', next)
+  const setBudget = (next: Budget | null) => setCached('/budget', next)
 
   // rates are UAH per unit, so convert via UAH
   const convert: Convert = (amount, from, to) => rates && (amount * rates.rates[from]) / rates.rates[to]
@@ -104,7 +98,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     budget && rates ? (incomeIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
 
   return {
-    accounts, setAccounts, rates, budget, setBudget, categories, transactions, inflation, error, setError,
+    accounts, setAccounts, rates, budget, setBudget, categories, transactions, inflation, error: error || loadError || '', setError,
     // amounts in statistics are shown in Runway's currency
     currency: budget?.currency ?? 'UAH' as Currency,
     convert, convertOn, totalIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, availableIn, forGoalsIn, cushion, netIn,
