@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { ArrowUpDown, Scale, TrendingDown, TrendingUp } from 'lucide-react'
 import { Bar, BarChart, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type LabelListEntry, type XAxisTickContentProps } from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
@@ -223,12 +224,12 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
             {focus && `${focus.label} · `}{complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="Медіана за місяць" value={format(typical, currency)} strong />
+            <Stat icon={<span className="text-indigo-600 dark:text-indigo-400"><Scale /></span>} label="Медіана за місяць" value={format(typical, currency)} strong />
             {spread && (
               <>
-                <Stat label="Звично (середня половина)" value={`${wholeMoney(spread.low, currency)}–${wholeMoney(spread.high, currency)}`} />
-                <Stat label="Найменший" value={wholeMoney(spread.lowest.total, currency)} note={shortMonth.format(firstDay(spread.lowest.month))} />
-                <Stat label="Найгірший" value={wholeMoney(spread.worst.total, currency)} note={shortMonth.format(firstDay(spread.worst.month))} />
+                <Stat icon={<span className="text-violet-600 dark:text-violet-400"><ArrowUpDown /></span>} label="Звично (середня половина)" value={`${wholeMoney(spread.low, currency)}–${wholeMoney(spread.high, currency)}`} />
+                <Stat icon={<span className="text-emerald-600 dark:text-emerald-400"><TrendingDown /></span>} label="Найменший" value={wholeMoney(spread.lowest.total, currency)} note={shortMonth.format(firstDay(spread.lowest.month))} />
+                <Stat icon={<span className="text-rose-600 dark:text-rose-400"><TrendingUp /></span>} label="Найгірший" value={wholeMoney(spread.worst.total, currency)} note={shortMonth.format(firstDay(spread.worst.month))} />
               </>
             )}
           </dl>
@@ -312,11 +313,14 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   )
 }
 
-// one figure above the chart: a small label over the value, and the month it belongs to
-function Stat({ label, value, note, strong }: { label: string, value: string, note?: string, strong?: boolean }) {
+// one figure above the chart: an icon and a small label over the value, and the month it belongs to
+function Stat({ icon, label, value, note, strong }: { icon: ReactNode, label: string, value: string, note?: string, strong?: boolean }) {
   return (
     <div className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/50">
-      <dt className="text-xs text-zinc-500 dark:text-zinc-400">{label}</dt>
+      <dt className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+        <span aria-hidden className="shrink-0 [&_svg]:size-3.5">{icon}</span>
+        {label}
+      </dt>
       <dd className={`mt-0.5 tabular-nums ${strong ? 'font-semibold text-zinc-900 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-300'}`}>
         {value}
         {note && <span className="ml-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">{note}</span>}
