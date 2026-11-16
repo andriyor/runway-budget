@@ -65,8 +65,9 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
         ))}
       </ToggleGroup>
 
+      {/* min-w-56 wraps the stepper under the kinds on a phone instead of squeezing the select to nothing */}
       {listKind !== '' && (
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+        <div className="flex min-w-56 flex-1 items-center gap-1">
           <button type="button" className={step} disabled={!older} onClick={() => older && onChange(older)} aria-label="Previous period">
             <ChevronLeft strokeWidth={2} />
           </button>
