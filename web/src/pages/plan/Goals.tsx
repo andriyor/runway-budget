@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ReachDate } from './ReachDate'
 import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
-import { Calendar, Trash2 } from 'lucide-react'
+import { Calendar, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
@@ -25,27 +25,16 @@ type GoalsProps = {
 export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsProps) {
   const query = useApi<Goal[]>('/goals')
   const goals = query.data ?? []
-  const [name, setName] = useState('')
-  const [target, setTarget] = useState('')
-  const [currency, setCurrency] = useState<Currency>('USD')
-  // a failed save, else a failed load
+  // the goal shown as a form instead of its progress
+  const [editing, setEditing] = useState<number>()
+  // a failed delete, else a failed load; the forms show their own save errors
   const [saveError, setError] = useState('')
   const error = saveError || query.error?.message || ''
 
-
-  async function add(e: FormEvent) {
-    e.preventDefault()
-    try {
-      await api<Goal>('/goals', {
-        method: 'POST',
-        body: JSON.stringify({ name, target: Number(target), currency }),
-      })
-      setName('')
-      setTarget('')
-      setError('')
-    } catch (err) {
-      setError((err as Error).message)
-    }
+  const add = (values: GoalValues) => api<Goal>('/goals', { method: 'POST', body: JSON.stringify(values) })
+  async function update(goal: Goal, values: GoalValues) {
+    await api<Goal>(`/goals/${goal.id}`, { method: 'PUT', body: JSON.stringify(values) })
+    setEditing(undefined)
   }
 
   async function remove(goal: Goal) {
@@ -83,6 +72,13 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
           const forGoals = forGoalsIn(g.currency)
           const have = Math.max(0, forGoals ?? 0)
           const progress = Math.min(1, have / g.target)
+          if (editing === g.id) {
+            return (
+              <li key={g.id}>
+                <GoalForm initial={g} submitLabel="Save" onSave={(values) => update(g, values)} onCancel={() => setEditing(undefined)} />
+              </li>
+            )
+          }
           return (
             <li key={g.id}>
               <div className="flex items-center justify-between gap-3">
@@ -94,6 +90,14 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
                   <span className={`tabular-nums ${muted}`}>
                     {format(Math.min(have, g.target), g.currency)} / {format(g.target, g.currency)}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(g.id)}
+                    aria-label={`Edit goal ${g.name}`}
+                    className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-indigo-600 dark:hover:bg-zinc-800"
+                  >
+                    <Pencil />
+                  </button>
                   <button
                     type="button"
                     onClick={() => remove(g)}
@@ -125,7 +129,47 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
       {goals.length === 0 && <p className={`py-6 text-center ${muted}`}>No goals yet. Add one below.</p>}
       <ErrorText>{error}</ErrorText>
 
-      <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
+      <div className="mt-4">
+        <GoalForm submitLabel="Add goal" onSave={add} />
+      </div>
+    </section>
+  )
+}
+
+type GoalValues = { name: string, target: number, currency: Currency }
+
+type GoalFormProps = {
+  // the goal being edited; without it the form adds one and clears itself after
+  initial?: GoalValues
+  submitLabel: string
+  onSave: (values: GoalValues) => Promise<unknown>
+  onCancel?: () => void
+}
+
+// name, amount and currency of a goal, to add one or edit it in place
+function GoalForm({ initial, submitLabel, onSave, onCancel }: GoalFormProps) {
+  const [name, setName] = useState(initial?.name ?? '')
+  const [target, setTarget] = useState(initial ? String(initial.target) : '')
+  const [currency, setCurrency] = useState<Currency>(initial?.currency ?? 'USD')
+  const [error, setError] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    try {
+      await onSave({ name, target: Number(target), currency })
+      setError('')
+      if (!initial) {
+        setName('')
+        setTarget('')
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  return (
+    <form className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={submit}>
+      <div className="flex flex-wrap items-center gap-3">
         <input
           placeholder="Goal, e.g. Car"
           required
@@ -138,8 +182,14 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
         <div className="w-56">
           <MoneyInput label="Goal amount" required min="0.01" placeholder="Amount" value={target} onChange={setTarget} currency={currency} onCurrency={setCurrency} />
         </div>
-        <button className={button}>Add goal</button>
-      </form>
-    </section>
+        <button type="submit" className={button}>{submitLabel}</button>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700">
+            Cancel
+          </button>
+        )}
+      </div>
+      <ErrorText>{error}</ErrorText>
+    </form>
   )
 }
