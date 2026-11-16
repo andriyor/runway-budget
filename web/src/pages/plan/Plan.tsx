@@ -32,6 +32,8 @@ export function Plan() {
           usual={budget.monthlySpend}
           kept={keptIncomeIn(budget.currency)}
           months={budget.targetMonths}
+          net={netIn(budget.currency)}
+          inflation={inflation}
           currency={budget.currency}
         />
       )}

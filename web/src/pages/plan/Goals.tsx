@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { AVG_DAYS_IN_MONTH } from './Runway'
+import { ReachDate } from './ReachDate'
 import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
 import { Calendar, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
-import { monthsToSave } from '../../lib/inflation'
 import { card, muted, inputBox, button } from '../../lib/styles'
 import type { Currency, Goal } from '../../lib/types'
 
@@ -32,7 +31,6 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
   // a failed save, else a failed load
   const [saveError, setError] = useState('')
   const error = saveError || query.error?.message || ''
-  const [now] = useState(Date.now)
 
 
   async function add(e: FormEvent) {
@@ -61,27 +59,7 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
 
   function status(goal: Goal, have: number) {
     if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
-    const net = netIn(goal.currency)
-    if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
-    if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
-    const months = (goal.target - have) / net
-    const date = (m: number) => new Date(now + m * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
-    const spend = spendIn(goal.currency)
-    const inflated = inflation !== undefined && inflation > 0 && spend !== undefined
-      ? { months: monthsToSave(goal.target - have, spend, spend + net, inflation) }
-      : undefined
-    return (
-      <span className="text-zinc-700 tabular-nums dark:text-zinc-300">
-        In <strong>{months.toFixed(1)} months</strong>
-        <span className="text-zinc-500 dark:text-zinc-400"> · {date(months)} · saving {format(net, goal.currency)} per month</span>
-        {inflated && (
-          <span className={`block ${inflated.months === undefined ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
-            With {(inflation! * 100).toFixed(1)}% inflation:{' '}
-            {inflated.months === undefined ? 'not reached before spending catches up with income' : `${inflated.months.toFixed(1)} months · ${date(inflated.months)}`}
-          </span>
-        )}
-      </span>
-    )
+    return <ReachDate need={goal.target - have} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} />
   }
 
   return (
