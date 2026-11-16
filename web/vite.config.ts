@@ -4,7 +4,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  devtools: { embeddedVisibility: 'passive' },
+  // dev server only: under `vite build` DevTools keeps an analysis server open and the build never exits
+  devtools: { apply: 'serve', embeddedVisibility: 'passive' },
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
