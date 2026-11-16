@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { ErrorText } from '../../components/controls'
 import { useApi } from '../../lib/api'
 import { percentOf, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
@@ -17,16 +17,13 @@ type YearOverYearProps = {
   transactions: Transaction[] | undefined
   categories: Category[]
   currency: Currency
-  onError: (message: string) => void
 }
 
-export function YearOverYear({ transactions, categories, currency, onError }: YearOverYearProps) {
+export function YearOverYear({ transactions, categories, currency }: YearOverYearProps) {
   const path = `/stats/spending-per-year?currency=${currency}&tz=${encodeURIComponent(timeZone)}`
   // waits for the transactions to load; a write that changes them refetches it too (see api)
   const { data: result, error } = useApi<SpendingPerYear>(path, transactions !== undefined)
-  useEffect(() => {
-    if (error) onError(`Spending per year: ${error.message}`)
-  }, [error, onError])
+  if (error) return <section className={card}><ErrorText>{`Spending per year: ${error.message}`}</ErrorText></section>
   if (!result?.first || !categories.length) return null
   const { years, comparable } = result
   const now = new Date(`${result.today}T00:00`)

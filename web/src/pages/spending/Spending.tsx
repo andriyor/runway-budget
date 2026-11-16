@@ -38,7 +38,7 @@ export function Spending() {
           <CategoryBudgets {...shared} />
           <CashFlow transactions={transactions} accounts={accounts} categories={categories} convertOn={convertOn} currency={currency} onUseIncome={budget ? incomeFromCashFlow : undefined} inflation={inflation} />
           <Recurring {...shared} />
-          <YearOverYear transactions={transactions} categories={categories} currency={currency} onError={setError} />
+          <YearOverYear transactions={transactions} categories={categories} currency={currency} />
         </>
       )}
     </>

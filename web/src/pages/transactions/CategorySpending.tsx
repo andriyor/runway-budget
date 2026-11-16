@@ -2,6 +2,8 @@ import { format, percentOf } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import type { Currency, Transaction, Leaf } from '../../lib/types'
 
+const day = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' })
+
 type CategorySpendingProps = {
   list: Transaction[]
   currency: Currency
@@ -25,7 +27,6 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
   const rows = [...byParent].filter(([, sum]) => sum > 0).sort((a, b) => b[1] - a[1])
   const total = rows.reduce((sum, [, x]) => sum + x, 0)
   if (total === 0) return null
-  const day = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' })
   // the open category: the selected one, or the parent of a selected subcategory
   const open = selected && (leafById.get(selected)?.parent.id ?? selected)
 

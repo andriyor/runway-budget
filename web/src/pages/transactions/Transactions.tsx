@@ -15,6 +15,7 @@ import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
 
 const PAGE = 100
+const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
 
 // opens a dropdown that was just put in place of its button; the click still counts as user activation
 const openPicker = (el: HTMLSelectElement | null) => {
@@ -158,7 +159,6 @@ export function TransactionsPage() {
     }
   }
 
-  const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
   const rowPicker = 'shrink-0 cursor-pointer truncate rounded hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100'
   const essentialLabel = (t: Transaction) => `${t.essential ? '● необхідне' : '○ необов’язкове'}${t.essentialSource !== 'auto' ? ' *' : ''}`
   const essentialOptions = (
