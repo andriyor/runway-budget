@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Bar, BarChart, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type LabelListEntry, type XAxisTickContentProps } from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
-import { dayKey, monthKey, quarterLabel, quarterMonths, quarterOf, weekDays, weekOfDay } from '../../lib/periods'
+import { dayKey, monthKey, quarterLabel, quarterMonths, weekDays, weekOfDay } from '../../lib/periods'
 import { median, quantile } from '../../lib/stats'
 import { card, muted } from '../../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
@@ -71,13 +71,22 @@ function inScope(period: string, month: string) {
   return true
 }
 
-// phones show one quarter, since a year of bars is too thin to read: the picked quarter,
-// the quarter of the picked month, or the latest one in scope. A week's 7 days always fit.
-function phoneQuarter(period: string, latest: string | undefined) {
-  if (period.startsWith('q:')) return period
-  if (period.startsWith('m:')) return quarterOf(period.slice(2))
-  return latest === undefined ? undefined : quarterOf(latest)
+// phones show half a year, since a year of bars is too thin to read: the picked quarter, the
+// half of the picked month, or the latest one in scope. A week's 7 days always fit.
+function phoneWindow(period: string, latest: string | undefined) {
+  if (period.startsWith('q:')) return { months: quarterMonths(period), label: quarterLabel(period) }
+  const month = period.startsWith('m:') ? period.slice(2) : latest
+  if (month === undefined) return undefined
+  const half = Number(month.slice(5, 7)) <= 6 ? 1 : 2
+  const year = month.slice(0, 4)
+  return {
+    months: Array.from({ length: 6 }, (_, i) => `${year}-${String((half - 1) * 6 + i + 1).padStart(2, '0')}`),
+    label: `${half === 1 ? '1-ше' : '2-ге'} півріччя ${year}`,
+  }
 }
+
+// bar totals on a phone: "61,3 тис." fits over a sixth of the screen, "61 345 грн" does not
+const compact = new Intl.NumberFormat('uk-UA', { notation: 'compact', maximumFractionDigits: 1 })
 
 const Swatch = ({ color }: { color: string }) => (
   <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={{ background: color }} />
@@ -164,8 +173,8 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         worst: complete.reduce((a, b) => (b.total > a.total ? b : a)),
       }
     : undefined
-  const quarter = phone && !days ? phoneQuarter(period, scoped.at(-1)?.month) : undefined
-  const isShown = (month: string) => inScope(period, month) && (!phone || days !== undefined || (quarter !== undefined && inQuarter(quarter, month)))
+  const shownWindow = phone && !days ? phoneWindow(period, scoped.at(-1)?.month) : undefined
+  const isShown = (month: string) => inScope(period, month) && (!phone || days !== undefined || (shownWindow !== undefined && shownWindow.months.includes(month)))
   const shown = bars.filter((b) => isShown(b.month))
   const shownStacked = stacked.filter((b) => isShown(b.month))
   if (!stacked.some((b) => b.total > 0)) return null
@@ -205,7 +214,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         {typical !== undefined && (
           <span className={`tabular-nums ${muted}`}>
             Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
-            {' '}за місяць · {complete.length} повних міс.{quarter && ` · показано ${quarterLabel(quarter)}`}
+            {' '}за місяць · {complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
             {spread && (
               <span className="block sm:inline">
                 {' '}· звично {wholeMoney(spread.low, currency)}–{wholeMoney(spread.high, currency)}
@@ -244,7 +253,7 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
       <div className="mt-5 h-64" onMouseDown={(e) => e.preventDefault()}>
         <ResponsiveContainer>
-          <BarChart data={rows} margin={{ top: 20, right: 0, bottom: 0, left: 0 }} barCategoryGap="15%">
+          <BarChart data={rows} margin={{ top: 20, right: 0, bottom: 0, left: 0 }} barCategoryGap={phone ? 2 : '15%'}>
             <XAxis dataKey="month" interval={0} height={36} tickLine={false} tick={(props: XAxisTickContentProps) => (
               <g transform={`translate(${props.x},${props.y})`} className="cursor-pointer" onClick={() => pickMonth(String(props.payload.value))}>
                 <text textAnchor="middle" dy={12} fontSize={12} fontWeight={isPicked(String(props.payload.value)) ? 700 : 400} fill="currentColor">
@@ -284,10 +293,11 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
                 }}
               >
                 {/* the month's total rides on the topmost segment of its stack */}
-                <LabelList position="top" fontSize={12} fill="currentColor"
+                <LabelList position="top" fontSize={phone ? 11 : 12} fill="currentColor"
                   valueAccessor={(entry: LabelListEntry) => {
                     const row = entry.payload as Row | undefined
-                    return row && topSeries(row) === s.id ? wholeMoney(row.total, currency) : undefined
+                    if (!row || topSeries(row) !== s.id) return undefined
+                    return phone ? compact.format(row.total) : wholeMoney(row.total, currency)
                   }} />
               </Bar>
             ))}
