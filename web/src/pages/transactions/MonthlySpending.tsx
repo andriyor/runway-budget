@@ -4,7 +4,7 @@ import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, weekDays, weekOfDay } from '../../lib/periods'
 import { median, quantile } from '../../lib/stats'
-import { card, muted } from '../../lib/styles'
+import { card, linkButton, muted } from '../../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
 
 // categories with their own color; the rest fold into one neutral segment
@@ -209,27 +209,31 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
   return (
     <section className={`${card} viz`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{`${essentialOnly ? 'Essential spending' : 'Spending'} per ${days ? 'day' : 'month'}`}</h2>
-        {typical !== undefined && (
-          <span className={`tabular-nums ${muted}`}>
-            Медіана{focus ? ` · ${focus.label}` : ''}: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{format(typical, currency)}</span>
-            {' '}за місяць · {complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
-            {spread && (
-              <span className="block sm:inline">
-                {' '}· звично {wholeMoney(spread.low, currency)}–{wholeMoney(spread.high, currency)}
-                {' '}· найменший {wholeMoney(spread.lowest.total, currency)} ({shortMonth.format(firstDay(spread.lowest.month))})
-                {' '}· найгірший {wholeMoney(spread.worst.total, currency)} ({shortMonth.format(firstDay(spread.worst.month))})
-              </span>
-            )}
-            {onUseMedian && (
-              <button type="button" onClick={() => onUseMedian(typical)} className="ml-3 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                {essentialOnly ? 'Use as essential spending in Runway' : 'Use as monthly spending in Runway'}
-              </button>
-            )}
-          </span>
+        {typical !== undefined && onUseMedian && (
+          <button type="button" onClick={() => onUseMedian(typical)} className={`text-sm ${linkButton}`}>
+            {essentialOnly ? 'Use median as essential spending in Runway' : 'Use median as monthly spending in Runway'}
+          </button>
         )}
       </div>
+      {typical !== undefined && (
+        <>
+          <p className={`mt-0.5 tabular-nums ${muted}`}>
+            {focus && `${focus.label} · `}{complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
+          </p>
+          <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Stat label="Медіана за місяць" value={format(typical, currency)} strong />
+            {spread && (
+              <>
+                <Stat label="Звично (середня половина)" value={`${wholeMoney(spread.low, currency)}–${wholeMoney(spread.high, currency)}`} />
+                <Stat label="Найменший" value={wholeMoney(spread.lowest.total, currency)} note={shortMonth.format(firstDay(spread.lowest.month))} />
+                <Stat label="Найгірший" value={wholeMoney(spread.worst.total, currency)} note={shortMonth.format(firstDay(spread.worst.month))} />
+              </>
+            )}
+          </dl>
+        </>
+      )}
 
       <ul className="-mx-1.5 mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm" aria-label="Legend">
         {/* categories with nothing in the shown months are left out, unless selected */}
@@ -305,6 +309,19 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
         </ResponsiveContainer>
       </div>
     </section>
+  )
+}
+
+// one figure above the chart: a small label over the value, and the month it belongs to
+function Stat({ label, value, note, strong }: { label: string, value: string, note?: string, strong?: boolean }) {
+  return (
+    <div className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/50">
+      <dt className="text-xs text-zinc-500 dark:text-zinc-400">{label}</dt>
+      <dd className={`mt-0.5 tabular-nums ${strong ? 'font-semibold text-zinc-900 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-300'}`}>
+        {value}
+        {note && <span className="ml-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">{note}</span>}
+      </dd>
+    </div>
   )
 }
 
