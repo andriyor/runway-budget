@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react'
-import { api } from './api'
+import { api, cached } from './api'
 import { dayKey, monthKey } from './periods'
 import type { Account, Budget, Category, Convert, ConvertOn, Currency, Inflation, Rates, RateHistory, Transaction } from './types'
+
+// the earliest transaction's time, or now without any
+const firstTime = (list: Transaction[]) => list.reduce((min, t) => (t.time < min ? t.time : min), new Date().toISOString())
 
 // Accounts, NBU rates, the Runway budget and categories, with conversions between currencies and
 // the budget-derived amounts the pages share. withTransactions also loads every account's transactions
 // and the NBU rates of every day since the first one. withInflation loads monthly CPI since the first
 // transaction, or at least the last 13 months, enough for a yearly rate.
 export function useFinance({ withTransactions = false, withInflation = false } = {}) {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [rates, setRates] = useState<Rates>()
+  // everything starts from the last responses (see cached), so a page opened again does not flash empty;
+  // the effects below refresh it all the same
+  const [accounts, setAccounts] = useState<Account[]>(() => cached('/accounts') ?? [])
+  const [rates, setRates] = useState<Rates | undefined>(() => cached('/rates'))
   const [error, setError] = useState('')
   // undefined while loading
-  const [budget, setBudget] = useState<Budget | null>()
-  const [fetched, setTransactions] = useState<Transaction[]>()
-  const [categories, setCategories] = useState<Category[]>([])
+  const [budget, setBudget] = useState<Budget | null | undefined>(() => cached('/budget'))
+  const [fetched, setTransactions] = useState<Transaction[] | undefined>(() => {
+    const lists = (cached<Account[]>('/accounts') ?? []).map((a) => cached<Transaction[]>(`/accounts/${a.id}/transactions`))
+    return withTransactions && lists.every(Boolean) ? lists.flat() as Transaction[] : undefined
+  })
+  const [categories, setCategories] = useState<Category[]>(() => cached('/categories') ?? [])
   // undefined while loading; {} when it failed, so conversions fall back to today's rates
-  const [history, setHistory] = useState<RateHistory>()
-  const [inflation, setInflation] = useState<Inflation>()
+  const [history, setHistory] = useState<RateHistory | undefined>(() => fetched && cached(`/rates/history?from=${dayKey(firstTime(fetched))}`))
   // refetch when an account is added, removed or changes balance (updatedAt), e.g. after an adjustment
   const ids = accounts.map((a) => `${a.id}@${a.updatedAt}`).join(',')
   // the last fetch would linger after every account is deleted
@@ -29,8 +36,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
       .then((all) => {
         const list = all.flat()
         setTransactions(list)
-        const first = list.reduce((min, t) => (t.time < min ? t.time : min), new Date().toISOString())
-        return api<RateHistory>(`/rates/history?from=${dayKey(first)}`).then(setHistory).catch((e) => {
+        return api<RateHistory>(`/rates/history?from=${dayKey(firstTime(list))}`).then(setHistory).catch((e) => {
           setHistory({})
           setError(`Rate history: ${e.message}, so past amounts use today's rates`)
         })
@@ -47,6 +53,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     : !withTransactions ? yearAgo
     : fetched ? fetched.reduce((min, t) => (monthKey(t.time) < min ? monthKey(t.time) : min), yearAgo)
     : undefined
+  const [inflation, setInflation] = useState<Inflation | undefined>(() => (inflationFrom ? cached(`/inflation?from=${inflationFrom}`) : undefined))
   useEffect(() => {
     if (!inflationFrom) return
     api<Inflation>(`/inflation?from=${inflationFrom}`).then(setInflation).catch((e) => setError(`Inflation: ${e.message}`))

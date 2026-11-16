@@ -3,7 +3,7 @@ import { AVG_DAYS_IN_MONTH } from './Runway'
 import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
 import { Calendar, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
-import { api } from '../../lib/api'
+import { api, cached } from '../../lib/api'
 import { format } from '../../lib/format'
 import { monthsToSave } from '../../lib/inflation'
 import { card, muted, inputBox, button } from '../../lib/styles'
@@ -24,7 +24,7 @@ type GoalsProps = {
 }
 
 export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsProps) {
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [goals, setGoals] = useState<Goal[]>(() => cached('/goals') ?? [])
   const [name, setName] = useState('')
   const [target, setTarget] = useState('')
   const [currency, setCurrency] = useState<Currency>('USD')

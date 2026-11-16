@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../../lib/api'
+import { api, cached } from '../../lib/api'
 import { percentOf, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import type { Category, Currency, SpendingPerYear, Transaction } from '../../lib/types'
@@ -21,13 +21,14 @@ type YearOverYearProps = {
 }
 
 export function YearOverYear({ transactions, categories, currency, onError }: YearOverYearProps) {
-  const [result, setResult] = useState<SpendingPerYear>()
+  const path = `/stats/spending-per-year?currency=${currency}&tz=${encodeURIComponent(timeZone)}`
+  const [result, setResult] = useState<SpendingPerYear | undefined>(() => cached(path))
   useEffect(() => {
     if (!transactions) return
-    api<SpendingPerYear>(`/stats/spending-per-year?currency=${currency}&tz=${encodeURIComponent(timeZone)}`)
+    api<SpendingPerYear>(path)
       .then(setResult)
       .catch((e) => onError(`Spending per year: ${e.message}`))
-  }, [transactions, currency, onError])
+  }, [transactions, path, onError])
   if (!result?.first || !categories.length) return null
   const { years, comparable } = result
   const now = new Date(`${result.today}T00:00`)

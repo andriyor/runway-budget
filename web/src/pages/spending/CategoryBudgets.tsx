@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ErrorText, MoneyInput } from '../../components/controls'
 import { Trash2 } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, cached } from '../../lib/api'
 import { format, wholeMoney } from '../../lib/format'
 import { monthKey } from '../../lib/periods'
 import { card, muted, inputBox, button } from '../../lib/styles'
@@ -20,7 +20,7 @@ type CategoryBudgetsProps = {
 // cancelled pairs left out, at today's rate. The tick on each bar is an even pace: the cap × the share of
 // the month gone. Amber once ahead of that pace, red once over the cap.
 export function CategoryBudgets({ transactions, accounts, categories, convert, currency }: CategoryBudgetsProps) {
-  const [budgets, setBudgets] = useState<CategoryBudget[]>([])
+  const [budgets, setBudgets] = useState<CategoryBudget[]>(() => cached('/category-budgets') ?? [])
   const [category, setCategory] = useState('')
   const [amount, setAmount] = useState('')
   const [amountCurrency, setAmountCurrency] = useState<Currency>(currency)

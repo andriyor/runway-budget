@@ -7,7 +7,7 @@ import { MerchantSpending } from './MerchantSpending'
 import { MonthlySpending } from './MonthlySpending'
 import { PeriodPicker } from './PeriodPicker'
 import { ErrorBanner, Skeleton } from '../../components/controls'
-import { api } from '../../lib/api'
+import { api, cached } from '../../lib/api'
 import { budgetWith } from '../../lib/budget'
 import { format } from '../../lib/format'
 import { monthKey, periodsOf } from '../../lib/periods'
@@ -27,13 +27,31 @@ const openPicker = (el: HTMLSelectElement | null) => {
 // the account picker leaves out accounts without transactions, unless none has any, so the page still shows one
 const withTransactions = (list: Account[]) => (list.some((a) => a.transactionCount > 0) ? list.filter((a) => a.transactionCount > 0) : list)
 
+const linkParams = () => new URLSearchParams(location.hash.split('?')[1])
+
+// the account to open: one linked from the Balances list, else the synced one, else the first
+function openingAccount(all: Account[], linked: URLSearchParams) {
+  const offered = withTransactions(all)
+  const linkedId = Number(linked.get('account'))
+  return (offered.find((a) => a.id === linkedId) ?? offered.find((a) => a.monoAccountId) ?? offered[0])?.id
+}
+
+// the period to open: a linked one (all time when the link names only a category), else the latest month
+// with data; the chart around it still shows its year (half a year on phones)
+const openingPeriod = (list: Transaction[], linked: URLSearchParams) =>
+  linked.has('period') || linked.has('category') ? linked.get('period') ?? ''
+    : list.length ? `m:${monthKey(list[0].time)}` : ''
+
 export function TransactionsPage() {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [accountId, setAccountId] = useState<number>()
-  const [list, setList] = useState<Transaction[]>()
+  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; applied on the first load only
+  const linked = useRef(linkParams())
+  // the page starts from the last responses (see cached), so opening it again does not flash empty
+  const [accounts, setAccounts] = useState<Account[]>(() => cached('/accounts') ?? [])
+  const [accountId, setAccountId] = useState(() => openingAccount(accounts, linkParams()))
+  const [list, setList] = useState<Transaction[] | undefined>(() => cached(`/accounts/${accountId}/transactions`))
   const [error, setError] = useState('')
   const [syncing, setSyncing] = useState(false)
-  const [category, setCategory] = useState<string>()
+  const [category, setCategory] = useState(() => (list ? linkParams().get('category') ?? undefined : undefined))
   // merchant key from the API; cleared whenever the category, period or account changes
   const [merchant, setMerchant] = useState<string>()
   const pickCategory = (c?: string) => { setCategory(c); setMerchant(undefined) }
@@ -49,13 +67,11 @@ export function TransactionsPage() {
   const [picking, setPicking] = useState<number>()
   // rows rendered; the summaries above always use every transaction
   const [limit, setLimit] = useState(PAGE)
-  const [period, setPeriod] = useState('')
+  const [period, setPeriod] = useState(() => (list ? openingPeriod(list, linkParams()) : ''))
   // only spending needed to live: the chart's median becomes the minimal month
   const [essentialOnly, setEssentialOnly] = useState(false)
   const [notice, setNotice] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
-  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; applied on the first load only
-  const linked = useRef(new URLSearchParams(location.hash.split('?')[1]))
+  const [categories, setCategories] = useState<Category[]>(() => cached('/categories') ?? [])
   const account = accounts.find((a) => a.id === accountId)
   const offered = withTransactions(accounts)
   const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
@@ -75,10 +91,7 @@ export function TransactionsPage() {
     api<Account[]>('/accounts')
       .then((all) => {
         setAccounts(all)
-        // an account linked from the Balances list, else the synced one, else the first
-        const linkedId = Number(linked.current.get('account'))
-        const offered = withTransactions(all)
-        setAccountId((offered.find((a) => a.id === linkedId) ?? offered.find((a) => a.monoAccountId) ?? offered[0])?.id)
+        setAccountId(openingAccount(all, linked.current))
       })
       .catch((e) => setError(e.message))
     api<Category[]>('/categories').then(setCategories).catch((e) => setError(e.message))
@@ -89,14 +102,11 @@ export function TransactionsPage() {
     api<Transaction[]>(`/accounts/${accountId}/transactions`)
       .then((loaded) => {
         setList(loaded)
-        // open on the latest month with data; the chart around it still shows its year (its quarter on phones)
-        const latest = loaded.length ? monthKey(loaded[0].time) : undefined
-        const { current: from } = linked
-        if (from.has('period') || from.has('category')) {
-          setPeriod(from.get('period') ?? '')
-          pickCategory(from.get('category') ?? undefined)
+        setPeriod(openingPeriod(loaded, linked.current))
+        if (linked.current.has('period') || linked.current.has('category')) {
+          pickCategory(linked.current.get('category') ?? undefined)
           linked.current = new URLSearchParams()
-        } else if (latest) setPeriod(`m:${latest}`)
+        }
       })
       .catch((e) => setError(e.message))
   }, [accountId])
