@@ -72,6 +72,20 @@ goal.run('Відпустка в Карпатах', cents(1500), 'EUR', 0, 0, day
 goal.run('Новий автомобіль', cents(12000), 'USD', 1, 0, daysAgo(60))
 goal.run('Фотокамера', cents(1200), 'USD', 2, 1, daysAgo(5))
 
+// things owned: the flat is lived in, so net worth only; the others show what selling them adds to the runway
+const asset = sqlite.prepare(
+  'insert into assets (name, value_cents, currency, discount, sellable) values (?, ?, ?, ?, ?)',
+)
+asset.run('Квартира', cents(68000), 'USD', 10, 0)
+asset.run('Skoda Fabia 2016', cents(7500), 'USD', 20, 1)
+asset.run('MacBook Pro', cents(45000), 'UAH', 30, 1)
+// one ongoing and turned on, one for six months and off, so both kinds of effect show
+const planned = sqlite.prepare(
+  'insert into planned_expenses (name, amount_cents, currency, months, active) values (?, ?, ?, ?, ?)',
+)
+planned.run('Спортзал', cents(1400), 'UAH', null, 1)
+planned.run('Курси англійської', cents(3200), 'UAH', 6, 0)
+
 const tx = sqlite.prepare(
   'insert into transactions (account_id, external_id, time, description, mcc, amount_cents, note) values (?, ?, ?, ?, ?, ?, ?)',
 )

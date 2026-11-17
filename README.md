@@ -10,12 +10,12 @@ and when you reach your goals.
 <details>
 <summary>More screenshots</summary>
 
-|                                                                                                                                                  |                                                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/60b2ac6c-d78a-44fa-8f8f-909c0cc3db1d) | ![Plan: timeline, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/e0d3221b-531d-4723-9dbd-c49a05754d05) |
-| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)    | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)   |
-| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                   |
-| ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                          |                                                                                                                                                |
+|                                                                                                                                                                |                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Balances: totals, balance over time, allocation, things owned and accounts](https://github.com/user-attachments/assets/f39b6343-8408-4bb0-8e3a-c3aea7f8e3d5) | ![Plan: timeline, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/57eb14d4-fd70-4e9e-8cb5-d2191422db0e) |
+| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)                  | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)                     |
+| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                              | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                                     |
+| ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                                        |                                                                                                                                                                  |
 
 </details>
 
@@ -152,7 +152,8 @@ migrated on first start; set `DB_FILE` to use another path.
 
 ## Demo data
 
-`api/scripts/seed-demo.mjs` builds a separate database with made-up accounts, a budget, goals and a
+`api/scripts/seed-demo.mjs` builds a separate database with made-up accounts, a budget, goals, things
+owned, planned expenses and a
 year of Monobank-style transactions (public shop names; people, landlord and employer are invented).
 It refuses to overwrite an existing file, so it never touches `api/data.db`. To run the app on it
 next to your own:
