@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { ErrorText, MoneyInput } from '../../components/controls'
+import { ErrorText } from '../../components/ErrorText'
+import { MoneyInput } from '../../components/MoneyInput'
 import { Briefcase, Calendar, Lock, Pencil, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
 import { api } from '../../lib/api'
 import { dateIn, format } from '../../lib/format'

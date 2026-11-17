@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Skeleton } from '../../components/controls'
+import { Skeleton } from '../../components/Skeleton'
 import { useApi } from '../../lib/api'
 import { dateIn, wholeMoney } from '../../lib/format'
 import { goalProgress } from '../../lib/goals'

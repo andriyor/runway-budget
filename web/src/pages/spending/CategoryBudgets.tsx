@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { ConfirmButton, ErrorText, MoneyInput } from '../../components/controls'
+import { ConfirmButton } from '../../components/ConfirmButton'
+import { ErrorText } from '../../components/ErrorText'
+import { MoneyInput } from '../../components/MoneyInput'
 import { Trash2 } from 'lucide-react'
 import { api, useApi } from '../../lib/api'
 import { format, wholeMoney } from '../../lib/format'

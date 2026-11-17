@@ -1,4 +1,4 @@
-import { ErrorText } from '../../components/controls'
+import { ErrorText } from '../../components/ErrorText'
 import { useApi } from '../../lib/api'
 import { percentOf, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
