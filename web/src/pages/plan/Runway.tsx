@@ -2,12 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { ErrorText, MoneyInput } from '../../components/controls'
 import { Briefcase, Calendar, Lock, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
 import { api } from '../../lib/api'
-import { format } from '../../lib/format'
+import { dateIn, format } from '../../lib/format'
 import { monthsLasting } from '../../lib/inflation'
 import { card, muted, inputBox, button, linkButton } from '../../lib/styles'
 import { type Currency, type Budget } from '../../lib/types'
 
-export const AVG_DAYS_IN_MONTH = 30.44
 
 type EstimateProps = {
   label: string
@@ -25,7 +24,7 @@ type EstimateProps = {
 function Estimate({ label, total, spend, income, inflation, currency }: EstimateProps) {
   const [now] = useState(Date.now)
   const burn = spend - income
-  const date = (months: number) => new Date(now + months * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
+  const date = (months: number) => dateIn(months, now)
   const inflated = inflation !== undefined && inflation > 0 ? monthsLasting(total, spend, income, inflation) : undefined
   const withInflation = inflated !== undefined && (
     <p className={`mt-1 text-sm tabular-nums ${muted}`}>

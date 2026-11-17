@@ -6,7 +6,7 @@ import { CurrencyIcon } from '../../components/icons'
 import { api, setCached, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
-import { cumulativeTargets } from '../../lib/goals'
+import { goalProgress } from '../../lib/goals'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
 type Cushion = { months: number, amount: number, available: number, currency: Currency }
@@ -30,7 +30,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
   // wishes share the list and the order, but get no savings; the wishlist shows them
   const goals = all.filter((g) => !g.wish)
   const wishes = all.filter((g) => g.wish)
-  const cumulative = cumulativeTargets(goals, convert)
+  const progressOf = goalProgress(goals, convert, forGoalsIn)
   // the goal shown as a form instead of its progress
   const [editing, setEditing] = useState<number>()
   // a failed delete, else a failed load; the forms show their own save errors
@@ -89,12 +89,8 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
 
       <ul className="mt-4 flex flex-col gap-5">
         {goals.map((g, i) => {
-          // the targets of the goals above, which savings fill first; undefined while rates load
-          const ahead = cumulative[i] === undefined ? undefined : cumulative[i]! - g.target
-          const forGoals = ahead === undefined ? undefined : forGoalsIn(g.currency)
-          // negative while the cushion is not covered: the shortfall is saved first, before any goal
-          const saved = forGoals ?? 0
-          const have = Math.min(g.target, Math.max(0, saved - (ahead ?? 0)))
+          const p = progressOf[i]
+          const have = p?.have ?? 0
           const progress = have / g.target
           if (editing === g.id) {
             return (
@@ -153,7 +149,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-sm">{forGoals === undefined ? <Skeleton /> : status(g, have, ahead! + g.target - saved)}</p>
+              <p className="mt-1.5 text-sm">{p === undefined ? <Skeleton /> : status(g, p.have, p.need)}</p>
             </li>
           )
         })}

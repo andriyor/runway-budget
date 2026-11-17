@@ -19,3 +19,8 @@ export const iconColors: Record<Currency, string> = { USD: 'bg-emerald-600', EUR
 export const percentOf = (share: number | undefined) => (share === undefined ? undefined : Math.round(share * 1000) / 10)
 
 export const wholeMoney = (amount: number, currency: Currency) => formatter(currency, 0).format(amount)
+
+const AVG_DAYS_IN_MONTH = 30.44
+
+// the local date `months` after `now`, e.g. 23.06.2027
+export const dateIn = (months: number, now: number) => new Date(now + months * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')

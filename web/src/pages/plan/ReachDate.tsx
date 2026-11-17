@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { AVG_DAYS_IN_MONTH } from './Runway'
-import { format } from '../../lib/format'
+import { dateIn, format } from '../../lib/format'
 import { monthsToSave } from '../../lib/inflation'
 import { muted } from '../../lib/styles'
 import type { Currency } from '../../lib/types'
@@ -24,7 +23,7 @@ export function ReachDate({ need, net, spend, inflation, currency }: ReachDatePr
   if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
   if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
   const months = need / net
-  const date = (m: number) => new Date(now + m * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
+  const date = (m: number) => dateIn(m, now)
   const inflated = inflation !== undefined && inflation > 0 && spend !== undefined
     ? { months: monthsToSave(need, spend, spend + net, inflation) }
     : undefined

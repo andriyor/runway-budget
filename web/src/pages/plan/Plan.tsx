@@ -1,6 +1,7 @@
 import { EmergencyFund } from './EmergencyFund'
 import { Goals } from './Goals'
 import { Runway } from './Runway'
+import { Timeline } from './Timeline'
 import { Wishlist } from './Wishlist'
 import { ErrorBanner, InfoTip } from '../../components/controls'
 import { useFinance } from '../../lib/finance'
@@ -21,6 +22,8 @@ export function Plan() {
       </header>
 
       <ErrorBanner>{error}</ErrorBanner>
+
+      <Timeline forGoalsIn={forGoalsIn} convert={convert} netIn={netIn} cushion={cushion} />
 
       {budget !== undefined && (
         <Runway key={JSON.stringify(budget)} saved={budget} onSaved={setBudget} availableIn={availableIn} reserveIn={reserveIn} incomeIn={incomeIn} keptIncomeIn={keptIncomeIn} minimalIn={minimalIn} inflation={inflation} />
