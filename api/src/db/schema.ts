@@ -105,3 +105,16 @@ export const budget = sqliteTable('budget', {
   // optional months to live without salary; drives the max monthly spend
   targetMonths: integer('target_months'),
 })
+
+// things owned that could be sold, like a car or a flat: counted in net worth, never in savings
+export const assets = sqliteTable('assets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  // estimated market value, minor units
+  valueCents: integer('value_cents').notNull(),
+  currency: text('currency', { enum: currencies }).notNull(),
+  // percent of the value lost when selling quickly
+  discount: integer('discount').notNull().default(20),
+  // false for things you would not sell, like the home you live in: net worth only, no extra runway
+  sellable: integer('sellable', { mode: 'boolean' }).notNull().default(true),
+})

@@ -26,6 +26,7 @@ export function Plan() {
     forGoalsIn,
     cushion,
     netIn,
+    salesIn,
   } = useFinance({ withInflation: true })
   // spending in the estimates grows by the last 12 months' inflation
   const inflation = cpi && annualRate(cpi)
@@ -114,6 +115,7 @@ export function Plan() {
           keptIncomeIn={keptIncomeIn}
           minimalIn={minimalIn}
           spendIn={spendIn}
+          sales={salesIn(currency)}
           inflation={inflation}
           currency={currency}
         />

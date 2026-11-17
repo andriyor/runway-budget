@@ -85,6 +85,10 @@ export type Income = { name: string; amount: number; currency: Currency; keeps: 
 // wish: a wished-for purchase, which savings do not fill; addedAt is an ISO timestamp
 export type Goal = { id: number; name: string; target: number; currency: Currency; wish: boolean; addedAt: string }
 
+// something owned that could be sold, like a car or a flat; value is an estimate, discount the percent
+// lost in a quick sale, and sellable false for things kept whatever happens, like the home you live in
+export type Asset = { id: number; name: string; value: number; currency: Currency; discount: number; sellable: boolean }
+
 // a monthly spending cap for a top-level spending category
 export type CategoryBudget = { category: string; amount: number; currency: Currency }
 

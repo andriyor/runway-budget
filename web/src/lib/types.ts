@@ -4,6 +4,7 @@ import type { AccountKind, AllOf, Category, Currency } from '@runway-budget/shar
 export type {
   Account,
   AccountKind,
+  Asset,
   Budget,
   Category,
   CategoryBudget,

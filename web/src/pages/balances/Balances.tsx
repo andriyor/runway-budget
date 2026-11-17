@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { AccountRow } from './AccountRow'
 import { Allocation } from './Allocation'
+import { Assets } from './Assets'
 import { BalanceHistory } from './BalanceHistory'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { InfoTip } from '../../components/InfoTip'
@@ -27,6 +28,8 @@ export function Balances() {
     convert,
     convertOn,
     totalIn,
+    assets,
+    ownedIn,
   } = useFinance({ withTransactions: true })
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
@@ -36,11 +39,11 @@ export function Balances() {
   async function add(e: FormEvent) {
     e.preventDefault()
     try {
-      const created = await api<Account>('/accounts', {
+      // api refetches the accounts before it returns, which already lists the new one
+      await api('/accounts', {
         method: 'POST',
         body: JSON.stringify({ name, currency, kind, balance: Number(balance) }),
       })
-      setAccounts((list) => [...list, created])
       setName('')
       setBalance('')
       setError('')
@@ -119,6 +122,13 @@ export function Balances() {
           />
 
           <Allocation accounts={accounts} convert={convert} />
+
+          <Assets
+            assets={assets}
+            cash={totalIn(chartCurrency)}
+            owned={ownedIn(chartCurrency)}
+            currency={chartCurrency}
+          />
         </div>
 
         {/* the container lets account rows lay out by the list's width, not the screen's */}

@@ -4,6 +4,7 @@ import { api, setCached, useApi } from './api'
 import { dayKey, monthKey } from './periods'
 import type {
   Account,
+  Asset,
   Budget,
   Category,
   Convert,
@@ -35,10 +36,12 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   // null when there is none; undefined while loading
   const budgetQuery = useApi<Budget | null>('/budget')
   const categoriesQuery = useApi<Category[]>('/categories')
+  const assetsQuery = useApi<Asset[]>('/assets')
   const accounts = accountsQuery.data ?? []
   const rates = ratesQuery.data
   const budget = budgetQuery.data
   const categories = categoriesQuery.data ?? []
+  const assets = assetsQuery.data ?? []
   // errors of the page itself, e.g. a failed save; load errors come from the queries
   const [error, setError] = useState('')
 
@@ -76,7 +79,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   const inflation = inflationQuery.data
 
   const loadError =
-    (budgetQuery.error ?? categoriesQuery.error ?? accountsQuery.error)?.message ??
+    (budgetQuery.error ?? categoriesQuery.error ?? accountsQuery.error ?? assetsQuery.error)?.message ??
     (ratesQuery.error && `Rates: ${ratesQuery.error.message}`) ??
     (fetched.error && `Transactions: ${fetched.error.message}`) ??
     (historyQuery.error && `Rate history: ${historyQuery.error.message}, so past amounts use today's rates`) ??
@@ -95,6 +98,16 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   }
   const totalIn = (target: Currency) =>
     rates && accounts.reduce((sum, a) => sum + convert(a.balance, a.currency, target)!, 0)
+  // what the things owned are worth together, at their estimated value
+  const ownedIn = (target: Currency) =>
+    rates && assets.reduce((sum, a) => sum + convert(a.value, a.currency, target)!, 0)
+  // what each sellable thing brings in a quick sale, after its discount; [] while rates load
+  const salesIn = (c: Currency) =>
+    rates
+      ? assets
+          .filter((a) => a.sellable)
+          .map((a) => ({ name: a.name, amount: convert(a.value * (1 - a.discount / 100), a.currency, c)! }))
+      : []
   const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
     amount != null && from ? convert(amount, from, to) : undefined
   const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
@@ -140,6 +153,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     rates,
     budget,
     setBudget,
+    assets,
     categories,
     transactions,
     inflation,
@@ -150,6 +164,8 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     convert,
     convertOn,
     totalIn,
+    ownedIn,
+    salesIn,
     reserveIn,
     incomeIn,
     keptIncomeIn,

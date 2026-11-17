@@ -247,6 +247,8 @@ type RunwayProps = {
   minimalIn: (c: Currency) => number | undefined
   // usual monthly spending converted; undefined while rates load
   spendIn: (c: Currency) => number | undefined
+  // what each sellable thing owned brings in a quick sale, in `currency`
+  sales: Array<{ name: string; amount: number }>
   // yearly inflation, e.g. 0.11; undefined while unknown
   inflation: number | undefined
   // the currency the estimates are shown in; the settings keep their own
@@ -262,6 +264,7 @@ export function Runway({
   keptIncomeIn,
   minimalIn,
   spendIn,
+  sales,
   inflation,
   currency: c,
 }: RunwayProps) {
@@ -513,6 +516,19 @@ export function Runway({
               inflation={inflation}
               currency={c}
             />
+            {/* a last resort, never in the estimates: how much longer the money lasts after selling */}
+            {spend - kept > 0 && sales.length > 0 && (
+              <ul className={`flex flex-col gap-0.5 tabular-nums ${muted}`}>
+                {sales.map((s, n) => (
+                  <li key={n}>
+                    Selling {s.name} (≈ {format(s.amount, c)}):{' '}
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      +{(s.amount / (spend - kept)).toFixed(1)} months
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {minimalInSpendCurrency !== undefined && (
               <>
                 <Estimate

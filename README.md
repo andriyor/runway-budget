@@ -34,6 +34,9 @@ Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **P
 - **Allocation**: the share of the total by currency and by account type (bank or cash).
 - **Balance over time**: the total at the end of every day since the first transaction, each day at its
   own NBU rate, with what exchange rates added to or took from the USD and EUR balances.
+- **Things I own**: a car, a flat or anything else worth selling, with its estimated value, the percent a
+  quick sale would lose (20% by default) and whether you would sell it at all (not the home you live in).
+  They add up to a net worth beside the cash, but stay out of the totals, the runway and the emergency fund.
 
 On desktop the overview sits on the left and the accounts list beside it, staying in view while you scroll.
 
@@ -95,6 +98,7 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   months the emergency fund should cover. Beside them, how many months your savings last with and without
   income, and the most you can spend per month to last the fund's months. Each estimate also shows how long
   it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
+  Under the estimate without income, how many more months selling each thing you own would add.
 - **Emergency fund**: how many months of essential and of usual spending your available savings cover,
   against the months set in Runway (6 if not set) and the 3-month minimum: red below 3, amber below the
   target, green once funded. Income that continues without a job lowers what a month takes from savings.
