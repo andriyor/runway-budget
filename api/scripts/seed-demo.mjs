@@ -49,9 +49,12 @@ const categoryBudget = sqlite.prepare('insert into category_budgets (category, a
 categoryBudget.run('groceries', cents(9000), 'UAH')
 categoryBudget.run('cafes_restaurants', cents(3500), 'UAH')
 categoryBudget.run('transport', cents(2500), 'UAH')
-const goal = sqlite.prepare('insert into goals (name, target_cents, currency) values (?, ?, ?)')
-goal.run('Відпустка в Карпатах', cents(1500), 'EUR')
-goal.run('Новий автомобіль', cents(12000), 'USD')
+// added_at is in seconds; the wish has been on the list for 5 days
+const goal = sqlite.prepare('insert into goals (name, target_cents, currency, position, wish, added_at) values (?, ?, ?, ?, ?, ?)')
+const daysAgo = (days) => Math.floor(Date.now() / 1000) - days * 86400
+goal.run('Відпустка в Карпатах', cents(1500), 'EUR', 0, 0, daysAgo(60))
+goal.run('Новий автомобіль', cents(12000), 'USD', 1, 0, daysAgo(60))
+goal.run('Фотокамера', cents(1200), 'USD', 2, 1, daysAgo(5))
 
 const tx = sqlite.prepare('insert into transactions (account_id, external_id, time, description, mcc, amount_cents, note) values (?, ?, ?, ?, ?, ?, ?)')
 let n = 0

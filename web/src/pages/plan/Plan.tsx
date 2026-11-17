@@ -1,6 +1,7 @@
 import { EmergencyFund } from './EmergencyFund'
 import { Goals } from './Goals'
 import { Runway } from './Runway'
+import { Wishlist } from './Wishlist'
 import { ErrorBanner, InfoTip } from '../../components/controls'
 import { useFinance } from '../../lib/finance'
 import { annualRate } from '../../lib/inflation'
@@ -39,6 +40,8 @@ export function Plan() {
       )}
 
       <Goals forGoalsIn={forGoalsIn} convert={convert} cushion={cushion} netIn={netIn} spendIn={spendIn} inflation={inflation} />
+
+      <Wishlist forGoalsIn={forGoalsIn} convert={convert} netIn={netIn} />
     </>
   )
 }

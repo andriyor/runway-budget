@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { AccountKind, AllOf, Currency } from '@runway-budget/shared'
 import { categoryIds } from '../categories'
@@ -67,7 +68,11 @@ export const goals = sqliteTable('goals', {
   targetCents: integer('target_cents').notNull(),
   currency: text('currency', { enum: currencies }).notNull(),
   // savings fill goals in this order: a goal waits for the ones before it
-  position: integer('position').notNull().default(0)
+  position: integer('position').notNull().default(0),
+  // a wished-for purchase: kept on the list but given no savings, so the plan shows what buying it would delay
+  wish: integer('wish', { mode: 'boolean' }).notNull().default(false),
+  // when the goal or wish was added; the default only fills rows from before the column, inserts set it
+  addedAt: integer('added_at', { mode: 'timestamp' }).notNull().default(sql`0`)
 })
 
 // a monthly spending cap per top-level spending category

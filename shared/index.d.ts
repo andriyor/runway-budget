@@ -82,7 +82,8 @@ export type Budget = {
 // keeps: still comes in the "without income" estimates, like a pension or rent
 export type Income = { name: string, amount: number, currency: Currency, keeps: boolean }
 
-export type Goal = { id: number, name: string, target: number, currency: Currency }
+// wish: a wished-for purchase, which savings do not fill; addedAt is an ISO timestamp
+export type Goal = { id: number, name: string, target: number, currency: Currency, wish: boolean, addedAt: string }
 
 // a monthly spending cap for a top-level spending category
 export type CategoryBudget = { category: string, amount: number, currency: Currency }

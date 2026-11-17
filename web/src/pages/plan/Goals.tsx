@@ -6,15 +6,15 @@ import { CurrencyIcon } from '../../components/icons'
 import { api, setCached, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
-import type { Currency, Goal } from '../../lib/types'
+import { cumulativeTargets } from '../../lib/goals'
+import type { Convert, Currency, Goal } from '../../lib/types'
 
 type Cushion = { months: number, amount: number, available: number, currency: Currency }
 
 type GoalsProps = {
   // available savings minus the months-without-income cushion
   forGoalsIn: (c: Currency) => number | undefined
-  // undefined while rates load
-  convert: (amount: number, from: Currency, to: Currency) => number | undefined
+  convert: Convert
   cushion: Cushion | undefined
   // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
@@ -26,7 +26,11 @@ type GoalsProps = {
 
 export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation }: GoalsProps) {
   const query = useApi<Goal[]>('/goals')
-  const goals = query.data ?? []
+  const all = query.data ?? []
+  // wishes share the list and the order, but get no savings; the wishlist shows them
+  const goals = all.filter((g) => !g.wish)
+  const wishes = all.filter((g) => g.wish)
+  const cumulative = cumulativeTargets(goals, convert)
   // the goal shown as a form instead of its progress
   const [editing, setEditing] = useState<number>()
   // a failed delete, else a failed load; the forms show their own save errors
@@ -42,11 +46,12 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
   async function move(index: number, by: -1 | 1) {
     const next = [...goals]
     ;[next[index], next[index + by]] = [next[index + by], next[index]]
-    setCached('/goals', next)
+    const list = [...next, ...wishes]
+    setCached('/goals', list)
     try {
-      await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: next.map((g) => g.id) }) })
+      await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: list.map((g) => g.id) }) })
     } catch (err) {
-      setCached('/goals', goals)
+      setCached('/goals', all)
       setError(`Reorder: ${(err as Error).message}`)
     }
   }
@@ -85,10 +90,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
       <ul className="mt-4 flex flex-col gap-5">
         {goals.map((g, i) => {
           // the targets of the goals above, which savings fill first; undefined while rates load
-          const ahead = goals.slice(0, i).reduce<number | undefined>(
-            (sum, above) => { const v = convert(above.target, above.currency, g.currency); return sum === undefined || v === undefined ? undefined : sum + v },
-            0
-          )
+          const ahead = cumulative[i] === undefined ? undefined : cumulative[i]! - g.target
           const forGoals = ahead === undefined ? undefined : forGoalsIn(g.currency)
           const saved = Math.max(0, forGoals ?? 0)
           const have = Math.min(g.target, Math.max(0, saved - (ahead ?? 0)))
@@ -167,7 +169,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
 
 const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
-type GoalValues = { name: string, target: number, currency: Currency }
+export type GoalValues = { name: string, target: number, currency: Currency, wish?: boolean }
 
 type GoalFormProps = {
   // the goal being edited; without it the form adds one and clears itself after
@@ -175,10 +177,12 @@ type GoalFormProps = {
   submitLabel: string
   onSave: (values: GoalValues) => Promise<unknown>
   onCancel?: () => void
+  // adds a wish instead of a goal
+  wish?: boolean
 }
 
-// name, amount and currency of a goal, to add one or edit it in place
-function GoalForm({ initial, submitLabel, onSave, onCancel }: GoalFormProps) {
+// name, amount and currency of a goal or wish, to add one or edit it in place
+export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [target, setTarget] = useState(initial ? String(initial.target) : '')
   const [currency, setCurrency] = useState<Currency>(initial?.currency ?? 'USD')
@@ -187,7 +191,7 @@ function GoalForm({ initial, submitLabel, onSave, onCancel }: GoalFormProps) {
   async function submit(e: FormEvent) {
     e.preventDefault()
     try {
-      await onSave({ name, target: Number(target), currency })
+      await onSave({ name, target: Number(target), currency, ...(!initial && wish && { wish }) })
       setError('')
       if (!initial) {
         setName('')
@@ -202,16 +206,16 @@ function GoalForm({ initial, submitLabel, onSave, onCancel }: GoalFormProps) {
     <form className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={submit}>
       <div className="flex flex-wrap items-center gap-3">
         <input
-          placeholder="Goal, e.g. Car"
+          placeholder={wish ? 'Wish, e.g. Camera' : 'Goal, e.g. Car'}
           required
           maxLength={100}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          aria-label="Goal name"
+          aria-label={wish ? 'Wish name' : 'Goal name'}
           className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
         />
         <div className="w-56">
-          <MoneyInput label="Goal amount" required min="0.01" placeholder="Amount" value={target} onChange={setTarget} currency={currency} onCurrency={setCurrency} />
+          <MoneyInput label={wish ? 'Price' : 'Goal amount'} required min="0.01" placeholder="Amount" value={target} onChange={setTarget} currency={currency} onCurrency={setCurrency} />
         </div>
         <button type="submit" className={button}>{submitLabel}</button>
         {onCancel && (
