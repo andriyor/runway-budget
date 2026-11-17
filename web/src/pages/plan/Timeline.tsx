@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { Skeleton } from '../../components/controls'
 import { useApi } from '../../lib/api'
-import { dateIn } from '../../lib/format'
+import { dateIn, format } from '../../lib/format'
 import { goalProgress } from '../../lib/goals'
 import { card, muted } from '../../lib/styles'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
-type Cushion = { months: number; currency: Currency }
+// amount: what the months take from savings; available: savings after the untouchable reserve
+type Cushion = { months: number; amount: number; available: number; currency: Currency }
 
 type TimelineProps = {
   // available savings minus the months-without-income cushion; negative while the cushion is not covered
@@ -17,7 +18,15 @@ type TimelineProps = {
   cushion: Cushion | undefined
 }
 
-type Milestone = { key: string; label: string; need: number | undefined; currency: Currency }
+// amount: what it takes in all; left: what is still missing for it alone, undefined while loading
+type Milestone = {
+  key: string
+  label: string
+  amount: number
+  left: number | undefined
+  need: number | undefined
+  currency: Currency
+}
 
 // The plan in one list: the cushion, then each goal in the order savings fill them, with the date each is reached
 // at today's spending. Inflation-adjusted dates stay with each goal below.
@@ -32,6 +41,8 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
           {
             key: 'cushion',
             label: `${cushion.months}-month cushion`,
+            amount: cushion.amount,
+            left: Math.max(0, cushion.amount - Math.max(0, cushion.available)),
             need: (() => {
               const f = forGoalsIn(cushion.currency)
               return f === undefined ? undefined : -f
@@ -40,7 +51,14 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
           },
         ]
       : []),
-    ...goals.map((g, i) => ({ key: String(g.id), label: g.name, need: progress[i]?.need, currency: g.currency })),
+    ...goals.map((g, i) => ({
+      key: String(g.id),
+      label: g.name,
+      amount: g.target,
+      left: progress[i] && g.target - progress[i].have,
+      need: progress[i]?.need,
+      currency: g.currency,
+    })),
   ]
   if (milestones.length === 0) return null
 
@@ -90,11 +108,19 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
                       : 'bg-zinc-300 dark:bg-zinc-700'
                 }`}
               />
-              <span
-                className={`truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}
-              >
-                {m.label}
-                {i === current && <span className={`ml-2 ${muted}`}>· saving for now</span>}
+              <span className="min-w-0">
+                <span
+                  className={`block truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}
+                >
+                  {m.label}
+                  {i === current && <span className={`ml-2 ${muted}`}>· saving for now</span>}
+                </span>
+                <span className={`block tabular-nums ${muted}`}>
+                  {/* a cushion is 0 when incomes that keep coming cover the spending */}
+                  {m.amount > 0 ? format(m.amount, m.currency) : 'Incomes that keep coming cover it'}
+                  {/* only for one under way: done needs nothing more, and one not started needs all of it */}
+                  {m.left !== undefined && m.left > 0 && m.left < m.amount && ` · ${format(m.left, m.currency)} to go`}
+                </span>
               </span>
               {when(m)}
             </li>
