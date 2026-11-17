@@ -9,8 +9,9 @@ const DEFAULT_MONTHS = 6
 
 const tones = {
   emerald: { text: 'text-emerald-700 dark:text-emerald-400', bar: 'bg-emerald-500' },
+  // calm tones: red is kept for errors, not for money
+  sky: { text: 'text-sky-700 dark:text-sky-400', bar: 'bg-sky-500' },
   amber: { text: 'text-amber-700 dark:text-amber-400', bar: 'bg-amber-500' },
-  rose: { text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500' },
 }
 
 type EmergencyFundProps = {
@@ -100,7 +101,7 @@ function Tile({ label, monthly, kept, target, available, net, spend, inflation, 
   const have = Math.max(0, available)
   const covered = burn > 0 ? have / burn : Infinity
   const progress = goal > 0 ? Math.min(1, have / goal) : 1
-  const tone = tones[covered >= target ? 'emerald' : covered >= MINIMUM ? 'amber' : 'rose']
+  const tone = tones[covered >= target ? 'emerald' : covered >= MINIMUM ? 'sky' : 'amber']
 
   return (
     <div className="flex flex-col rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">

@@ -168,7 +168,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
             spent === usual
               ? muted
               : over
-                ? 'text-rose-600 dark:text-rose-400'
+                ? 'text-amber-700 dark:text-amber-400'
                 : 'text-emerald-700 dark:text-emerald-400'
           }
         >
@@ -194,7 +194,7 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
           <span className="font-semibold text-zinc-900 dark:text-zinc-100">{wholeMoney(pace.sofar, currency)}</span> by{' '}
           {dayMonth.format(now)}, on track for{' '}
           <span
-            className={`font-semibold ${target !== undefined && pace.projected > target ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}
+            className={`font-semibold ${target !== undefined && pace.projected > target ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}
           >
             {wholeMoney(pace.projected, currency)}
           </span>

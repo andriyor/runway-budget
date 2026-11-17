@@ -122,7 +122,7 @@ export function CashFlow({
           worst: months.reduce((a, b) => (b.spent > a.spent ? b : a)),
         }
       : undefined
-  const tone = (x: number) => (x >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')
+  const tone = (x: number) => (x >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400')
   const tile = 'rounded-xl bg-zinc-50 p-3 sm:p-4 dark:bg-zinc-800/50'
   const big = 'mt-1 text-xl font-semibold tabular-nums sm:text-2xl'
 

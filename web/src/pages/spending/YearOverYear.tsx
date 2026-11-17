@@ -69,7 +69,11 @@ export function YearOverYear({ transactions, categories, currency }: YearOverYea
     return (
       <td
         className={
-          spent === base ? muted : over ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'
+          spent === base
+            ? muted
+            : over
+              ? 'text-amber-700 dark:text-amber-400'
+              : 'text-emerald-700 dark:text-emerald-400'
         }
       >
         {spent === base ? '0%' : `${over ? '+' : '−'}${percentOf(Math.abs(spent - base) / base)}%`}

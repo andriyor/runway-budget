@@ -302,7 +302,7 @@ export function MonthlySpending({
                 />
                 <Stat
                   icon={
-                    <span className="text-rose-600 dark:text-rose-400">
+                    <span className="text-amber-700 dark:text-amber-400">
                       <TrendingUp />
                     </span>
                   }
