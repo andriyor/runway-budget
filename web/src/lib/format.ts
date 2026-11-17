@@ -1,4 +1,4 @@
-import type { Currency } from './types'
+import type { Convert, Currency } from './types'
 
 // one formatter per currency and style, built once: amounts are formatted hundreds of times per render
 const formatters = new Map<string, Intl.NumberFormat>()
@@ -27,3 +27,9 @@ const AVG_DAYS_IN_MONTH = 30.44
 // the local date `months` after `now`, e.g. 23.06.2027
 export const dateIn = (months: number, now: number) =>
   new Date(now + months * AVG_DAYS_IN_MONTH * 864e5).toLocaleDateString('uk-UA')
+
+// "12 000,00 USD ≈ 528 000 грн": an amount kept in its own currency, with its value in the one being shown
+export function withConverted(amount: number, from: Currency, to: Currency, convert: Convert) {
+  const converted = from === to ? undefined : convert(amount, from, to)
+  return converted === undefined ? format(amount, from) : `${format(amount, from)} ≈ ${wholeMoney(converted, to)}`
+}

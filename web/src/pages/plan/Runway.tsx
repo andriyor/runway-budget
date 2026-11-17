@@ -245,8 +245,12 @@ type RunwayProps = {
   // the incomes that keep coming without the others
   keptIncomeIn: (c: Currency) => number
   minimalIn: (c: Currency) => number | undefined
+  // usual monthly spending converted; undefined while rates load
+  spendIn: (c: Currency) => number | undefined
   // yearly inflation, e.g. 0.11; undefined while unknown
   inflation: number | undefined
+  // the currency the estimates are shown in; the settings keep their own
+  currency: Currency
 }
 
 export function Runway({
@@ -257,7 +261,9 @@ export function Runway({
   incomeIn,
   keptIncomeIn,
   minimalIn,
+  spendIn,
   inflation,
+  currency: c,
 }: RunwayProps) {
   const [form, setForm] = useState(() => toForm(saved))
   // the settings show as a summary once saved; Plan re-keys this on the saved budget, so a save returns to it
@@ -299,11 +305,12 @@ export function Runway({
         }),
       )
 
-  const available = saved ? availableIn(saved.currency) : undefined
-  const reserved = saved ? reserveIn(saved.currency) : 0
-  const incomeInSpendCurrency = saved ? incomeIn(saved.currency) : undefined
-  const kept = saved ? keptIncomeIn(saved.currency) : 0
-  const minimalInSpendCurrency = saved ? minimalIn(saved.currency) : undefined
+  const available = saved ? availableIn(c) : undefined
+  const reserved = saved ? reserveIn(c) : 0
+  const incomeInSpendCurrency = saved ? incomeIn(c) : undefined
+  const kept = saved ? keptIncomeIn(c) : 0
+  const minimalInSpendCurrency = saved ? minimalIn(c) : undefined
+  const spend = spendIn(c)
 
   const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
@@ -486,25 +493,25 @@ export function Runway({
         </form>
       )}
       <div className="flex flex-col justify-center gap-3">
-        {saved && available !== undefined ? (
+        {saved && available !== undefined && spend !== undefined ? (
           <>
             {reserved > 0 && (
               <p className={`flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
                 <Lock />
-                <span>{format(reserved, saved.currency)} untouchable</span>
+                <span>{format(reserved, c)} untouchable</span>
                 <span>·</span>
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {format(Math.max(0, available), saved.currency)} available
+                  {format(Math.max(0, available), c)} available
                 </span>
               </p>
             )}
             <Estimate
               label="Without income"
               total={available}
-              spend={saved.monthlySpend}
+              spend={spend}
               income={kept}
               inflation={inflation}
-              currency={saved.currency}
+              currency={c}
             />
             {minimalInSpendCurrency !== undefined && (
               <>
@@ -514,9 +521,9 @@ export function Runway({
                   spend={minimalInSpendCurrency}
                   income={kept}
                   inflation={inflation}
-                  currency={saved.currency}
+                  currency={c}
                 />
-                {minimalInSpendCurrency >= saved.monthlySpend && (
+                {minimalInSpendCurrency >= spend && (
                   <p className="text-sm text-amber-700 dark:text-amber-400">
                     Essential spending is not below your usual spending.
                   </p>
@@ -528,19 +535,19 @@ export function Runway({
                 months={saved.targetMonths}
                 total={available}
                 kept={kept}
-                spend={saved.monthlySpend}
+                spend={spend}
                 minimal={minimalInSpendCurrency}
-                currency={saved.currency}
+                currency={c}
               />
             )}
             {incomeInSpendCurrency !== undefined && (
               <Estimate
                 label="With income"
                 total={available}
-                spend={saved.monthlySpend}
+                spend={spend}
                 income={incomeInSpendCurrency}
                 inflation={inflation}
-                currency={saved.currency}
+                currency={c}
               />
             )}
           </>

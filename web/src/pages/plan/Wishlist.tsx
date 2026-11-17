@@ -6,7 +6,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
-import { format } from '../../lib/format'
+import { format, withConverted } from '../../lib/format'
 import { cumulativeTargets, delayMonths } from '../../lib/goals'
 import { card, muted } from '../../lib/styles'
 import type { Convert, Currency, Goal } from '../../lib/types'
@@ -17,11 +17,13 @@ type WishlistProps = {
   convert: Convert
   // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
+  // the currency the plan is shown in; prices keep their own, with this beside them
+  currency: Currency
 }
 
 // Purchases you want but have not committed to: they get no savings, and each shows what buying it today would
 // delay, so the cost is weighed in goal time rather than money
-export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
+export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps) {
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   const goals = all.filter((g) => !g.wish)
@@ -72,7 +74,13 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
     // goals pushed back by the same amount share one phrase: "Car and House by 5.4 months"
     const groups = new Map<string, string[]>()
     for (const { goal, further, net } of hit) {
-      const by = net !== undefined && net > 0 ? `${(further / net).toFixed(1)} months` : format(further, goal.currency)
+      const shown = convert(further, goal.currency, currency)
+      const by =
+        net !== undefined && net > 0
+          ? `${(further / net).toFixed(1)} months`
+          : shown === undefined
+            ? format(further, goal.currency)
+            : format(shown, currency)
       groups.set(by, [...(groups.get(by) ?? []), goal.name])
     }
     const every = groups.size === 1 && hit.length === goals.length && goals.length > 1
@@ -131,7 +139,9 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
                   <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{w.name}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className={`tabular-nums ${muted}`}>{format(w.target, w.currency)}</span>
+                  <span className={`tabular-nums ${muted}`}>
+                    {withConverted(w.target, w.currency, currency, convert)}
+                  </span>
                   <button
                     type="button"
                     onClick={() => commit(w)}

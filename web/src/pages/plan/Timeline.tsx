@@ -20,6 +20,8 @@ type TimelineProps = {
   // the cushion's line shows how its amount is made up from them
   usualSpend: number | undefined
   keptIncome: number
+  // the currency amounts are shown in; a goal's own amounts are converted to it
+  currency: Currency
 }
 
 // amount: what it takes in all; left: what is still missing for it alone, undefined while loading;
@@ -46,8 +48,13 @@ function cushionDetail({ months, amount, currency }: Cushion, usual: number | un
 
 // The plan in one list: the cushion, then each goal in the order savings fill them, with the date each is reached
 // at today's spending. Inflation-adjusted dates stay with each goal below.
-export function Timeline({ forGoalsIn, convert, netIn, cushion, usualSpend, keptIncome }: TimelineProps) {
+export function Timeline({ forGoalsIn, convert, netIn, cushion, usualSpend, keptIncome, currency }: TimelineProps) {
   const [now] = useState(Date.now)
+  // in the shown currency; as it is while rates load
+  const money = (amount: number, from: Currency) => {
+    const converted = convert(amount, from, currency)
+    return converted === undefined ? wholeMoney(amount, from) : wholeMoney(converted, currency)
+  }
   const goals = (useApi<Goal[]>('/goals').data ?? []).filter((g) => !g.wish)
   const progress = goalProgress(goals, convert, forGoalsIn)
 
@@ -136,8 +143,8 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion, usualSpend, kept
                 <span className={`block tabular-nums ${muted}`}>
                   {/* progress only for one under way: done needs nothing more, and one not started needs all of it */}
                   {m.left !== undefined && m.left > 0 && m.left < m.amount
-                    ? `${wholeMoney(m.amount - m.left, m.currency)} of ${wholeMoney(m.amount, m.currency)} saved · ${wholeMoney(m.left, m.currency)} to go`
-                    : wholeMoney(m.amount, m.currency)}
+                    ? `${money(m.amount - m.left, m.currency)} of ${money(m.amount, m.currency)} saved · ${money(m.left, m.currency)} to go`
+                    : money(m.amount, m.currency)}
                 </span>
                 {m.detail && (
                   <span className="block text-xs text-zinc-500 tabular-nums dark:text-zinc-400">{m.detail}</span>

@@ -7,7 +7,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { Calendar, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, setCached, useApi } from '../../lib/api'
-import { format } from '../../lib/format'
+import { format, withConverted } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
 import { goalProgress } from '../../lib/goals'
 import { monthsToSave } from '../../lib/inflation'
@@ -26,9 +26,11 @@ type GoalsProps = {
   spendIn: (c: Currency) => number | undefined
   // yearly inflation, e.g. 0.11; undefined while unknown
   inflation: number | undefined
+  // the currency the plan is shown in; targets keep their own, with this beside them
+  currency: Currency
 }
 
-export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation }: GoalsProps) {
+export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation, currency }: GoalsProps) {
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   // wishes share the list and the order, but get no savings; the wishlist shows them
@@ -76,13 +78,15 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           Reached{cushion && ` · buying it keeps your ${cushion.months}-month emergency fund`}
         </span>
       )
+    const needIn = convert(need, goal.currency, currency)
+    if (needIn === undefined) return <Skeleton />
     return (
       <ReachDate
-        need={need}
-        net={netIn(goal.currency)}
-        spend={spendIn(goal.currency)}
+        need={needIn}
+        net={netIn(currency)}
+        spend={spendIn(currency)}
         inflation={inflation}
-        currency={goal.currency}
+        currency={currency}
         hideUnreachable
       />
     )
@@ -194,7 +198,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
                     {waitingFor === undefined && `${format(have, g.currency)} / `}
-                    {format(g.target, g.currency)}
+                    {withConverted(g.target, g.currency, currency, convert)}
                   </span>
                   <button
                     type="button"
