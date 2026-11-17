@@ -9,6 +9,7 @@ export const cumulativeTargets = (goals: Goal[], convert: Convert) =>
   }, 0))
 
 // Months a goal's reach date moves back if `price` leaves savings today, saving `net` per month.
-// All amounts are in the goal's currency; `cumulative` is from cumulativeTargets.
+// All amounts are in the goal's currency; `cumulative` is from cumulativeTargets, and `saved` is negative while
+// the cushion is not covered.
 export const delayMonths = (cumulative: number, saved: number, price: number, net: number) =>
   (Math.max(0, cumulative - saved + price) - Math.max(0, cumulative - saved)) / net

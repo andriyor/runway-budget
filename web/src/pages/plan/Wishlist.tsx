@@ -55,7 +55,7 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
       const forGoals = forGoalsIn(g.currency)
       if (price === undefined || forGoals === undefined || cumulative[i] === undefined) return undefined
       // how much further from reached the goal ends up, in its currency
-      const further = delayMonths(cumulative[i]!, Math.max(0, forGoals), price, 1)
+      const further = delayMonths(cumulative[i]!, forGoals, price, 1)
       return { goal: g, further, net: netIn(g.currency) }
     })
     if (rows.some((r) => r === undefined)) return undefined

@@ -92,7 +92,8 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           // the targets of the goals above, which savings fill first; undefined while rates load
           const ahead = cumulative[i] === undefined ? undefined : cumulative[i]! - g.target
           const forGoals = ahead === undefined ? undefined : forGoalsIn(g.currency)
-          const saved = Math.max(0, forGoals ?? 0)
+          // negative while the cushion is not covered: the shortfall is saved first, before any goal
+          const saved = forGoals ?? 0
           const have = Math.min(g.target, Math.max(0, saved - (ahead ?? 0)))
           const progress = have / g.target
           if (editing === g.id) {
