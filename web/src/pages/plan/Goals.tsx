@@ -110,6 +110,10 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           const p = progressOf[i]
           const have = p?.have ?? 0
           const progress = have / g.target
+          // nothing saved for it yet because savings go to the goal above, or the cushion: said instead of an empty bar
+          const waitingFor = p?.have === 0
+            ? (goals[i - 1]?.name ?? (cushion && forGoalsIn(g.currency)! < 0 ? `the ${cushion.months}-month cushion` : undefined))
+            : undefined
           if (editing === g.id) {
             return (
               <li key={g.id}>
@@ -134,7 +138,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
-                    {format(have, g.currency)} / {format(g.target, g.currency)}
+                    {waitingFor === undefined && `${format(have, g.currency)} / `}{format(g.target, g.currency)}
                   </span>
                   <button
                     type="button"
@@ -154,19 +158,23 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                   </button>
                 </div>
               </div>
-              <div
-                role="progressbar"
-                aria-label={`${g.name} progress`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(progress * 100)}
-                className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-              >
+              {waitingFor !== undefined
+                ? <p className={`mt-1 ${muted}`}>Starts after {waitingFor}</p>
+                : (
                 <div
-                  className={`h-full rounded-full transition-[width] ${progress >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
+                  role="progressbar"
+                  aria-label={`${g.name} progress`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(progress * 100)}
+                  className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+                >
+                  <div
+                    className={`h-full rounded-full transition-[width] ${progress >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                  )}
               <p className="mt-1.5 text-sm">{p === undefined ? <Skeleton /> : status(g, p.have, p.need)}</p>
             </li>
           )
