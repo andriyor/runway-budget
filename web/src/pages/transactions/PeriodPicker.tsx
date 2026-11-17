@@ -32,7 +32,9 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
   const kind = kindOf(period)
   // a picked day steps and lists like its week
   const listKind = kind === 'd:' ? 'w:' : kind
-  const options = [...periods].filter(([key]) => key.startsWith(listKind) && listKind !== '').sort(([a], [b]) => b.localeCompare(a))
+  const options = [...periods]
+    .filter(([key]) => key.startsWith(listKind) && listKind !== '')
+    .sort(([a], [b]) => b.localeCompare(a))
   const index = options.findIndex(([key]) => key === period)
   // options are newest first, so "previous" is one further down the list
   const older = index >= 0 ? options[index + 1]?.[0] : undefined
@@ -41,10 +43,18 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
   function pickKind(prefix: string) {
     if (prefix === '') return onChange('')
     const own = reference && periodsOf(reference).find(([key]) => key.startsWith(prefix))?.[0]
-    onChange(own ?? [...periods.keys()].filter((key) => key.startsWith(prefix)).sort().at(-1) ?? '')
+    onChange(
+      own ??
+        [...periods.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .sort()
+          .at(-1) ??
+        '',
+    )
   }
 
-  const step = 'grid size-9 shrink-0 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+  const step =
+    'grid size-9 shrink-0 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -68,20 +78,30 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
       {/* min-w-56 wraps the stepper under the kinds on a phone instead of squeezing the select to nothing */}
       {listKind !== '' && (
         <div className="flex min-w-56 flex-1 items-center gap-1">
-          <button type="button" className={step} disabled={!older} onClick={() => older && onChange(older)} aria-label="Previous period">
+          <button
+            type="button"
+            className={step}
+            disabled={!older}
+            onClick={() => older && onChange(older)}
+            aria-label="Previous period"
+          >
             <ChevronLeft strokeWidth={2} />
           </button>
           <Select.Root
             value={period}
             onValueChange={(value) => value && onChange(value)}
-            items={[...options, ...(kind === 'd:' ? [[period, periods.get(period)] as const] : [])].map(([value, label]) => ({ value, label }))}
+            items={[...options, ...(kind === 'd:' ? [[period, periods.get(period)] as const] : [])].map(
+              ([value, label]) => ({ value, label }),
+            )}
           >
             <Select.Trigger
               aria-label="Period"
               className={`flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-900 outline-none sm:w-64 sm:flex-none dark:text-zinc-100 ${inputBox}`}
             >
               <Select.Value className="truncate" />
-              <Select.Icon className="shrink-0 text-zinc-400"><ChevronDown strokeWidth={2} /></Select.Icon>
+              <Select.Icon className="shrink-0 text-zinc-400">
+                <ChevronDown strokeWidth={2} />
+              </Select.Icon>
             </Select.Trigger>
             <Select.Portal>
               <Select.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-40 outline-none">
@@ -102,7 +122,13 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
               </Select.Positioner>
             </Select.Portal>
           </Select.Root>
-          <button type="button" className={step} disabled={!newer} onClick={() => newer && onChange(newer)} aria-label="Next period">
+          <button
+            type="button"
+            className={step}
+            disabled={!newer}
+            onClick={() => newer && onChange(newer)}
+            aria-label="Next period"
+          >
             <ChevronRight strokeWidth={2} />
           </button>
         </div>

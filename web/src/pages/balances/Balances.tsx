@@ -12,7 +12,18 @@ import { card, muted, inputBox, button } from '../../lib/styles'
 import { currencies, type Currency, type AccountKind, type Account } from '../../lib/types'
 
 export function Balances() {
-  const { accounts, setAccounts, rates, transactions, error, setError, currency: chartCurrency, convert, convertOn, totalIn } = useFinance({ withTransactions: true })
+  const {
+    accounts,
+    setAccounts,
+    rates,
+    transactions,
+    error,
+    setError,
+    currency: chartCurrency,
+    convert,
+    convertOn,
+    totalIn,
+  } = useFinance({ withTransactions: true })
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const [currency, setCurrency] = useState<Currency>('UAH')
@@ -48,14 +59,15 @@ export function Balances() {
   }
 
   const removeAccount = (id: number) => setAccounts((list) => list.filter((a) => a.id !== id))
-  const replace = (updated: Account) =>
-    setAccounts((list) => list.map((a) => (a.id === updated.id ? updated : a)))
+  const replace = (updated: Account) => setAccounts((list) => list.map((a) => (a.id === updated.id ? updated : a)))
 
   return (
     <>
       <header className="flex items-center gap-2">
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
-        <InfoTip label="About balances">USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.</InfoTip>
+        <InfoTip label="About balances">
+          USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.
+        </InfoTip>
       </header>
 
       <ErrorBanner>{error}</ErrorBanner>
@@ -64,9 +76,14 @@ export function Balances() {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:gap-4">
           {/* one card: phones a line per currency, from sm up three columns; the rate only shows from sm up */}
-          <section className={`${card} grid divide-y divide-zinc-200 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-4 dark:divide-zinc-800`}>
+          <section
+            className={`${card} grid divide-y divide-zinc-200 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-4 dark:divide-zinc-800`}
+          >
             {currencies.map((c) => (
-              <div key={c} className="flex min-w-0 items-center justify-between gap-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:px-4 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+              <div
+                key={c}
+                className="flex min-w-0 items-center justify-between gap-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:px-4 sm:py-0 sm:first:pl-0 sm:last:pr-0"
+              >
                 <p className={`flex shrink-0 items-center gap-2 ${muted}`}>
                   <CurrencyIcon currency={c} /> Total in {c}
                 </p>
@@ -75,16 +92,27 @@ export function Balances() {
                 </p>
                 {rates && (
                   <p className="mt-0.5 hidden items-center gap-1.5 text-xs text-zinc-500 tabular-nums sm:flex dark:text-zinc-400">
-                    {c === 'UAH'
-                      ? <><Landmark /> NBU rate · {rates.date}</>
-                      : <>1 {symbols[c]} = {formatRate(rates.rates[c])} ₴</>}
+                    {c === 'UAH' ? (
+                      <>
+                        <Landmark /> NBU rate · {rates.date}
+                      </>
+                    ) : (
+                      <>
+                        1 {symbols[c]} = {formatRate(rates.rates[c])} ₴
+                      </>
+                    )}
                   </p>
                 )}
               </div>
             ))}
           </section>
 
-          <BalanceHistory accounts={accounts} transactions={transactions} convertOn={convertOn} currency={chartCurrency} />
+          <BalanceHistory
+            accounts={accounts}
+            transactions={transactions}
+            convertOn={convertOn}
+            currency={chartCurrency}
+          />
 
           <Allocation accounts={accounts} convert={convert} />
         </div>
@@ -107,9 +135,14 @@ export function Balances() {
               />
             ))}
           </ul>
-          {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>}
+          {accounts.length === 0 && (
+            <p className={`py-6 text-center ${muted}`}>No accounts yet. Add your first one below.</p>
+          )}
 
-          <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={add}>
+          <form
+            className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50"
+            onSubmit={add}
+          >
             <input
               placeholder="Account name"
               required
@@ -121,7 +154,15 @@ export function Balances() {
             />
             <KindToggle value={kind} onChange={setKind} />
             <div className="w-56">
-              <MoneyInput label="Balance" required placeholder="Balance" value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+              <MoneyInput
+                label="Balance"
+                required
+                placeholder="Balance"
+                value={balance}
+                onChange={setBalance}
+                currency={currency}
+                onCurrency={setCurrency}
+              />
             </div>
             <button className={button}>Add account</button>
           </form>

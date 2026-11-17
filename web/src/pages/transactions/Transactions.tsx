@@ -22,11 +22,16 @@ const openPicker = (el: HTMLSelectElement | null) => {
   if (!el || el.dataset.opened) return
   el.dataset.opened = '1'
   el.focus()
-  try { el.showPicker() } catch { /* unsupported: focused, opens on the next click or key */ }
+  try {
+    el.showPicker()
+  } catch {
+    /* unsupported: focused, opens on the next click or key */
+  }
 }
 
 // the account picker leaves out accounts without transactions, unless none has any, so the page still shows one
-const withTransactions = (list: Account[]) => (list.some((a) => a.transactionCount > 0) ? list.filter((a) => a.transactionCount > 0) : list)
+const withTransactions = (list: Account[]) =>
+  list.some((a) => a.transactionCount > 0) ? list.filter((a) => a.transactionCount > 0) : list
 
 const linkParams = () => new URLSearchParams(location.hash.split('?')[1])
 
@@ -40,8 +45,11 @@ function openingAccount(all: Account[], linked: URLSearchParams) {
 // the period to open: a linked one (all time when the link names only a category), else the latest month
 // with data; the chart around it still shows its year (half a year on phones)
 const openingPeriod = (list: Transaction[], linked: URLSearchParams) =>
-  linked.has('period') || linked.has('category') ? linked.get('period') ?? ''
-    : list.length ? `m:${monthKey(list[0].time)}` : ''
+  linked.has('period') || linked.has('category')
+    ? (linked.get('period') ?? '')
+    : list.length
+      ? `m:${monthKey(list[0].time)}`
+      : ''
 
 export function TransactionsPage() {
   // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; dropped on picking another account
@@ -62,13 +70,16 @@ export function TransactionsPage() {
   const [category, setCategory] = useState(() => link.get('category') ?? undefined)
   // merchant key from the API; cleared whenever the category, period or account changes
   const [merchant, setMerchant] = useState<string>()
-  const pickCategory = (c?: string) => { setCategory(c); setMerchant(undefined) }
+  const pickCategory = (c?: string) => {
+    setCategory(c)
+    setMerchant(undefined)
+  }
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
   // the transaction just recategorized stays in the filtered view it was changed in,
   // so its "усім від продавця" link is still reachable; another filter drops it
-  const [kept, setKept] = useState<{ id: number, view: string }>()
+  const [kept, setKept] = useState<{ id: number; view: string }>()
   // the note being edited; Enter or leaving the field saves, Escape cancels
-  const [editing, setEditing] = useState<{ id: number, draft: string }>()
+  const [editing, setEditing] = useState<{ id: number; draft: string }>()
   const cancelled = useRef(false)
   // the one row whose essential dropdown is open; other rows show a plain button,
   // since a dropdown per row meant ~100k <option>s for a year of transactions
@@ -83,8 +94,13 @@ export function TransactionsPage() {
   const [notice, setNotice] = useState('')
   const account = accounts.find((a) => a.id === accountId)
   const offered = withTransactions(accounts)
-  const leafById = new Map<string, Leaf>(categories.flatMap((c) =>
-    c.subcategories.length ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const) : [[c.id, { id: c.id, label: c.label, parent: c }] as const]))
+  const leafById = new Map<string, Leaf>(
+    categories.flatMap((c) =>
+      c.subcategories.length
+        ? c.subcategories.map((sc) => [sc.id, { ...sc, parent: c }] as const)
+        : [[c.id, { id: c.id, label: c.label, parent: c }] as const],
+    ),
+  )
   // a selection is a category (matches all its subcategories) or a single subcategory
   const view = `${accountId}|${period}|${category}|${essentialOnly}`
   const isKept = (t: Transaction) => kept?.id === t.id && kept.view === view
@@ -111,15 +127,21 @@ export function TransactionsPage() {
   }
 
   // a merchant change touches other rows; each write refetches the list (see api)
-  async function changeCategory(steps: Array<{ path: string, body: object }>) {
+  async function changeCategory(steps: Array<{ path: string; body: object }>) {
     try {
       for (const { path, body } of steps) await api(path, { method: 'PUT', body: JSON.stringify(body) })
     } catch (err) {
       setError(`Category: ${(err as Error).message}`)
     }
   }
-  const setOwn = (t: Transaction, category: string | null) => ({ path: `/categories/transactions/${t.id}`, body: { category } })
-  const setMerchantCategory = (t: Transaction, category: string | null) => ({ path: '/categories/merchants', body: { description: t.description, category } })
+  const setOwn = (t: Transaction, category: string | null) => ({
+    path: `/categories/transactions/${t.id}`,
+    body: { category },
+  })
+  const setMerchantCategory = (t: Transaction, category: string | null) => ({
+    path: '/categories/merchants',
+    body: { description: t.description, category },
+  })
 
   // choice is "t:true", "t:false" or "t:" (reset) for this transaction, "m:…" for its merchant
   async function changeEssential(t: Transaction, choice: string) {
@@ -129,7 +151,10 @@ export function TransactionsPage() {
     try {
       await (scope === 't'
         ? api(`/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify({ essential }) })
-        : api('/categories/merchants/essential', { method: 'PUT', body: JSON.stringify({ description: t.description, essential }) }))
+        : api('/categories/merchants/essential', {
+            method: 'PUT',
+            body: JSON.stringify({ description: t.description, essential }),
+          }))
     } catch (err) {
       setError(`Essential: ${(err as Error).message}`)
     }
@@ -140,10 +165,17 @@ export function TransactionsPage() {
     const amount = Math.round(value)
     const currency = account!.currency
     try {
-      const body = budgetWith(await api<Budget | null>('/budget'), essentialOnly ? 'minimalSpend' : 'monthlySpend', amount, currency)
+      const body = budgetWith(
+        await api<Budget | null>('/budget'),
+        essentialOnly ? 'minimalSpend' : 'monthlySpend',
+        amount,
+        currency,
+      )
       if (!body) return setError('Set "I spend per month" in Runway first')
       await api('/budget', { method: 'PUT', body: JSON.stringify(body) })
-      setNotice(`Runway: ${essentialOnly ? 'essential spending' : 'monthly spending'} set to ${format(amount, currency)} per month`)
+      setNotice(
+        `Runway: ${essentialOnly ? 'essential spending' : 'monthly spending'} set to ${format(amount, currency)} per month`,
+      )
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
     }
@@ -159,8 +191,10 @@ export function TransactionsPage() {
     }
   }
 
-  const rowPicker = 'shrink-0 cursor-pointer truncate rounded hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100'
-  const essentialLabel = (t: Transaction) => `${t.essential ? '● необхідне' : '○ необов’язкове'}${t.essentialSource !== 'auto' ? ' *' : ''}`
+  const rowPicker =
+    'shrink-0 cursor-pointer truncate rounded hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:hover:text-zinc-100'
+  const essentialLabel = (t: Transaction) =>
+    `${t.essential ? '● необхідне' : '○ необов’язкове'}${t.essentialSource !== 'auto' ? ' *' : ''}`
   const essentialOptions = (
     <>
       <optgroup label="Лише ця транзакція">
@@ -183,7 +217,8 @@ export function TransactionsPage() {
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
-  const chip = 'inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900 dark:hover:bg-indigo-950'
+  const chip =
+    'inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900 dark:hover:bg-indigo-950'
   // the charts and summaries skip cancelled purchases and their cancellations; the list still shows them
   const counted = (l: Transaction[]) => l.filter((t) => !t.cancelled)
   const sorted = (listed ?? []).toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
@@ -191,9 +226,14 @@ export function TransactionsPage() {
   return (
     <>
       {notice && (
-        <p role="status" className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900">
+        <p
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900"
+        >
           {notice}
-          <button type="button" onClick={() => setNotice('')} className="shrink-0 font-medium hover:underline">OK</button>
+          <button type="button" onClick={() => setNotice('')} className="shrink-0 font-medium hover:underline">
+            OK
+          </button>
         </p>
       )}
       <ErrorBanner>{error}</ErrorBanner>
@@ -205,23 +245,37 @@ export function TransactionsPage() {
             aria-label="Account"
             value={accountId ?? ''}
             onChange={(e) => {
-              pickCategory(undefined); setPeriod(undefined); setLink(new URLSearchParams()); setAccountId(Number(e.target.value))
+              pickCategory(undefined)
+              setPeriod(undefined)
+              setLink(new URLSearchParams())
+              setAccountId(Number(e.target.value))
               // keep the link in step so a reload stays on this account; replaceState fires no hashchange
               history.replaceState(null, '', `#/transactions?account=${e.target.value}`)
             }}
             className={`min-w-40 flex-1 px-3 py-2 text-sm font-medium text-zinc-900 outline-none sm:max-w-xs dark:text-zinc-100 ${inputBox}`}
           >
-            {offered.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+            {offered.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} · {a.currency}
+              </option>
+            ))}
           </select>
           <div className="ml-auto flex items-center gap-3">
             {account && (
               <p className="flex flex-col text-right leading-tight">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">Balance</span>
-                <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+                <span className="text-lg font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+                  {format(account.balance, account.currency)}
+                </span>
               </p>
             )}
             {/* icon only on phones, the name stays for screen readers and as a tooltip */}
-            <button className={`${button} flex items-center gap-2 max-sm:px-3`} onClick={sync} disabled={syncing} title="Sync Monobank">
+            <button
+              className={`${button} flex items-center gap-2 max-sm:px-3`}
+              onClick={sync}
+              disabled={syncing}
+              title="Sync Monobank"
+            >
               <RefreshCw strokeWidth={2} className={syncing ? 'motion-safe:animate-spin' : undefined} />
               <span className="max-sm:sr-only">{syncing ? 'Syncing…' : 'Sync Monobank'}</span>
             </button>
@@ -231,8 +285,20 @@ export function TransactionsPage() {
         {/* what is shown: the period and which spending */}
         {account && list && list.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <PeriodPicker period={period} periods={periods} reference={shown?.[0]} onChange={(p) => { pickCategory(undefined); setPeriod(p) }} />
-            <div role="group" aria-label="Spending shown" className="inline-flex shrink-0 rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-800">
+            <PeriodPicker
+              period={period}
+              periods={periods}
+              reference={shown?.[0]}
+              onChange={(p) => {
+                pickCategory(undefined)
+                setPeriod(p)
+              }}
+            />
+            <div
+              role="group"
+              aria-label="Spending shown"
+              className="inline-flex shrink-0 rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-800"
+            >
               {([false, true] as const).map((only) => (
                 <button
                   key={String(only)}
@@ -245,7 +311,13 @@ export function TransactionsPage() {
                       : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                   }`}
                 >
-                  {only ? 'Необхідні' : <>Усі<span className="max-sm:sr-only"> витрати</span></>}
+                  {only ? (
+                    'Необхідні'
+                  ) : (
+                    <>
+                      Усі<span className="max-sm:sr-only"> витрати</span>
+                    </>
+                  )}
                 </button>
               ))}
             </div>
@@ -257,23 +329,44 @@ export function TransactionsPage() {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className={muted}>Filtered by</span>
             {category && (
-              <button type="button" onClick={() => setCategory(undefined)} aria-label={`Remove filter ${selectionLabel(category)}`} className={chip}>
-                {leafById.get(category)?.parent.emoji ?? categories.find((c) => c.id === category)?.emoji} {selectionLabel(category)} <span aria-hidden>×</span>
+              <button
+                type="button"
+                onClick={() => setCategory(undefined)}
+                aria-label={`Remove filter ${selectionLabel(category)}`}
+                className={chip}
+              >
+                {leafById.get(category)?.parent.emoji ?? categories.find((c) => c.id === category)?.emoji}{' '}
+                {selectionLabel(category)} <span aria-hidden>×</span>
               </button>
             )}
             {merchant && (
-              <button type="button" onClick={() => setMerchant(undefined)} aria-label={`Remove filter ${merchantName || merchant}`} className={chip}>
+              <button
+                type="button"
+                onClick={() => setMerchant(undefined)}
+                aria-label={`Remove filter ${merchantName || merchant}`}
+                className={chip}
+              >
                 {merchantName || merchant} <span aria-hidden>×</span>
               </button>
             )}
             {/* clears the merchant too */}
-            <button type="button" onClick={() => pickCategory(undefined)} className={`${linkButton} text-sm`}>Clear all</button>
+            <button type="button" onClick={() => pickCategory(undefined)} className={`${linkButton} text-sm`}>
+              Clear all
+            </button>
           </div>
         )}
 
-        {accounts.length === 0 && <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>}
-        {account && !list && <div className="mt-4"><Skeleton /></div>}
-        {account && list?.length === 0 && <p className={`py-6 text-center ${muted}`}>No transactions for this account.</p>}
+        {accounts.length === 0 && (
+          <p className={`py-6 text-center ${muted}`}>No accounts yet. Sync Monobank to create one.</p>
+        )}
+        {account && !list && (
+          <div className="mt-4">
+            <Skeleton />
+          </div>
+        )}
+        {account && list?.length === 0 && (
+          <p className={`py-6 text-center ${muted}`}>No transactions for this account.</p>
+        )}
       </section>
       {account && shown && list!.length > 0 && (
         <>
@@ -290,21 +383,42 @@ export function TransactionsPage() {
             merchant={merchant ? { key: merchant, name: merchantName || merchant } : undefined}
             onClearMerchant={() => setMerchant(undefined)}
           />
-          <CategorySpending list={counted(shown)} currency={account.currency} leafById={leafById} selected={category} onSelect={pickCategory} />
-          <MerchantSpending list={counted(inCategory!)} currency={account.currency} leafById={leafById} selected={merchant} onSelect={setMerchant} />
+          <CategorySpending
+            list={counted(shown)}
+            currency={account.currency}
+            leafById={leafById}
+            selected={category}
+            onSelect={pickCategory}
+          />
+          <MerchantSpending
+            list={counted(inCategory!)}
+            currency={account.currency}
+            leafById={leafById}
+            selected={merchant}
+            onSelect={setMerchant}
+          />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-3">
                 <span className="truncate text-zinc-700 dark:text-zinc-300">
-                  {[category && selectionLabel(category), merchant && merchantName].filter(Boolean).join(' · ') || 'All transactions'}
+                  {[category && selectionLabel(category), merchant && merchantName].filter(Boolean).join(' · ') ||
+                    'All transactions'}
                 </span>
                 {(category || merchant) && (
-                  <button type="button" onClick={() => pickCategory(undefined)} className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                  <button
+                    type="button"
+                    onClick={() => pickCategory(undefined)}
+                    className="shrink-0 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                  >
                     Show all
                   </button>
                 )}
               </span>
-              <div role="group" aria-label="Sort by" className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+              <div
+                role="group"
+                aria-label="Sort by"
+                className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+              >
                 {(['date', 'amount'] as const).map((key) => (
                   <button
                     key={key}
@@ -338,22 +452,26 @@ export function TransactionsPage() {
                         value={editing.draft}
                         onChange={(e) => setEditing({ id: t.id, draft: e.target.value })}
                         onBlur={() => (cancelled.current ? setEditing(undefined) : saveNote(t, editing.draft))}
-                        onFocus={() => { cancelled.current = false }}
+                        onFocus={() => {
+                          cancelled.current = false
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Escape') cancelled.current = true
                           if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
                         }}
                         className={`my-0.5 w-full px-2 py-1 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
                       />
-                    ) : t.note && (
-                      <button
-                        type="button"
-                        onClick={() => setEditing({ id: t.id, draft: t.note ?? '' })}
-                        title="Змінити нотатку"
-                        className="block max-w-full truncate text-left text-sm text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                      >
-                        {t.note}
-                      </button>
+                    ) : (
+                      t.note && (
+                        <button
+                          type="button"
+                          onClick={() => setEditing({ id: t.id, draft: t.note ?? '' })}
+                          title="Змінити нотатку"
+                          className="block max-w-full truncate text-left text-sm text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                        >
+                          {t.note}
+                        </button>
+                      )
                     )}
                     <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
                       {/* one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it */}
@@ -361,7 +479,10 @@ export function TransactionsPage() {
                         <button
                           type="button"
                           title={`Статистика: ${selectionLabel(t.category)}`}
-                          onClick={() => { pickCategory(t.category); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                          onClick={() => {
+                            pickCategory(t.category)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
                           className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
                         >
                           {leafById.get(t.category)?.label ?? t.category}
@@ -372,7 +493,9 @@ export function TransactionsPage() {
                           categories={categories}
                           onPick={(category, forMerchant) => {
                             setKept({ id: t.id, view })
-                            changeCategory(forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)])
+                            changeCategory(
+                              forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)],
+                            )
                           }}
                         />
                       </span>
@@ -382,10 +505,15 @@ export function TransactionsPage() {
                           aria-label={`Essential: ${t.description}`}
                           value=""
                           onBlur={() => setPicking(undefined)}
-                          onChange={(e) => { setPicking(undefined); changeEssential(t, e.target.value) }}
+                          onChange={(e) => {
+                            setPicking(undefined)
+                            changeEssential(t, e.target.value)
+                          }}
                           className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
                         >
-                          <option value="" disabled hidden>{essentialLabel(t)}</option>
+                          <option value="" disabled hidden>
+                            {essentialLabel(t)}
+                          </option>
                           {essentialOptions}
                         </select>
                       ) : (
@@ -399,25 +527,41 @@ export function TransactionsPage() {
                         </button>
                       )}
                       {t.categorySource === 'transaction' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory([setMerchantCategory(t, t.category), setOwn(t, null)])}>
+                        <button
+                          type="button"
+                          className={linkButton}
+                          onClick={() => changeCategory([setMerchantCategory(t, t.category), setOwn(t, null)])}
+                        >
                           усім від продавця
                         </button>
                       )}
                       {t.categorySource === 'merchant' && (
-                        <button type="button" className={linkButton} onClick={() => changeCategory([setMerchantCategory(t, null)])}>
+                        <button
+                          type="button"
+                          className={linkButton}
+                          onClick={() => changeCategory([setMerchantCategory(t, null)])}
+                        >
                           скинути для продавця
                         </button>
                       )}
                       {!t.note && editing?.id !== t.id && (
-                        <button type="button" className={linkButton} onClick={() => setEditing({ id: t.id, draft: '' })}>
+                        <button
+                          type="button"
+                          className={linkButton}
+                          onClick={() => setEditing({ id: t.id, draft: '' })}
+                        >
                           + нотатка
                         </button>
                       )}
                       {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
-                      <span className="truncate" title={t.mccDescription ?? undefined}>· {dateTime.format(new Date(t.time))} · MCC {t.mcc}</span>
+                      <span className="truncate" title={t.mccDescription ?? undefined}>
+                        · {dateTime.format(new Date(t.time))} · MCC {t.mcc}
+                      </span>
                     </p>
                   </div>
-                  <span className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                  <span
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}
+                  >
                     {format(t.amount, account.currency)}
                   </span>
                 </li>

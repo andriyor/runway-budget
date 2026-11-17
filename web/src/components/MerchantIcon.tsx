@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 // ponytail: favicons via Google's public service, so it sees which merchant domains are shown; proxy through the API if that matters
-export function MerchantIcon({ domain, emoji }: { domain: string | null, emoji: string }) {
+export function MerchantIcon({ domain, emoji }: { domain: string | null; emoji: string }) {
   const [failed, setFailed] = useState(false)
   if (domain && !failed) {
     return (
@@ -14,7 +14,10 @@ export function MerchantIcon({ domain, emoji }: { domain: string | null, emoji: 
     )
   }
   return (
-    <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-lg dark:bg-zinc-800">
+    <span
+      aria-hidden
+      className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-100 text-lg dark:bg-zinc-800"
+    >
       {emoji}
     </span>
   )

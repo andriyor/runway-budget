@@ -12,19 +12,28 @@ import { parentsById } from '../../lib/categories'
 const MONTHS = 12
 const monthLabel = new Intl.DateTimeFormat('uk-UA', { month: 'short', year: 'numeric' })
 
-const SPENDING_NOTE = 'Net of refunds: a refund lowers spending in the month it arrives (which can go below zero) and never counts as income. '
-  + 'Cancelled purchases count as nothing. Own-account moves and investments are left out.'
-const RATES_NOTE = 'What exchange rate moves added to or took from your USD and EUR balances that month: not income or spending, '
-  + 'but it changes what your savings are worth in this currency.'
+const SPENDING_NOTE =
+  'Net of refunds: a refund lowers spending in the month it arrives (which can go below zero) and never counts as income. ' +
+  'Cancelled purchases count as nothing. Own-account moves and investments are left out.'
+const RATES_NOTE =
+  'What exchange rate moves added to or took from your USD and EUR balances that month: not income or spending, ' +
+  'but it changes what your savings are worth in this currency.'
 
 // fromRates: what rate moves added to the foreign-currency balances that month
-type Month = { month: string, income: number, spent: number, fromRates: number }
+type Month = { month: string; income: number; spent: number; fromRates: number }
 
 // Income and net spending per complete month, oldest first: up to MONTHS months before the running
 // one, starting at the first month with a transaction. Income is the «Надходження» category; spending
 // is every spending category, net of refunds. Own-account moves, investments and cancelled pairs are neither.
 // Each transaction is converted at the NBU rate of its day.
-function cashFlow(transactions: Transaction[], accounts: Account[], categories: Category[], convertOn: ConvertOn, currency: Currency, now: Date) {
+function cashFlow(
+  transactions: Transaction[],
+  accounts: Account[],
+  categories: Category[],
+  convertOn: ConvertOn,
+  currency: Currency,
+  now: Date,
+) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const parentOf = parentsById(categories)
   const months = new Map<string, Month>()
@@ -66,7 +75,15 @@ type CashFlowProps = {
   inflation: Inflation | undefined
 }
 
-export function CashFlow({ transactions, accounts, categories, convertOn, currency, onUseIncome, inflation }: CashFlowProps) {
+export function CashFlow({
+  transactions,
+  accounts,
+  categories,
+  convertOn,
+  currency,
+  onUseIncome,
+  inflation,
+}: CashFlowProps) {
   const [now] = useState(() => new Date())
   // each month's amounts scaled by inflation since, so months compare in today's prices
   const [real, setReal] = useState(false)
@@ -74,12 +91,13 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
   const nominal = cashFlow(transactions, accounts, categories, convertOn, currency, now)
   if (!nominal?.length) return null
   const prices = inflation && inLatestPrices(inflation)
-  const months = real && prices
-    ? nominal.map((m) => {
-        const f = prices.factor(m.month)
-        return { ...m, income: m.income * f, spent: m.spent * f, fromRates: m.fromRates * f }
-      })
-    : nominal
+  const months =
+    real && prices
+      ? nominal.map((m) => {
+          const f = prices.factor(m.month)
+          return { ...m, income: m.income * f, spent: m.spent * f, fromRates: m.fromRates * f }
+        })
+      : nominal
 
   const income = months.reduce((s, m) => s + m.income, 0)
   const spent = months.reduce((s, m) => s + m.spent, 0)
@@ -89,9 +107,21 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
   const typicalIncome = median(months.map((m) => m.income))
   const typicalSpent = median(months.map((m) => m.spent))
   // Runway assumes every month costs the median; the middle half of months, the lowest and the worst one show how far off that can be
-  const spread = months.length >= 4
-    ? { low: quantile(months.map((m) => m.spent), 0.25), high: quantile(months.map((m) => m.spent), 0.75), lowest: months.reduce((a, b) => (b.spent < a.spent ? b : a)), worst: months.reduce((a, b) => (b.spent > a.spent ? b : a)) }
-    : undefined
+  const spread =
+    months.length >= 4
+      ? {
+          low: quantile(
+            months.map((m) => m.spent),
+            0.25,
+          ),
+          high: quantile(
+            months.map((m) => m.spent),
+            0.75,
+          ),
+          lowest: months.reduce((a, b) => (b.spent < a.spent ? b : a)),
+          worst: months.reduce((a, b) => (b.spent > a.spent ? b : a)),
+        }
+      : undefined
   const tone = (x: number) => (x >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')
   const tile = 'rounded-xl bg-zinc-50 p-3 sm:p-4 dark:bg-zinc-800/50'
   const big = 'mt-1 text-xl font-semibold tabular-nums sm:text-2xl'
@@ -103,8 +133,16 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
         <span className={`flex flex-wrap items-center gap-x-3 ${muted}`}>
           {months.length} complete {months.length === 1 ? 'month' : 'months'}, all accounts
           {prices?.latest && (
-            <label className="flex cursor-pointer items-center gap-1.5" title={`Each month scaled by consumer prices up to ${monthLabel.format(new Date(`${prices.latest}-01T00:00:00`))}, the latest the NBU has published`}>
-              <input type="checkbox" checked={real} onChange={(e) => setReal(e.target.checked)} className="size-4 accent-indigo-600" />
+            <label
+              className="flex cursor-pointer items-center gap-1.5"
+              title={`Each month scaled by consumer prices up to ${monthLabel.format(new Date(`${prices.latest}-01T00:00:00`))}, the latest the NBU has published`}
+            >
+              <input
+                type="checkbox"
+                checked={real}
+                onChange={(e) => setReal(e.target.checked)}
+                className="size-4 accent-indigo-600"
+              />
               In today's prices
             </label>
           )}
@@ -117,14 +155,20 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
           <p className={`${big} text-zinc-900 dark:text-zinc-100`}>{format(typicalIncome, currency)}</p>
           <p className={`mt-1 text-sm ${muted}`}>median</p>
           {onUseIncome && typicalIncome > 0 && (
-            <button type="button" className={`mt-1 text-sm ${linkButton}`} onClick={() => onUseIncome(typicalIncome, currency)}>
+            <button
+              type="button"
+              className={`mt-1 text-sm ${linkButton}`}
+              onClick={() => onUseIncome(typicalIncome, currency)}
+            >
               Use as income in Runway
             </button>
           )}
         </div>
         <div className={tile}>
           <p className={muted}>
-            <span className="cursor-help underline decoration-dotted underline-offset-2" title={SPENDING_NOTE}>Spending per month</span>
+            <span className="cursor-help underline decoration-dotted underline-offset-2" title={SPENDING_NOTE}>
+              Spending per month
+            </span>
           </p>
           <p className={`${big} text-zinc-900 dark:text-zinc-100`}>{format(typicalSpent, currency)}</p>
           <p className={`mt-1 text-sm ${muted}`}>median</p>
@@ -132,15 +176,19 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
             <p className={`mt-1 text-sm tabular-nums ${muted}`}>
               usually {wholeMoney(spread.low, currency)}–{wholeMoney(spread.high, currency)}
               <br />
-              lowest {wholeMoney(spread.lowest.spent, currency)} in {monthLabel.format(new Date(`${spread.lowest.month}-01T00:00:00`))}
+              lowest {wholeMoney(spread.lowest.spent, currency)} in{' '}
+              {monthLabel.format(new Date(`${spread.lowest.month}-01T00:00:00`))}
               <br />
-              worst {wholeMoney(spread.worst.spent, currency)} in {monthLabel.format(new Date(`${spread.worst.month}-01T00:00:00`))}
+              worst {wholeMoney(spread.worst.spent, currency)} in{' '}
+              {monthLabel.format(new Date(`${spread.worst.month}-01T00:00:00`))}
             </p>
           )}
         </div>
         <div className={tile}>
           <p className={muted}>Savings rate</p>
-          <p className={`${big} ${rate === undefined ? 'text-zinc-400' : tone(rate)}`}>{rate === undefined ? '—' : `${percentOf(rate)}%`}</p>
+          <p className={`${big} ${rate === undefined ? 'text-zinc-400' : tone(rate)}`}>
+            {rate === undefined ? '—' : `${percentOf(rate)}%`}
+          </p>
           <p className={`mt-1 text-sm tabular-nums ${rate === undefined ? muted : tone(rate)}`}>
             {rate === undefined
               ? 'no income recorded'
@@ -148,7 +196,8 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
           </p>
           {Math.round(fromRates) !== 0 && (
             <p className={`mt-1 text-sm tabular-nums ${muted}`} title={RATES_NOTE}>
-              {fromRates >= 0 ? '+' : '−'}{format(Math.abs(fromRates), currency)} from exchange rates
+              {fromRates >= 0 ? '+' : '−'}
+              {format(Math.abs(fromRates), currency)} from exchange rates
             </p>
           )}
         </div>
@@ -159,9 +208,13 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
           <tr className="text-right [&>th]:pb-1 [&>th]:font-normal">
             <th className="text-left">Month</th>
             <th>Income</th>
-            <th className="cursor-help" title={SPENDING_NOTE}>Spent</th>
+            <th className="cursor-help" title={SPENDING_NOTE}>
+              Spent
+            </th>
             <th>Saved</th>
-            <th className="cursor-help" title={RATES_NOTE}>Rates</th>
+            <th className="cursor-help" title={RATES_NOTE}>
+              Rates
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -169,12 +222,18 @@ export function CashFlow({ transactions, accounts, categories, convertOn, curren
             const net = m.income - m.spent
             return (
               <tr key={m.month} className="text-right text-zinc-900 dark:text-zinc-100 [&>td]:py-1.5">
-                <td className="text-left text-zinc-500 dark:text-zinc-400">{monthLabel.format(new Date(`${m.month}-01T00:00:00`))}</td>
+                <td className="text-left text-zinc-500 dark:text-zinc-400">
+                  {monthLabel.format(new Date(`${m.month}-01T00:00:00`))}
+                </td>
                 <td>{wholeMoney(m.income, currency)}</td>
                 <td>{wholeMoney(m.spent, currency)}</td>
-                <td className={tone(net)}>{m.income > 0 ? `${percentOf(net / m.income)}%` : wholeMoney(net, currency)}</td>
+                <td className={tone(net)}>
+                  {m.income > 0 ? `${percentOf(net / m.income)}%` : wholeMoney(net, currency)}
+                </td>
                 <td className={Math.round(m.fromRates) === 0 ? muted : tone(m.fromRates)}>
-                  {Math.round(m.fromRates) === 0 ? '—' : `${m.fromRates > 0 ? '+' : '−'}${wholeMoney(Math.abs(m.fromRates), currency)}`}
+                  {Math.round(m.fromRates) === 0
+                    ? '—'
+                    : `${m.fromRates > 0 ? '+' : '−'}${wholeMoney(Math.abs(m.fromRates), currency)}`}
                 </td>
               </tr>
             )

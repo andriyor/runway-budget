@@ -24,5 +24,6 @@ export const useApi = <T>(path: string, enabled = true) =>
 // change a response in place, to show an edit before the refetch lands; does nothing before it loads
 export function setCached<T>(path: string, next: T | ((old: T) => T)) {
   queryClient.setQueryData<T>([path], (old) =>
-    typeof next !== 'function' ? next : old === undefined ? old : (next as (old: T) => T)(old))
+    typeof next !== 'function' ? next : old === undefined ? old : (next as (old: T) => T)(old),
+  )
 }

@@ -1,14 +1,20 @@
 import { dayKey } from './periods'
 import type { Account, ConvertOn, Currency, Transaction } from './types'
 
-export type DayValue = { day: string, value: number, gain: number }
+export type DayValue = { day: string; value: number; gain: number }
 
 // Every day from the first transaction to today: what all accounts were worth in `currency` at the end of
 // the day, each account's own-currency balance (rebuilt backwards from today's by undoing later
 // transactions) valued at that day's NBU rate. gain is what rate moves added that day: the change in value
 // minus the day's transactions at the same rate, i.e. yesterday's foreign balances times the rate change.
 // undefined until every rate needed is known.
-export function dailyValues(accounts: Account[], transactions: Transaction[], convertOn: ConvertOn, currency: Currency, today: Date) {
+export function dailyValues(
+  accounts: Account[],
+  transactions: Transaction[],
+  convertOn: ConvertOn,
+  currency: Currency,
+  today: Date,
+) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   // day → account → that day's transactions, in the account's currency
   const byDay = new Map<string, Map<number, number>>()

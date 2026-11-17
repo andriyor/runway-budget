@@ -3,12 +3,16 @@ import { syncMono } from '../mono'
 
 // local times of day for the automatic Monobank sync; each sync re-reads 31 days, so a run
 // missed while the server was down loses nothing
-const SYNC_AT: ReadonlyArray<readonly [hour: number, minute: number]> = [[9, 0], [21, 0]]
+const SYNC_AT: ReadonlyArray<readonly [hour: number, minute: number]> = [
+  [9, 0],
+  [21, 0],
+]
 
 // the first of today's or tomorrow's run times after `now`
-export function nextRun (now: Date, at = SYNC_AT): Date {
+export function nextRun(now: Date, at = SYNC_AT): Date {
   const runs = [0, 1].flatMap((day) =>
-    at.map(([hour, minute]) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + day, hour, minute)))
+    at.map(([hour, minute]) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + day, hour, minute)),
+  )
   return runs.filter((run) => run > now).sort((a, b) => a.getTime() - b.getTime())[0]
 }
 
@@ -34,5 +38,7 @@ export default fp(async (fastify) => {
     fastify.log.info({ at: at.toString() }, 'next Monobank sync')
   }
   schedule()
-  fastify.addHook('onClose', async () => { clearTimeout(timer) })
+  fastify.addHook('onClose', async () => {
+    clearTimeout(timer)
+  })
 })

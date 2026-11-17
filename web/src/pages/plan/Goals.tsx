@@ -10,7 +10,7 @@ import { goalProgress } from '../../lib/goals'
 import { monthsToSave } from '../../lib/inflation'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
-type Cushion = { months: number, amount: number, available: number, currency: Currency }
+type Cushion = { months: number; amount: number; available: number; currency: Currency }
 
 type GoalsProps = {
   // available savings minus the months-without-income cushion
@@ -69,38 +69,67 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
   // need: what is still to save for this goal and every goal above it
   function status(goal: Goal, have: number, need: number) {
     if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
-    return <ReachDate need={need} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} hideUnreachable />
+    return (
+      <ReachDate
+        need={need}
+        net={netIn(goal.currency)}
+        spend={spendIn(goal.currency)}
+        inflation={inflation}
+        currency={goal.currency}
+        hideUnreachable
+      />
+    )
   }
 
   // goals that spending, growing with inflation, catches up with income before; said once for the list
-  const unreachable = inflation !== undefined && inflation > 0
-    ? goals.filter((g, i) => {
-        const need = progressOf[i]?.need
-        const spend = spendIn(g.currency)
-        const net = netIn(g.currency)
-        return need !== undefined && need > 0 && spend !== undefined && net !== undefined && net > 0
-          && monthsToSave(need, spend, spend + net, inflation) === undefined
-      })
-    : []
+  const unreachable =
+    inflation !== undefined && inflation > 0
+      ? goals.filter((g, i) => {
+          const need = progressOf[i]?.need
+          const spend = spendIn(g.currency)
+          const net = netIn(g.currency)
+          return (
+            need !== undefined &&
+            need > 0 &&
+            spend !== undefined &&
+            net !== undefined &&
+            net > 0 &&
+            monthsToSave(need, spend, spend + net, inflation) === undefined
+          )
+        })
+      : []
 
   return (
     <section className={card}>
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Goals</h2>
-        <p className={muted}>Your available savings and monthly surplus fill goals from the top: each goal waits for the ones above it.</p>
+        <p className={muted}>
+          Your available savings and monthly surplus fill goals from the top: each goal waits for the ones above it.
+        </p>
         {cushion && (
           <p className={`mt-1 flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
             <Calendar />
-            <span>{format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month cushion</span>
+            <span>
+              {format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month cushion
+            </span>
             {cushion.available < cushion.amount && (
-              <span className="text-amber-700 dark:text-amber-400">· {format(cushion.amount - Math.max(0, cushion.available), cushion.currency)} short of covering it</span>
+              <span className="text-amber-700 dark:text-amber-400">
+                · {format(cushion.amount - Math.max(0, cushion.available), cushion.currency)} short of covering it
+              </span>
             )}
           </p>
         )}
         {unreachable.length > 0 && (
           <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
             With {(inflation! * 100).toFixed(1)}% inflation, spending catches up with income before{' '}
-            {unreachable.length === goals.length ? 'any goal is' : <><NameList names={unreachable.map((g) => g.name)} /> {unreachable.length === 1 ? 'is' : 'are'}</>} reached.
+            {unreachable.length === goals.length ? (
+              'any goal is'
+            ) : (
+              <>
+                <NameList names={unreachable.map((g) => g.name)} /> {unreachable.length === 1 ? 'is' : 'are'}
+              </>
+            )}{' '}
+            reached.
           </p>
         )}
       </div>
@@ -111,13 +140,20 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           const have = p?.have ?? 0
           const progress = have / g.target
           // nothing saved for it yet because savings go to the goal above, or the cushion: said instead of an empty bar
-          const waitingFor = p?.have === 0
-            ? (goals[i - 1]?.name ?? (cushion && forGoalsIn(g.currency)! < 0 ? `the ${cushion.months}-month cushion` : undefined))
-            : undefined
+          const waitingFor =
+            p?.have === 0
+              ? (goals[i - 1]?.name ??
+                (cushion && forGoalsIn(g.currency)! < 0 ? `the ${cushion.months}-month cushion` : undefined))
+              : undefined
           if (editing === g.id) {
             return (
               <li key={g.id}>
-                <GoalForm initial={g} submitLabel="Save" onSave={(values) => update(g, values)} onCancel={() => setEditing(undefined)} />
+                <GoalForm
+                  initial={g}
+                  submitLabel="Save"
+                  onSave={(values) => update(g, values)}
+                  onCancel={() => setEditing(undefined)}
+                />
               </li>
             )
           }
@@ -126,10 +162,22 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="-ml-2 flex flex-col">
-                    <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move goal ${g.name} up`} className={moveButton}>
+                    <button
+                      type="button"
+                      onClick={() => move(i, -1)}
+                      disabled={i === 0}
+                      aria-label={`Move goal ${g.name} up`}
+                      className={moveButton}
+                    >
                       <ChevronUp strokeWidth={2} />
                     </button>
-                    <button type="button" onClick={() => move(i, 1)} disabled={i === goals.length - 1} aria-label={`Move goal ${g.name} down`} className={moveButton}>
+                    <button
+                      type="button"
+                      onClick={() => move(i, 1)}
+                      disabled={i === goals.length - 1}
+                      aria-label={`Move goal ${g.name} down`}
+                      className={moveButton}
+                    >
                       <ChevronDown strokeWidth={2} />
                     </button>
                   </div>
@@ -138,7 +186,8 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
-                    {waitingFor === undefined && `${format(have, g.currency)} / `}{format(g.target, g.currency)}
+                    {waitingFor === undefined && `${format(have, g.currency)} / `}
+                    {format(g.target, g.currency)}
                   </span>
                   <button
                     type="button"
@@ -158,9 +207,9 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                   </button>
                 </div>
               </div>
-              {waitingFor !== undefined
-                ? <p className={`mt-1 ${muted}`}>Starts after {waitingFor}</p>
-                : (
+              {waitingFor !== undefined ? (
+                <p className={`mt-1 ${muted}`}>Starts after {waitingFor}</p>
+              ) : (
                 <div
                   role="progressbar"
                   aria-label={`${g.name} progress`}
@@ -174,7 +223,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
-                  )}
+              )}
               <p className="mt-1.5 text-sm">{p === undefined ? <Skeleton /> : status(g, p.have, p.need)}</p>
             </li>
           )
@@ -192,13 +241,15 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
 
 // "Car, House and Trip", names in bold
 export function NameList({ names }: { names: string[] }) {
-  return new Intl.ListFormat('en', { type: 'conjunction' }).formatToParts(names)
+  return new Intl.ListFormat('en', { type: 'conjunction' })
+    .formatToParts(names)
     .map((part, i) => (part.type === 'element' ? <strong key={i}>{part.value}</strong> : part.value))
 }
 
-const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+const moveButton =
+  'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
-export type GoalValues = { name: string, target: number, currency: Currency, wish?: boolean }
+export type GoalValues = { name: string; target: number; currency: Currency; wish?: boolean }
 
 type GoalFormProps = {
   // the goal being edited; without it the form adds one and clears itself after
@@ -244,11 +295,26 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
           className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
         />
         <div className="w-56">
-          <MoneyInput label={wish ? 'Price' : 'Goal amount'} required min="0.01" placeholder="Amount" value={target} onChange={setTarget} currency={currency} onCurrency={setCurrency} />
+          <MoneyInput
+            label={wish ? 'Price' : 'Goal amount'}
+            required
+            min="0.01"
+            placeholder="Amount"
+            value={target}
+            onChange={setTarget}
+            currency={currency}
+            onCurrency={setCurrency}
+          />
         </div>
-        <button type="submit" className={button}>{submitLabel}</button>
+        <button type="submit" className={button}>
+          {submitLabel}
+        </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          >
             Cancel
           </button>
         )}

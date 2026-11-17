@@ -7,7 +7,6 @@ import { monthsLasting } from '../../lib/inflation'
 import { card, muted, inputBox, button, linkButton } from '../../lib/styles'
 import { type Currency, type Budget } from '../../lib/types'
 
-
 type EstimateProps = {
   label: string
   total: number
@@ -29,9 +28,13 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
   const withInflation = inflated !== undefined && (
     <p className={`mt-1 text-sm tabular-nums ${muted}`}>
       With {(inflation! * 100).toFixed(1)}% inflation:{' '}
-      {inflated === Infinity
-        ? 'still no end'
-        : <span className={burn <= 0 ? 'text-amber-700 dark:text-amber-400' : undefined}>{inflated.toFixed(1)} months · until {date(inflated)}</span>}
+      {inflated === Infinity ? (
+        'still no end'
+      ) : (
+        <span className={burn <= 0 ? 'text-amber-700 dark:text-amber-400' : undefined}>
+          {inflated.toFixed(1)} months · until {date(inflated)}
+        </span>
+      )}
     </p>
   )
   if (burn <= 0) {
@@ -39,7 +42,9 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
       <div className="rounded-xl bg-emerald-50 p-3 sm:p-4 dark:bg-emerald-950/40">
         <p className={muted}>{label}</p>
         <p className="mt-1 text-xl font-semibold text-emerald-700 sm:text-2xl dark:text-emerald-400">No end</p>
-        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">+{format(-burn, currency)} saved per month</p>
+        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">
+          +{format(-burn, currency)} saved per month
+        </p>
         {withInflation}
       </div>
     )
@@ -50,7 +55,9 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
       <p className={muted}>{label}</p>
       <p className="mt-1 text-xl font-semibold text-zinc-900 tabular-nums sm:text-2xl dark:text-zinc-100">
         {months.toFixed(1)} <span className="text-base font-normal text-zinc-500">months</span>
-        {months >= 12 && <span className="text-base font-normal text-zinc-500"> · ≈ {(months / 12).toFixed(1)} years</span>}
+        {months >= 12 && (
+          <span className="text-base font-normal text-zinc-500"> · ≈ {(months / 12).toFixed(1)} years</span>
+        )}
       </p>
       <p className="mt-1 text-sm tabular-nums">
         <span className="text-zinc-500 dark:text-zinc-400">until {date(months)} · </span>
@@ -61,7 +68,14 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
   )
 }
 
-type SpendLimitProps = { months: number, total: number, kept: number, spend: number, minimal: number | undefined, currency: Currency }
+type SpendLimitProps = {
+  months: number
+  total: number
+  kept: number
+  spend: number
+  minimal: number | undefined
+  currency: Currency
+}
 
 // the most you can spend per month to make savings plus the incomes that keep coming (`kept`) last `months`
 function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimitProps) {
@@ -73,11 +87,17 @@ function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimi
       <p className="mt-1 text-xl font-semibold text-zinc-900 tabular-nums sm:text-2xl dark:text-zinc-100">
         {format(limit, currency)} <span className="text-base font-normal text-zinc-500">per month at most</span>
       </p>
-      <p className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-        {diff >= 0 ? `${format(diff, currency)} more than you spend now` : `cut ${format(-diff, currency)} from your usual spending`}
+      <p
+        className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+      >
+        {diff >= 0
+          ? `${format(diff, currency)} more than you spend now`
+          : `cut ${format(-diff, currency)} from your usual spending`}
       </p>
       {minimal !== undefined && limit < minimal && (
-        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">Below your essential spending, likely not realistic.</p>
+        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+          Below your essential spending, likely not realistic.
+        </p>
       )}
     </div>
   )
@@ -86,33 +106,75 @@ function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimi
 // the saved settings, read-only: what the estimates beside them are based on
 function Settings({ budget: b }: { budget: Budget }) {
   const unset = <span className="text-zinc-400">Not set</span>
-  const rows: { icon: ReactNode, label: string, value: ReactNode }[] = [
-    { icon: <span className="text-rose-500"><ShoppingBag /></span>, label: 'I spend per month', value: format(b.monthlySpend, b.currency) },
-    { icon: <span className="text-sky-600"><TrendingDown /></span>, label: 'Essential spending', value: b.minimalSpend !== null && b.minimalSpendCurrency ? format(b.minimalSpend, b.minimalSpendCurrency) : unset },
+  const rows: { icon: ReactNode; label: string; value: ReactNode }[] = [
     {
-      icon: <span className="text-emerald-600"><Briefcase /></span>,
+      icon: (
+        <span className="text-rose-500">
+          <ShoppingBag />
+        </span>
+      ),
+      label: 'I spend per month',
+      value: format(b.monthlySpend, b.currency),
+    },
+    {
+      icon: (
+        <span className="text-sky-600">
+          <TrendingDown />
+        </span>
+      ),
+      label: 'Essential spending',
+      value: b.minimalSpend !== null && b.minimalSpendCurrency ? format(b.minimalSpend, b.minimalSpendCurrency) : unset,
+    },
+    {
+      icon: (
+        <span className="text-emerald-600">
+          <Briefcase />
+        </span>
+      ),
       label: 'Income per month',
-      value: b.incomes.length === 0
-        ? unset
-        : (
+      value:
+        b.incomes.length === 0 ? (
+          unset
+        ) : (
           <span className="flex flex-col items-end">
             {b.incomes.map((i, n) => (
               <span key={n}>
-                <span className="text-zinc-500 dark:text-zinc-400">{i.name}{i.keeps && ' · keeps coming'} </span>
+                <span className="text-zinc-500 dark:text-zinc-400">
+                  {i.name}
+                  {i.keeps && ' · keeps coming'}{' '}
+                </span>
                 {format(i.amount, i.currency)}
               </span>
             ))}
           </span>
-          ),
+        ),
     },
-    { icon: <span className="text-amber-500"><Lock /></span>, label: 'Untouchable reserve', value: b.reserve !== null && b.reserveCurrency ? format(b.reserve, b.reserveCurrency) : unset },
-    { icon: <span className="text-violet-600"><Calendar /></span>, label: 'Months to cover without income', value: b.targetMonths !== null ? `${b.targetMonths} months` : unset },
+    {
+      icon: (
+        <span className="text-amber-500">
+          <Lock />
+        </span>
+      ),
+      label: 'Untouchable reserve',
+      value: b.reserve !== null && b.reserveCurrency ? format(b.reserve, b.reserveCurrency) : unset,
+    },
+    {
+      icon: (
+        <span className="text-violet-600">
+          <Calendar />
+        </span>
+      ),
+      label: 'Months to cover without income',
+      value: b.targetMonths !== null ? `${b.targetMonths} months` : unset,
+    },
   ]
   return (
     <dl className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
       {rows.map(({ icon, label, value }) => (
         <div key={label} className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0">
-          <dt className="flex shrink-0 items-center gap-1.5 self-start text-sm text-zinc-700 dark:text-zinc-300">{icon} {label}</dt>
+          <dt className="flex shrink-0 items-center gap-1.5 self-start text-sm text-zinc-700 dark:text-zinc-300">
+            {icon} {label}
+          </dt>
           <dd className="text-right text-sm font-medium text-zinc-900 tabular-nums dark:text-zinc-100">{value}</dd>
         </div>
       ))}
@@ -123,7 +185,7 @@ function Settings({ budget: b }: { budget: Budget }) {
 const amountString = (n: number | null) => (n === null ? '' : String(n))
 
 // amounts as typed in the inputs; '' means not set
-type IncomeRow = { name: string, amount: string, currency: Currency, keeps: boolean }
+type IncomeRow = { name: string; amount: string; currency: Currency; keeps: boolean }
 type BudgetForm = {
   spend: string
   currency: Currency
@@ -138,7 +200,12 @@ type BudgetForm = {
 const toForm = (b: Budget | null, fallback: Currency = 'UAH'): BudgetForm => ({
   spend: b ? String(b.monthlySpend) : '',
   currency: b?.currency ?? fallback,
-  incomes: (b?.incomes ?? []).map((i) => ({ name: i.name, amount: String(i.amount), currency: i.currency, keeps: i.keeps })),
+  incomes: (b?.incomes ?? []).map((i) => ({
+    name: i.name,
+    amount: String(i.amount),
+    currency: i.currency,
+    keeps: i.keeps,
+  })),
   reserve: amountString(b?.reserve ?? null),
   reserveCurrency: b?.reserveCurrency ?? fallback,
   minimal: amountString(b?.minimalSpend ?? null),
@@ -151,7 +218,14 @@ function budgetBody(f: BudgetForm) {
   return {
     monthlySpend: Number(f.spend),
     currency: f.currency,
-    incomes: f.incomes.filter((i) => i.amount !== '').map((i) => ({ name: i.name.trim() || 'Income', amount: Number(i.amount), currency: i.currency, keeps: i.keeps })),
+    incomes: f.incomes
+      .filter((i) => i.amount !== '')
+      .map((i) => ({
+        name: i.name.trim() || 'Income',
+        amount: Number(i.amount),
+        currency: i.currency,
+        keeps: i.keeps,
+      })),
     ...(f.reserve !== '' && { reserve: Number(f.reserve), reserveCurrency: f.reserveCurrency }),
     ...(f.minimal !== '' && { minimalSpend: Number(f.minimal), minimalSpendCurrency: f.minimalCurrency }),
     ...(f.months !== '' && { targetMonths: Number(f.months) }),
@@ -172,15 +246,30 @@ type RunwayProps = {
   inflation: number | undefined
 }
 
-export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, inflation }: RunwayProps) {
+export function Runway({
+  saved,
+  onSaved,
+  availableIn,
+  reserveIn,
+  incomeIn,
+  keptIncomeIn,
+  minimalIn,
+  inflation,
+}: RunwayProps) {
   const [form, setForm] = useState(() => toForm(saved))
   // the settings show as a summary once saved; Plan re-keys this on the saved budget, so a save returns to it
   const [editing, setEditing] = useState(!saved)
   const [error, setError] = useState('')
-  const field = <K extends keyof BudgetForm>(key: K) => (value: BudgetForm[K]) => setForm((f) => ({ ...f, [key]: value }))
-  const incomeField = <K extends keyof IncomeRow>(index: number, key: K) => (value: IncomeRow[K]) =>
-    setForm((f) => ({ ...f, incomes: f.incomes.map((i, n) => (n === index ? { ...i, [key]: value } : i)) }))
-  const addIncome = () => setForm((f) => ({ ...f, incomes: [...f.incomes, { name: '', amount: '', currency: f.currency, keeps: false }] }))
+  const field =
+    <K extends keyof BudgetForm>(key: K) =>
+    (value: BudgetForm[K]) =>
+      setForm((f) => ({ ...f, [key]: value }))
+  const incomeField =
+    <K extends keyof IncomeRow>(index: number, key: K) =>
+    (value: IncomeRow[K]) =>
+      setForm((f) => ({ ...f, incomes: f.incomes.map((i, n) => (n === index ? { ...i, [key]: value } : i)) }))
+  const addIncome = () =>
+    setForm((f) => ({ ...f, incomes: [...f.incomes, { name: '', amount: '', currency: f.currency, keeps: false }] }))
   const removeIncome = (index: number) => setForm((f) => ({ ...f, incomes: f.incomes.filter((_, n) => n !== index) }))
 
   const body = budgetBody(form)
@@ -196,11 +285,16 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
   }
 
   // unset optional currencies fall back to the form's, so they don't count as changes
-  const dirty = !saved || JSON.stringify(body) !== JSON.stringify(budgetBody({
-    ...toForm(saved),
-    reserveCurrency: saved.reserveCurrency ?? form.reserveCurrency,
-    minimalCurrency: saved.minimalSpendCurrency ?? form.minimalCurrency,
-  }))
+  const dirty =
+    !saved ||
+    JSON.stringify(body) !==
+      JSON.stringify(
+        budgetBody({
+          ...toForm(saved),
+          reserveCurrency: saved.reserveCurrency ?? form.reserveCurrency,
+          minimalCurrency: saved.minimalSpendCurrency ?? form.minimalCurrency,
+        }),
+      )
 
   const available = saved ? availableIn(saved.currency) : undefined
   const reserved = saved ? reserveIn(saved.currency) : 0
@@ -223,132 +317,236 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             {heading}
-            <button type="button" onClick={() => setEditing(true)} className={`flex items-center gap-1.5 text-sm ${linkButton}`}>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className={`flex items-center gap-1.5 text-sm ${linkButton}`}
+            >
               <Pencil /> Edit
             </button>
           </div>
           <Settings budget={saved} />
         </div>
       ) : (
-      <form className="flex flex-col gap-4" onSubmit={save}>
-        {heading}
-        <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-rose-500"><ShoppingBag /></span> I spend per month</span>
-          <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={form.spend} onChange={field('spend')} currency={form.currency} onCurrency={field('currency')} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-sky-600"><TrendingDown /></span> Essential spending per month {optional}</span>
-          <MoneyInput id="minimal" label="Essential spending per month" min="0.01" placeholder="rent, food, medicine: less than usual" value={form.minimal} onChange={field('minimal')} currency={form.minimalCurrency} onCurrency={field('minimalCurrency')} />
-        </label>
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className={`${fieldLabel} mb-1.5`}><span className="text-emerald-600"><Briefcase /></span> My income per month {optional}</legend>
-          {form.incomes.map((income, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={income.keeps}
-                onChange={(e) => incomeField(index, 'keeps')(e.target.checked)}
-                aria-label={`${income.name || `Income ${index + 1}`} keeps coming without income`}
-                title="Keeps coming without income"
-                className="size-4 shrink-0 accent-indigo-600"
-              />
-              <input
-                placeholder="Salary"
-                maxLength={100}
-                value={income.name}
-                onChange={(e) => incomeField(index, 'name')(e.target.value)}
-                aria-label={`Income ${index + 1} name`}
-                className={`w-28 min-w-0 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
-              />
-              <div className="min-w-0 flex-1">
-                <MoneyInput label={`Income ${index + 1} per month`} min="0.01" placeholder="per month" value={income.amount} onChange={incomeField(index, 'amount')} currency={income.currency} onCurrency={incomeField(index, 'currency')} />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeIncome(index)}
-                aria-label={`Remove income ${income.name || index + 1}`}
-                className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
-              >
-                <Trash2 />
-              </button>
-            </div>
-          ))}
-          {form.incomes.length > 0 && (
-            <p className={muted}>Check an income that keeps coming in the “without income” estimates, like a pension or rent.</p>
-          )}
-          <button type="button" className={`self-start text-sm ${linkButton}`} onClick={addIncome}>+ Add income</button>
-        </fieldset>
-        <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-amber-500"><Lock /></span> Untouchable reserve {optional}</span>
-          <MoneyInput id="reserve" label="Untouchable reserve" min="0" placeholder="never spent, excluded from runway" value={form.reserve} onChange={field('reserve')} currency={form.reserveCurrency} onCurrency={field('reserveCurrency')} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={fieldLabel}><span className="text-violet-600"><Calendar /></span> Months to cover without income {optional}</span>
-          <div className={`flex items-center ${inputBox}`}>
-            <input
-              id="months"
-              type="number"
-              step="1"
-              min="1"
-              placeholder="months, shows how much you can spend"
-              value={form.months}
-              onChange={(e) => field('months')(e.target.value)}
-              className="w-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+        <form className="flex flex-col gap-4" onSubmit={save}>
+          {heading}
+          <label className="flex flex-col gap-1.5">
+            <span className={fieldLabel}>
+              <span className="text-rose-500">
+                <ShoppingBag />
+              </span>{' '}
+              I spend per month
+            </span>
+            <MoneyInput
+              id="spend"
+              label="Monthly spend"
+              required
+              min="0.01"
+              value={form.spend}
+              onChange={field('spend')}
+              currency={form.currency}
+              onCurrency={field('currency')}
             />
-            <span className="px-3 text-sm text-zinc-500">months</span>
-          </div>
-        </label>
-        <div>
-          <div className="flex items-center gap-2">
-            <button className={button} disabled={!dirty}>Save</button>
-            {saved && (
-              <button
-                type="button"
-                onClick={() => { setForm(toForm(saved)); setError(''); setEditing(false) }}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Cancel
-              </button>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={fieldLabel}>
+              <span className="text-sky-600">
+                <TrendingDown />
+              </span>{' '}
+              Essential spending per month {optional}
+            </span>
+            <MoneyInput
+              id="minimal"
+              label="Essential spending per month"
+              min="0.01"
+              placeholder="rent, food, medicine: less than usual"
+              value={form.minimal}
+              onChange={field('minimal')}
+              currency={form.minimalCurrency}
+              onCurrency={field('minimalCurrency')}
+            />
+          </label>
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className={`${fieldLabel} mb-1.5`}>
+              <span className="text-emerald-600">
+                <Briefcase />
+              </span>{' '}
+              My income per month {optional}
+            </legend>
+            {form.incomes.map((income, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={income.keeps}
+                  onChange={(e) => incomeField(index, 'keeps')(e.target.checked)}
+                  aria-label={`${income.name || `Income ${index + 1}`} keeps coming without income`}
+                  title="Keeps coming without income"
+                  className="size-4 shrink-0 accent-indigo-600"
+                />
+                <input
+                  placeholder="Salary"
+                  maxLength={100}
+                  value={income.name}
+                  onChange={(e) => incomeField(index, 'name')(e.target.value)}
+                  aria-label={`Income ${index + 1} name`}
+                  className={`w-28 min-w-0 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <MoneyInput
+                    label={`Income ${index + 1} per month`}
+                    min="0.01"
+                    placeholder="per month"
+                    value={income.amount}
+                    onChange={incomeField(index, 'amount')}
+                    currency={income.currency}
+                    onCurrency={incomeField(index, 'currency')}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeIncome(index)}
+                  aria-label={`Remove income ${income.name || index + 1}`}
+                  className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                >
+                  <Trash2 />
+                </button>
+              </div>
+            ))}
+            {form.incomes.length > 0 && (
+              <p className={muted}>
+                Check an income that keeps coming in the “without income” estimates, like a pension or rent.
+              </p>
             )}
+            <button type="button" className={`self-start text-sm ${linkButton}`} onClick={addIncome}>
+              + Add income
+            </button>
+          </fieldset>
+          <label className="flex flex-col gap-1.5">
+            <span className={fieldLabel}>
+              <span className="text-amber-500">
+                <Lock />
+              </span>{' '}
+              Untouchable reserve {optional}
+            </span>
+            <MoneyInput
+              id="reserve"
+              label="Untouchable reserve"
+              min="0"
+              placeholder="never spent, excluded from runway"
+              value={form.reserve}
+              onChange={field('reserve')}
+              currency={form.reserveCurrency}
+              onCurrency={field('reserveCurrency')}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={fieldLabel}>
+              <span className="text-violet-600">
+                <Calendar />
+              </span>{' '}
+              Months to cover without income {optional}
+            </span>
+            <div className={`flex items-center ${inputBox}`}>
+              <input
+                id="months"
+                type="number"
+                step="1"
+                min="1"
+                placeholder="months, shows how much you can spend"
+                value={form.months}
+                onChange={(e) => field('months')(e.target.value)}
+                className="w-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+              />
+              <span className="px-3 text-sm text-zinc-500">months</span>
+            </div>
+          </label>
+          <div>
+            <div className="flex items-center gap-2">
+              <button className={button} disabled={!dirty}>
+                Save
+              </button>
+              {saved && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(toForm(saved))
+                    setError('')
+                    setEditing(false)
+                  }}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            <ErrorText>{error}</ErrorText>
           </div>
-          <ErrorText>{error}</ErrorText>
-        </div>
-      </form>
+        </form>
       )}
       <div className="flex flex-col justify-center gap-3">
-        {saved && available !== undefined
-          ? (
-            <>
-              {reserved > 0 && (
-                <p className={`flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
-                  <Lock />
-                  <span>{format(reserved, saved.currency)} untouchable</span>
-                  <span>·</span>
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(Math.max(0, available), saved.currency)} available</span>
-                </p>
-              )}
-              <Estimate label="Without income" total={available} spend={saved.monthlySpend} income={kept} inflation={inflation} currency={saved.currency} />
-              {minimalInSpendCurrency !== undefined && (
-                <>
-                  <Estimate label="Essentials only, without income" total={available} spend={minimalInSpendCurrency} income={kept} inflation={inflation} currency={saved.currency} />
-                  {minimalInSpendCurrency >= saved.monthlySpend && (
-                    <p className="text-sm text-amber-700 dark:text-amber-400">Essential spending is not below your usual spending.</p>
-                  )}
-                </>
-              )}
-              {saved.targetMonths !== null && (
-                <SpendLimit months={saved.targetMonths} total={available} kept={kept} spend={saved.monthlySpend} minimal={minimalInSpendCurrency} currency={saved.currency} />
-              )}
-              {incomeInSpendCurrency !== undefined && (
-                <Estimate label="With income" total={available} spend={saved.monthlySpend} income={incomeInSpendCurrency} inflation={inflation} currency={saved.currency} />
-              )}
-            </>
-            )
-          : (
-            <div className="rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
-              <p className={muted}>Set your monthly spending to see how long your savings last.</p>
-            </div>
+        {saved && available !== undefined ? (
+          <>
+            {reserved > 0 && (
+              <p className={`flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
+                <Lock />
+                <span>{format(reserved, saved.currency)} untouchable</span>
+                <span>·</span>
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {format(Math.max(0, available), saved.currency)} available
+                </span>
+              </p>
             )}
+            <Estimate
+              label="Without income"
+              total={available}
+              spend={saved.monthlySpend}
+              income={kept}
+              inflation={inflation}
+              currency={saved.currency}
+            />
+            {minimalInSpendCurrency !== undefined && (
+              <>
+                <Estimate
+                  label="Essentials only, without income"
+                  total={available}
+                  spend={minimalInSpendCurrency}
+                  income={kept}
+                  inflation={inflation}
+                  currency={saved.currency}
+                />
+                {minimalInSpendCurrency >= saved.monthlySpend && (
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Essential spending is not below your usual spending.
+                  </p>
+                )}
+              </>
+            )}
+            {saved.targetMonths !== null && (
+              <SpendLimit
+                months={saved.targetMonths}
+                total={available}
+                kept={kept}
+                spend={saved.monthlySpend}
+                minimal={minimalInSpendCurrency}
+                currency={saved.currency}
+              />
+            )}
+            {incomeInSpendCurrency !== undefined && (
+              <Estimate
+                label="With income"
+                total={available}
+                spend={saved.monthlySpend}
+                income={incomeInSpendCurrency}
+                inflation={inflation}
+                currency={saved.currency}
+              />
+            )}
+          </>
+        ) : (
+          <div className="rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+            <p className={muted}>Set your monthly spending to see how long your savings last.</p>
+          </div>
+        )}
       </div>
     </section>
   )

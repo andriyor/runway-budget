@@ -1,6 +1,13 @@
 import { merchantKey } from './categories'
 
-type Row = { id: number, time: Date, description: string, amountCents: number, operationAmount: number | null, operationCurrency: number | null }
+type Row = {
+  id: number
+  time: Date
+  description: string
+  amountCents: number
+  operationAmount: number | null
+  operationCurrency: number | null
+}
 
 const CANCELLATION = /^скасування\.\s*/i
 

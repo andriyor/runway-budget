@@ -18,7 +18,7 @@ type MerchantSpendingProps = {
 // A merchant is shown under its latest purchase's description, icon and category emoji.
 export function MerchantSpending({ list, currency, leafById, selected, onSelect }: MerchantSpendingProps) {
   const [showAll, setShowAll] = useState(false)
-  const merchants = new Map<string, { total: number, count: number, latest?: Transaction }>()
+  const merchants = new Map<string, { total: number; count: number; latest?: Transaction }>()
   // list is newest first, so the first purchase seen is the latest
   for (const t of list) {
     if (!leafById.get(t.category)?.parent.spending) continue
@@ -38,7 +38,9 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
     <section className={card}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by merchant</h2>
-        <span className={`tabular-nums ${muted}`}>{rows.length} · {format(total, currency)}</span>
+        <span className={`tabular-nums ${muted}`}>
+          {rows.length} · {format(total, currency)}
+        </span>
       </div>
       <ul className="mt-3 flex flex-col gap-2">
         {visible.map(([key, m]) => (
@@ -49,7 +51,10 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
               onClick={() => onSelect(selected === key ? undefined : key)}
               className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-zinc-50 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800/50 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900"
             >
-              <MerchantIcon domain={m.latest!.merchantDomain} emoji={leafById.get(m.latest!.category)?.parent.emoji ?? ''} />
+              <MerchantIcon
+                domain={m.latest!.merchantDomain}
+                emoji={leafById.get(m.latest!.category)?.parent.emoji ?? ''}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="min-w-0 truncate text-zinc-900 dark:text-zinc-100">
@@ -62,7 +67,10 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
                   </span>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(m.total / rows[0][1].total) * 100}%` }} />
+                  <div
+                    className="h-full rounded-full bg-indigo-500"
+                    style={{ width: `${(m.total / rows[0][1].total) * 100}%` }}
+                  />
                 </div>
               </div>
             </button>

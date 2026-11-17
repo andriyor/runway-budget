@@ -5,7 +5,7 @@ import { kindIcons, kindLabels } from '../lib/display'
 import { inputBox } from '../lib/styles'
 import { currencies, type Currency, accountKinds, type AccountKind } from '../lib/types'
 
-export function KindToggle({ value, onChange }: { value: AccountKind, onChange: (k: AccountKind) => void }) {
+export function KindToggle({ value, onChange }: { value: AccountKind; onChange: (k: AccountKind) => void }) {
   return (
     <div role="group" aria-label="Account type" className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
       {accountKinds.map((k) => {
@@ -37,14 +37,23 @@ export function Skeleton() {
 }
 
 export function ErrorText({ children }: { children: string }) {
-  return children ? <p role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">{children}</p> : null
+  return children ? (
+    <p role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+      {children}
+    </p>
+  ) : null
 }
 
 // a page's load or save error, above its cards
 export function ErrorBanner({ children }: { children: string }) {
-  return children
-    ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">{children}</p>
-    : null
+  return children ? (
+    <p
+      role="alert"
+      className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900"
+    >
+      {children}
+    </p>
+  ) : null
 }
 
 type MoneyInputProps = {
@@ -59,7 +68,17 @@ type MoneyInputProps = {
   placeholder?: string
 }
 
-export function MoneyInput({ id, label, value, onChange, currency, onCurrency, required, min, placeholder }: MoneyInputProps) {
+export function MoneyInput({
+  id,
+  label,
+  value,
+  onChange,
+  currency,
+  onCurrency,
+  required,
+  min,
+  placeholder,
+}: MoneyInputProps) {
   return (
     <div className={`flex ${inputBox}`}>
       <input
@@ -80,7 +99,9 @@ export function MoneyInput({ id, label, value, onChange, currency, onCurrency, r
         aria-label={`${label} currency`}
         className="rounded-r-lg border-l border-zinc-200 bg-transparent px-2 text-sm font-medium text-zinc-700 outline-none dark:border-zinc-700 dark:text-zinc-200"
       >
-        {currencies.map((c) => <option key={c}>{c}</option>)}
+        {currencies.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
       </select>
     </div>
   )
@@ -88,7 +109,7 @@ export function MoneyInput({ id, label, value, onChange, currency, onCurrency, r
 
 // ⓘ with a short explanation: opens on mouse hover or on click, tap or Enter; closes on Esc or outside.
 // In a portal, so a scrolling table or a narrow screen does not clip it.
-export function InfoTip({ label, children }: { label: string, children: ReactNode }) {
+export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Popover.Root>
       <Popover.Trigger

@@ -34,10 +34,29 @@ type EmergencyFundProps = {
 // How many months without income the available savings cover, against a target of `months` (6 by default)
 // and the 3-month minimum: at essential spending, and at the usual spending that Goals keep aside.
 // Incomes that keep coming lower what a month takes from savings.
-export function EmergencyFund({ available, essential, usual, kept, months, net, inflation, currency }: EmergencyFundProps) {
+export function EmergencyFund({
+  available,
+  essential,
+  usual,
+  kept,
+  months,
+  net,
+  inflation,
+  currency,
+}: EmergencyFundProps) {
   const target = months ?? DEFAULT_MONTHS
   const tile = (label: string, monthly: number) => (
-    <Tile label={label} monthly={monthly} kept={kept} target={target} available={available} net={net} spend={usual} inflation={inflation} currency={currency} />
+    <Tile
+      label={label}
+      monthly={monthly}
+      kept={kept}
+      target={target}
+      available={available}
+      net={net}
+      spend={usual}
+      inflation={inflation}
+      currency={currency}
+    />
   )
 
   return (
@@ -87,12 +106,15 @@ function Tile({ label, monthly, kept, target, available, net, spend, inflation, 
     <div className="flex flex-col rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
       <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</p>
       <p className={`text-xs tabular-nums ${muted}`}>
-        {format(monthly, currency)}{kept > 0 && ` − ${format(kept, currency)} income`} per month · {format(goal, currency)} for {target} months
+        {format(monthly, currency)}
+        {kept > 0 && ` − ${format(kept, currency)} income`} per month · {format(goal, currency)} for {target} months
       </p>
 
       <p className={`mt-3 text-2xl font-semibold tabular-nums ${tone.text}`}>
         {covered === Infinity ? 'Indefinitely' : covered.toFixed(1)}
-        {covered !== Infinity && <span className="ml-1.5 text-sm font-normal text-zinc-500 dark:text-zinc-400">of {target} months</span>}
+        {covered !== Infinity && (
+          <span className="ml-1.5 text-sm font-normal text-zinc-500 dark:text-zinc-400">of {target} months</span>
+        )}
       </p>
       <div
         role="progressbar"
@@ -105,7 +127,11 @@ function Tile({ label, monthly, kept, target, available, net, spend, inflation, 
         <div className={`h-full rounded-full transition-[width] ${tone.bar}`} style={{ width: `${progress * 100}%` }} />
         {/* the 3-month minimum */}
         {target > MINIMUM && (
-          <div aria-hidden className="absolute inset-y-0 w-0.5 bg-zinc-50 dark:bg-zinc-800" style={{ left: `${(MINIMUM / target) * 100}%` }} />
+          <div
+            aria-hidden
+            className="absolute inset-y-0 w-0.5 bg-zinc-50 dark:bg-zinc-800"
+            style={{ left: `${(MINIMUM / target) * 100}%` }}
+          />
         )}
       </div>
 

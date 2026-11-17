@@ -6,21 +6,32 @@ test('inflation keeps the all-items, nationwide month-over-month CPI', async (t)
   const app = await build(t)
   const realFetch = globalThis.fetch
   const urls: string[] = []
-  const row = (dt: string, value: number, rest: object = {}) =>
-    ({ dt, id_api: 'prices_price_cpi_', mcrd081: 'Total', ku: null, tzep: 'PCPM_', value, ...rest })
+  const row = (dt: string, value: number, rest: object = {}) => ({
+    dt,
+    id_api: 'prices_price_cpi_',
+    mcrd081: 'Total',
+    ku: null,
+    tzep: 'PCPM_',
+    value,
+    ...rest,
+  })
   globalThis.fetch = (async (url: string) => {
     urls.push(url)
-    return new Response(JSON.stringify([
-      row('20250101', 1.4),
-      row('20250201', 1.2),
-      // year over year, a region, a spending group and producer prices are left out
-      row('20250201', 12.9, { tzep: 'PCCM_' }),
-      row('20250201', 9.9, { ku: '6' }),
-      row('20250201', 0.4, { mcrd081: '01' }),
-      row('20250201', 0.5, { id_api: 'prices_price_ppi_' }),
-    ]))
+    return new Response(
+      JSON.stringify([
+        row('20250101', 1.4),
+        row('20250201', 1.2),
+        // year over year, a region, a spending group and producer prices are left out
+        row('20250201', 12.9, { tzep: 'PCCM_' }),
+        row('20250201', 9.9, { ku: '6' }),
+        row('20250201', 0.4, { mcrd081: '01' }),
+        row('20250201', 0.5, { id_api: 'prices_price_ppi_' }),
+      ]),
+    )
   }) as typeof fetch
-  t.after(() => { globalThis.fetch = realFetch })
+  t.after(() => {
+    globalThis.fetch = realFetch
+  })
 
   const res = await app.inject({ url: '/api/inflation?from=2025-01' })
   assert.equal(res.statusCode, 200)

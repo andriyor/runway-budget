@@ -9,7 +9,7 @@ test('create, list and update accounts', async (t) => {
   const created = await app.inject({
     method: 'POST',
     url: '/api/accounts',
-    payload: { name: 'Mono', currency: 'UAH', balance: 1234.56 }
+    payload: { name: 'Mono', currency: 'UAH', balance: 1234.56 },
   })
   assert.equal(created.statusCode, 201)
   const { id } = created.json()
@@ -17,7 +17,7 @@ test('create, list and update accounts', async (t) => {
   const updated = await app.inject({
     method: 'PATCH',
     url: `/api/accounts/${id}`,
-    payload: { balance: 0.1 + 0.2, currency: 'USD' }
+    payload: { balance: 0.1 + 0.2, currency: 'USD' },
   })
   assert.equal(updated.statusCode, 200)
 
@@ -26,7 +26,11 @@ test('create, list and update accounts', async (t) => {
   assert.equal(list[0].balance, 0.3)
   assert.equal(list[0].currency, 'USD')
 
-  const bad = await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'X', currency: 'GBP', balance: 1 } })
+  const bad = await app.inject({
+    method: 'POST',
+    url: '/api/accounts',
+    payload: { name: 'X', currency: 'GBP', balance: 1 },
+  })
   assert.equal(bad.statusCode, 400)
 
   const missing = await app.inject({ method: 'PATCH', url: '/api/accounts/999', payload: { balance: 1 } })
@@ -35,9 +39,16 @@ test('create, list and update accounts', async (t) => {
 
 test('adjust adds to or subtracts from the balance', async (t) => {
   const app = await build(t)
-  const created = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Wallet', currency: 'UAH', balance: 100 } })).json()
+  const created = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/accounts',
+      payload: { name: 'Wallet', currency: 'UAH', balance: 100 },
+    })
+  ).json()
   const { id } = created
-  const adjust = (amount: number) => app.inject({ method: 'POST', url: `/api/accounts/${id}/adjust`, payload: { amount } })
+  const adjust = (amount: number) =>
+    app.inject({ method: 'POST', url: `/api/accounts/${id}/adjust`, payload: { amount } })
   assert.equal(created.transactionCount, 0)
 
   assert.equal((await adjust(50.25)).json().balance, 150.25)
@@ -45,40 +56,78 @@ test('adjust adds to or subtracts from the balance', async (t) => {
   assert.equal(second.balance, 150.15)
   assert.equal(second.transactionCount, 2)
   assert.equal((await adjust(0)).statusCode, 400)
-  assert.equal((await app.inject({ method: 'POST', url: '/api/accounts/999/adjust', payload: { amount: 1 } })).statusCode, 404)
+  assert.equal(
+    (await app.inject({ method: 'POST', url: '/api/accounts/999/adjust', payload: { amount: 1 } })).statusCode,
+    404,
+  )
 
   // each adjustment is a transaction, so the balance history can undo it
   const recorded = (await app.inject({ url: `/api/accounts/${id}/transactions` })).json()
-  assert.deepEqual(recorded.map((x: { amount: number, category: string }) => [x.amount, x.category]), [[-0.1, 'other_expenses'], [50.25, 'income']])
+  assert.deepEqual(
+    recorded.map((x: { amount: number; category: string }) => [x.amount, x.category]),
+    [
+      [-0.1, 'other_expenses'],
+      [50.25, 'income'],
+    ],
+  )
 
-  const [synced] = app.db.insert(accounts).values({ name: 'Mono', currency: 'UAH', balanceCents: 0, monoAccountId: 'acc' }).returning().all()
-  assert.equal((await app.inject({ method: 'POST', url: `/api/accounts/${synced.id}/adjust`, payload: { amount: 1 } })).statusCode, 400)
+  const [synced] = app.db
+    .insert(accounts)
+    .values({ name: 'Mono', currency: 'UAH', balanceCents: 0, monoAccountId: 'acc' })
+    .returning()
+    .all()
+  assert.equal(
+    (await app.inject({ method: 'POST', url: `/api/accounts/${synced.id}/adjust`, payload: { amount: 1 } })).statusCode,
+    400,
+  )
 
   // the list counts each account's transactions, 0 for one without any
   const listed = (await app.inject({ url: '/api/accounts' })).json()
-  assert.deepEqual(listed.map((a: { name: string, transactionCount: number }) => [a.name, a.transactionCount]), [['Wallet', 2], ['Mono', 0]])
+  assert.deepEqual(
+    listed.map((a: { name: string; transactionCount: number }) => [a.name, a.transactionCount]),
+    [
+      ['Wallet', 2],
+      ['Mono', 0],
+    ],
+  )
 })
 
 test('account kind defaults to bank and can be changed', async (t) => {
   const app = await build(t)
-  const bank = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Mono', currency: 'UAH', balance: 1 } })).json()
+  const bank = (
+    await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Mono', currency: 'UAH', balance: 1 } })
+  ).json()
   assert.equal(bank.kind, 'bank')
-  const cash = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Wallet', currency: 'USD', balance: 1, kind: 'cash' } })).json()
+  const cash = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/accounts',
+      payload: { name: 'Wallet', currency: 'USD', balance: 1, kind: 'cash' },
+    })
+  ).json()
   assert.equal(cash.kind, 'cash')
 
   const changed = await app.inject({ method: 'PATCH', url: `/api/accounts/${bank.id}`, payload: { kind: 'cash' } })
   assert.equal(changed.json().kind, 'cash')
-  assert.equal((await app.inject({ method: 'PATCH', url: `/api/accounts/${bank.id}`, payload: { kind: 'crypto' } })).statusCode, 400)
+  assert.equal(
+    (await app.inject({ method: 'PATCH', url: `/api/accounts/${bank.id}`, payload: { kind: 'crypto' } })).statusCode,
+    400,
+  )
 })
 
 test('rename and delete account', async (t) => {
   const app = await build(t)
-  const { id } = (await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Old', currency: 'EUR', balance: 5 } })).json()
+  const { id } = (
+    await app.inject({ method: 'POST', url: '/api/accounts', payload: { name: 'Old', currency: 'EUR', balance: 5 } })
+  ).json()
 
   const renamed = await app.inject({ method: 'PATCH', url: `/api/accounts/${id}`, payload: { name: 'New' } })
   assert.equal(renamed.json().name, 'New')
   assert.equal(renamed.json().balance, 5)
-  assert.equal((await app.inject({ method: 'PATCH', url: `/api/accounts/${id}`, payload: { name: '' } })).statusCode, 400)
+  assert.equal(
+    (await app.inject({ method: 'PATCH', url: `/api/accounts/${id}`, payload: { name: '' } })).statusCode,
+    400,
+  )
 
   assert.equal((await app.inject({ method: 'DELETE', url: `/api/accounts/${id}` })).statusCode, 204)
   assert.deepEqual((await app.inject({ url: '/api/accounts' })).json(), [])
@@ -113,15 +162,42 @@ test('sync Monobank statement into one account', async (t) => {
   const app = await build(t)
   process.env.MONO_TOKEN = 'token'
   process.env.MONO_ACCOUNT = 'acc1'
-  t.after(() => { delete process.env.MONO_TOKEN; delete process.env.MONO_ACCOUNT })
+  t.after(() => {
+    delete process.env.MONO_TOKEN
+    delete process.env.MONO_ACCOUNT
+  })
 
   const statement = [
-    { id: 'b', time: 1_700_000_200, description: 'Скасування. Сільпо', mcc: 5814, amount: -9500, operationAmount: -9500, currencyCode: 980, balance: 100500 },
-    { id: 'a', time: 1_700_000_100, description: 'Salary', mcc: 4829, amount: 110000, operationAmount: 110000, currencyCode: 980, balance: 110000 }
+    {
+      id: 'b',
+      time: 1_700_000_200,
+      description: 'Скасування. Сільпо',
+      mcc: 5814,
+      amount: -9500,
+      operationAmount: -9500,
+      currencyCode: 980,
+      balance: 100500,
+    },
+    {
+      id: 'a',
+      time: 1_700_000_100,
+      description: 'Salary',
+      mcc: 4829,
+      amount: 110000,
+      operationAmount: 110000,
+      currencyCode: 980,
+      balance: 110000,
+    },
   ]
-  const info = { accounts: [{ id: 'other', creditLimit: 0, currencyCode: 840 }, { id: 'acc1', creditLimit: 50000, currencyCode: 980 }] }
+  const info = {
+    accounts: [
+      { id: 'other', creditLimit: 0, currencyCode: 840 },
+      { id: 'acc1', creditLimit: 50000, currencyCode: 980 },
+    ],
+  }
   const fetchMock = t.mock.method(globalThis, 'fetch', async (url: string) =>
-    Response.json(url.endsWith('/client-info') ? info : statement))
+    Response.json(url.endsWith('/client-info') ? info : statement),
+  )
 
   const first = await app.inject({ method: 'POST', url: '/api/accounts/mono/sync' })
   assert.equal(first.statusCode, 200)
@@ -134,14 +210,31 @@ test('sync Monobank statement into one account', async (t) => {
   app.db.update(transactions).set({ operationAmount: null, operationCurrency: null }).run()
   await app.inject({ method: 'POST', url: '/api/accounts/mono/sync' })
   assert.equal((await app.inject({ url: '/api/accounts' })).json().length, 1)
-  assert.deepEqual(app.db.select({ id: transactions.externalId, op: transactions.operationAmount, cur: transactions.operationCurrency })
-    .from(transactions).orderBy(transactions.externalId).all(), [{ id: 'a', op: 110000, cur: 980 }, { id: 'b', op: -9500, cur: 980 }])
+  assert.deepEqual(
+    app.db
+      .select({ id: transactions.externalId, op: transactions.operationAmount, cur: transactions.operationCurrency })
+      .from(transactions)
+      .orderBy(transactions.externalId)
+      .all(),
+    [
+      { id: 'a', op: 110000, cur: 980 },
+      { id: 'b', op: -9500, cur: 980 },
+    ],
+  )
 
   const list = (await app.inject({ url: `/api/accounts/${first.json().account.id}/transactions` })).json()
-  assert.deepEqual(list.map((x: { externalId: string, amount: number, category: string }) => [x.externalId, x.amount, x.category]),
-    [['b', -95, 'coffee_snacks'], ['a', 1100, 'income']])
+  assert.deepEqual(
+    list.map((x: { externalId: string; amount: number; category: string }) => [x.externalId, x.amount, x.category]),
+    [
+      ['b', -95, 'coffee_snacks'],
+      ['a', 1100, 'income'],
+    ],
+  )
   assert.equal(list[0].mccDescription, 'Ресторани швидкого харчування')
-  assert.deepEqual(list.map((x: { merchantDomain: string | null }) => x.merchantDomain), ['silpo.ua', null])
+  assert.deepEqual(
+    list.map((x: { merchantDomain: string | null }) => x.merchantDomain),
+    ['silpo.ua', null],
+  )
 
   // an older window adds its transactions but keeps the newer balance
   const older = [{ id: 'z', time: 1_690_000_000, description: 'Old', mcc: 5411, amount: -100, balance: 999999 }]

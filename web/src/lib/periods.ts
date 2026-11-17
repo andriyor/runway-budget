@@ -29,7 +29,8 @@ const weekKey = (date: Date) => {
 export const weekOfDay = (day: string) => weekKey(new Date(`${day}T00:00:00`))
 
 // quarter of a month key: "2026-10" → "q:2026-4"
-export const quarterOf = (month: string) => `q:${month.slice(0, 4)}-${Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1}`
+export const quarterOf = (month: string) =>
+  `q:${month.slice(0, 4)}-${Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1}`
 
 // "q:2026-4" → "4-й квартал 2026"
 export const quarterLabel = (quarter: string) => `${quarter.slice(7)}-й квартал ${quarter.slice(2, 6)}`

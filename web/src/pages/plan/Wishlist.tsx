@@ -45,8 +45,14 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
   }
   // it keeps its place in the order, which puts it below the goals added before it
   const commit = (w: Goal) =>
-    act(() => api(`/goals/${w.id}`, { method: 'PUT', body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false }) }))
-  const remove = (w: Goal) => confirm(`Remove "${w.name}" from the wishlist?`) && act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
+    act(() =>
+      api(`/goals/${w.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false }),
+      }),
+    )
+  const remove = (w: Goal) =>
+    confirm(`Remove "${w.name}" from the wishlist?`) && act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
 
   // what buying `wish` today does to each goal; undefined while rates or balances load
   function impact(wish: Goal) {
@@ -60,7 +66,8 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
     })
     if (rows.some((r) => r === undefined)) return undefined
     const hit = rows.map((r) => r!).filter((r) => r.further > 0.005)
-    if (hit.length === 0) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Buying it now delays no goal</span>
+    if (hit.length === 0)
+      return <span className="font-medium text-emerald-600 dark:text-emerald-400">Buying it now delays no goal</span>
     // goals pushed back by the same amount share one phrase: "Car and House by 5.4 months"
     const groups = new Map<string, string[]>()
     for (const { goal, further, net } of hit) {
@@ -74,11 +81,11 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
         {every
           ? `every goal by ${[...groups.keys()][0]}`
           : [...groups].map(([by, names], i) => (
-            <span key={by}>
-              {i > 0 && ' · '}
-              <NameList names={names} /> by {by}
-            </span>
-          ))}
+              <span key={by}>
+                {i > 0 && ' · '}
+                <NameList names={names} /> by {by}
+              </span>
+            ))}
       </span>
     )
   }
@@ -94,14 +101,23 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
   return (
     <section className={card}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
-      <p className={muted}>Things you want but have not committed to. They take no savings; each shows what buying it today would cost your goals.</p>
+      <p className={muted}>
+        Things you want but have not committed to. They take no savings; each shows what buying it today would cost your
+        goals.
+      </p>
 
       <ul className="mt-4 flex flex-col gap-5">
         {wishes.map((w) => {
           if (editing === w.id) {
             return (
               <li key={w.id}>
-                <GoalForm wish initial={w} submitLabel="Save" onSave={(values) => update(w, values)} onCancel={() => setEditing(undefined)} />
+                <GoalForm
+                  wish
+                  initial={w}
+                  submitLabel="Save"
+                  onSave={(values) => update(w, values)}
+                  onCancel={() => setEditing(undefined)}
+                />
               </li>
             )
           }
@@ -115,13 +131,29 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>{format(w.target, w.currency)}</span>
-                  <button type="button" onClick={() => commit(w)} aria-label={`Save for ${w.name}`} title="Save for it: make it a goal" className={iconButton}>
+                  <button
+                    type="button"
+                    onClick={() => commit(w)}
+                    aria-label={`Save for ${w.name}`}
+                    title="Save for it: make it a goal"
+                    className={iconButton}
+                  >
                     <Target />
                   </button>
-                  <button type="button" onClick={() => setEditing(w.id)} aria-label={`Edit wish ${w.name}`} className={iconButton}>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(w.id)}
+                    aria-label={`Edit wish ${w.name}`}
+                    className={iconButton}
+                  >
                     <Pencil />
                   </button>
-                  <button type="button" onClick={() => remove(w)} aria-label={`Remove wish ${w.name}`} className={`${iconButton} hover:text-rose-600`}>
+                  <button
+                    type="button"
+                    onClick={() => remove(w)}
+                    aria-label={`Remove wish ${w.name}`}
+                    className={`${iconButton} hover:text-rose-600`}
+                  >
                     <Trash2 />
                   </button>
                 </div>
@@ -129,14 +161,18 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
               <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
               <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
                 <Hourglass />
-                <span>{days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}</span>
+                <span>
+                  {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
+                </span>
                 {cost(w) && <span>· {cost(w)}</span>}
               </p>
             </li>
           )
         })}
       </ul>
-      {wishes.length === 0 && <p className={`py-6 text-center ${muted}`}>No wishes yet. Add something you are tempted to buy.</p>}
+      {wishes.length === 0 && (
+        <p className={`py-6 text-center ${muted}`}>No wishes yet. Add something you are tempted to buy.</p>
+      )}
       <ErrorText>{error}</ErrorText>
 
       <div className="mt-4">

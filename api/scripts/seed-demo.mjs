@@ -26,7 +26,9 @@ const between = (min, max) => min + random() * (max - min)
 const cents = (uah) => Math.round(uah * 100)
 const now = Math.floor(Date.now() / 1000)
 
-const account = sqlite.prepare('insert into accounts (name, currency, kind, balance_cents, position, mono_account_id, updated_at) values (?, ?, ?, ?, ?, ?, ?)')
+const account = sqlite.prepare(
+  'insert into accounts (name, currency, kind, balance_cents, position, mono_account_id, updated_at) values (?, ?, ?, ?, ?, ?, ?)',
+)
 const accounts = [
   ['Monobank', 'UAH', 'bank', 48250, 'demo-mono'],
   ['ПриватБанк', 'UAH', 'bank', 112400, null],
@@ -34,29 +36,45 @@ const accounts = [
   ['Долари вдома', 'USD', 'cash', 3200, null],
   ['Гаманець', 'UAH', 'cash', 6500, null],
 ]
-const ids = accounts.map(([name, currency, kind, balance, mono], position) =>
-  account.run(name, currency, kind, cents(balance), position, mono, now).lastInsertRowid)
+const ids = accounts.map(
+  ([name, currency, kind, balance, mono], position) =>
+    account.run(name, currency, kind, cents(balance), position, mono, now).lastInsertRowid,
+)
 const mono = ids[0]
 
-sqlite.prepare(`insert into budget (id, monthly_spend_cents, currency, incomes, reserve_cents, reserve_currency,
-  minimal_spend_cents, minimal_spend_currency, target_months) values (1, ?, 'UAH', ?, ?, 'USD', ?, 'UAH', 6)`)
-  .run(cents(45000), JSON.stringify([
-    { name: 'Зарплата', amountCents: cents(95000), currency: 'UAH', keeps: false },
-    // keeps coming without the salary, so the without-income estimates count it
-    { name: 'Оренда гаража', amountCents: cents(3000), currency: 'UAH', keeps: true },
-  ]), cents(2000), cents(22000))
-const categoryBudget = sqlite.prepare('insert into category_budgets (category, amount_cents, currency) values (?, ?, ?)')
+sqlite
+  .prepare(
+    `insert into budget (id, monthly_spend_cents, currency, incomes, reserve_cents, reserve_currency,
+  minimal_spend_cents, minimal_spend_currency, target_months) values (1, ?, 'UAH', ?, ?, 'USD', ?, 'UAH', 6)`,
+  )
+  .run(
+    cents(45000),
+    JSON.stringify([
+      { name: 'Зарплата', amountCents: cents(95000), currency: 'UAH', keeps: false },
+      // keeps coming without the salary, so the without-income estimates count it
+      { name: 'Оренда гаража', amountCents: cents(3000), currency: 'UAH', keeps: true },
+    ]),
+    cents(2000),
+    cents(22000),
+  )
+const categoryBudget = sqlite.prepare(
+  'insert into category_budgets (category, amount_cents, currency) values (?, ?, ?)',
+)
 categoryBudget.run('groceries', cents(9000), 'UAH')
 categoryBudget.run('cafes_restaurants', cents(3500), 'UAH')
 categoryBudget.run('transport', cents(2500), 'UAH')
 // added_at is in seconds; the wish has been on the list for 5 days
-const goal = sqlite.prepare('insert into goals (name, target_cents, currency, position, wish, added_at) values (?, ?, ?, ?, ?, ?)')
+const goal = sqlite.prepare(
+  'insert into goals (name, target_cents, currency, position, wish, added_at) values (?, ?, ?, ?, ?, ?)',
+)
 const daysAgo = (days) => Math.floor(Date.now() / 1000) - days * 86400
 goal.run('Відпустка в Карпатах', cents(1500), 'EUR', 0, 0, daysAgo(60))
 goal.run('Новий автомобіль', cents(12000), 'USD', 1, 0, daysAgo(60))
 goal.run('Фотокамера', cents(1200), 'USD', 2, 1, daysAgo(5))
 
-const tx = sqlite.prepare('insert into transactions (account_id, external_id, time, description, mcc, amount_cents, note) values (?, ?, ?, ?, ?, ?, ?)')
+const tx = sqlite.prepare(
+  'insert into transactions (account_id, external_id, time, description, mcc, amount_cents, note) values (?, ?, ?, ?, ?, ?, ?)',
+)
 let n = 0
 const add = (date, description, mcc, uah, note = null) => {
   // a random time of day between 08:00 and 22:00 local
@@ -65,7 +83,8 @@ const add = (date, description, mcc, uah, note = null) => {
 }
 // `times` purchases spread over the month
 const spread = (year, month, times, description, mcc, min, max) => {
-  for (let i = 0; i < times; i++) add(new Date(year, month, 1 + Math.floor(random() * 28)), description, mcc, -between(min, max))
+  for (let i = 0; i < times; i++)
+    add(new Date(year, month, 1 + Math.floor(random() * 28)), description, mcc, -between(min, max))
 }
 
 for (let month = 0; month < 11; month++) {

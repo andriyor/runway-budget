@@ -6,7 +6,9 @@ import { FastifyPluginAsync } from 'fastify'
 
 const app: FastifyPluginAsync = async (fastify, opts) => {
   // local secrets such as MONO_TOKEN; absent in Docker, where env comes from compose
-  try { process.loadEnvFile() } catch {}
+  try {
+    process.loadEnvFile()
+  } catch {}
 
   // shared plugins: the database, sensible errors, the Monobank schedule
   void fastify.register(AutoLoad, { dir: join(__dirname, 'plugins'), options: opts })

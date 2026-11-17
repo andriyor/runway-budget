@@ -10,12 +10,12 @@ and when you reach your goals.
 <details>
 <summary>More screenshots</summary>
 
-| | |
-| --- | --- |
-| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/6e6d28a3-1d85-4005-bb8c-57c2fc5265c4) | ![Plan: runway, emergency fund and goals](https://github.com/user-attachments/assets/b855b0ac-c7c2-40fd-aa4b-f7d4ab375c7e) |
-| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/f01ddaba-42ad-40b3-958b-494687923089) | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/b52bda7b-55d1-4ee9-a6ec-63d21293ffa0) |
-| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/30a041b9-02ce-48bf-99db-26baa0022958) | ![Essential spending only, with its median](https://github.com/user-attachments/assets/6f5f2994-372b-4eec-98d6-d0ba0abc8a83) |
-| ![Balances on a phone](https://github.com/user-attachments/assets/017acbef-b289-4472-80fa-2d52ed7f5ce2) | |
+|                                                                                                                                                  |                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/6e6d28a3-1d85-4005-bb8c-57c2fc5265c4) | ![Plan: runway, emergency fund and goals](https://github.com/user-attachments/assets/b855b0ac-c7c2-40fd-aa4b-f7d4ab375c7e)                   |
+| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/f01ddaba-42ad-40b3-958b-494687923089)    | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/b52bda7b-55d1-4ee9-a6ec-63d21293ffa0) |
+| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/30a041b9-02ce-48bf-99db-26baa0022958)                | ![Essential spending only, with its median](https://github.com/user-attachments/assets/6f5f2994-372b-4eec-98d6-d0ba0abc8a83)                 |
+| ![Balances on a phone](https://github.com/user-attachments/assets/017acbef-b289-4472-80fa-2d52ed7f5ce2)                                          |                                                                                                                                              |
 
 </details>
 
@@ -112,11 +112,11 @@ All accounts together, in Runway's currency.
 
 pnpm workspace with two apps and a shared types package:
 
-| Path   | What                                                                       |
-| ------ | -------------------------------------------------------------------------- |
-| `api/` | [Fastify](https://fastify.dev) + TypeScript, SQLite via [Drizzle ORM](https://orm.drizzle.team) and `better-sqlite3` |
-| `web/` | React + TypeScript + [Vite](https://vite.dev), styled with [Tailwind CSS](https://tailwindcss.com), charts with [Recharts](https://recharts.org) |
-| `shared/` | `@runway-budget/shared`: TypeScript types for the API's JSON responses |
+| Path      | What                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `api/`    | [Fastify](https://fastify.dev) + TypeScript, SQLite via [Drizzle ORM](https://orm.drizzle.team) and `better-sqlite3`                             |
+| `web/`    | React + TypeScript + [Vite](https://vite.dev), styled with [Tailwind CSS](https://tailwindcss.com), charts with [Recharts](https://recharts.org) |
+| `shared/` | `@runway-budget/shared`: TypeScript types for the API's JSON responses                                                                           |
 
 ## Getting started
 
@@ -186,13 +186,13 @@ Re-syncing a window you already have adds nothing new but fills in each stored t
 
 Run from the repository root:
 
-| Command      | What                                  |
-| ------------ | ------------------------------------- |
-| `pnpm dev`   | Start API and web in watch mode       |
-| `pnpm build` | Build both apps                       |
-| `pnpm test`  | Type-check and run API tests (in-memory SQLite); does not touch `dist` |
-| `pnpm lint`  | Lint the web app with oxlint          |
-| `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data)) |
+| Command                              | What                                                                   |
+| ------------------------------------ | ---------------------------------------------------------------------- |
+| `pnpm dev`                           | Start API and web in watch mode                                        |
+| `pnpm build`                         | Build both apps                                                        |
+| `pnpm test`                          | Type-check and run API tests (in-memory SQLite); does not touch `dist` |
+| `pnpm lint`                          | Lint the web app with oxlint                                           |
+| `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                   |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
 
@@ -209,32 +209,32 @@ integer minor units (cents/kopiykas).
 
 ## API
 
-| Method   | Path            | What                                                  |
-| -------- | --------------- | ----------------------------------------------------- |
-| `GET`    | `/accounts`     | List accounts, each with its `transactionCount`        |
-| `GET`    | `/accounts/:id/transactions` | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note` and `cancelled` |
-| `GET`    | `/categories`   | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }` |
-| `PUT`    | `/categories/merchants` | Set a merchant's category `{ description, category }`; `category: null` resets it |
-| `PUT`    | `/categories/transactions/:id` | Set one transaction's category `{ category }`; `null` resets it |
-| `PATCH`  | `/transactions/:id` | Set a transaction's `{ note?, essential? }`; empty note or `null` clears |
-| `PUT`    | `/categories/merchants/essential` | Mark a merchant essential `{ description, essential }`; `null` resets it |
-| `POST`   | `/accounts/mono/sync` | Import 31 days from Monobank ending at `?to=` (unix seconds, default now) |
-| `POST`   | `/accounts`     | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`) |
-| `PUT`    | `/accounts/order` | Reorder: `{ ids }` with every account id in order |
-| `PATCH`  | `/accounts/:id` | Update any of `name`, `currency`, `balance`, `kind` |
-| `DELETE` | `/accounts/:id` | Delete account                                        |
-| `GET`    | `/budget`       | Monthly spend, incomes and reserve, or `null`         |
-| `PUT`    | `/budget`       | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }` |
-| `GET`    | `/category-budgets` | Monthly caps per category                         |
-| `PUT`    | `/category-budgets/:category` | Set or replace a top-level spending category's cap `{ amount, currency }` |
-| `DELETE` | `/category-budgets/:category` | Remove a cap                            |
-| `GET`    | `/goals`        | List goals                                            |
-| `POST`   | `/goals`        | Create goal `{ name, target, currency }`              |
-| `DELETE` | `/goals/:id`    | Delete goal                                           |
-| `GET`    | `/rates`        | NBU rates as UAH per unit, cached for an hour         |
-| `GET`    | `/rates/history?from=YYYY-MM-DD` | NBU rates for every day from `from` to today, cached for 12 hours |
-| `GET`    | `/inflation?from=YYYY-MM` | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day |
-| `GET`    | `/stats/spending-per-year?currency=UAH&tz=Europe/Kyiv` | Spending per category and year, and last year's up to today's date, at today's NBU rates; `tz` sets the local day |
+| Method   | Path                                                   | What                                                                                                                                                                  |
+| -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/accounts`                                            | List accounts, each with its `transactionCount`                                                                                                                       |
+| `GET`    | `/accounts/:id/transactions`                           | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note` and `cancelled` |
+| `GET`    | `/categories`                                          | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }`                                                                             |
+| `PUT`    | `/categories/merchants`                                | Set a merchant's category `{ description, category }`; `category: null` resets it                                                                                     |
+| `PUT`    | `/categories/transactions/:id`                         | Set one transaction's category `{ category }`; `null` resets it                                                                                                       |
+| `PATCH`  | `/transactions/:id`                                    | Set a transaction's `{ note?, essential? }`; empty note or `null` clears                                                                                              |
+| `PUT`    | `/categories/merchants/essential`                      | Mark a merchant essential `{ description, essential }`; `null` resets it                                                                                              |
+| `POST`   | `/accounts/mono/sync`                                  | Import 31 days from Monobank ending at `?to=` (unix seconds, default now)                                                                                             |
+| `POST`   | `/accounts`                                            | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`)                                                                                        |
+| `PUT`    | `/accounts/order`                                      | Reorder: `{ ids }` with every account id in order                                                                                                                     |
+| `PATCH`  | `/accounts/:id`                                        | Update any of `name`, `currency`, `balance`, `kind`                                                                                                                   |
+| `DELETE` | `/accounts/:id`                                        | Delete account                                                                                                                                                        |
+| `GET`    | `/budget`                                              | Monthly spend, incomes and reserve, or `null`                                                                                                                         |
+| `PUT`    | `/budget`                                              | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }`             |
+| `GET`    | `/category-budgets`                                    | Monthly caps per category                                                                                                                                             |
+| `PUT`    | `/category-budgets/:category`                          | Set or replace a top-level spending category's cap `{ amount, currency }`                                                                                             |
+| `DELETE` | `/category-budgets/:category`                          | Remove a cap                                                                                                                                                          |
+| `GET`    | `/goals`                                               | List goals                                                                                                                                                            |
+| `POST`   | `/goals`                                               | Create goal `{ name, target, currency }`                                                                                                                              |
+| `DELETE` | `/goals/:id`                                           | Delete goal                                                                                                                                                           |
+| `GET`    | `/rates`                                               | NBU rates as UAH per unit, cached for an hour                                                                                                                         |
+| `GET`    | `/rates/history?from=YYYY-MM-DD`                       | NBU rates for every day from `from` to today, cached for 12 hours                                                                                                     |
+| `GET`    | `/inflation?from=YYYY-MM`                              | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day                                                                  |
+| `GET`    | `/stats/spending-per-year?currency=UAH&tz=Europe/Kyiv` | Spending per category and year, and last year's up to today's date, at today's NBU rates; `tz` sets the local day                                                     |
 
 ## How estimates work
 
@@ -338,14 +338,14 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   behavior: per-segment tooltip, median line, usual range, month totals, click to select a category or
   pick a month. Bundle sizes are the minified main chunk, 520 kB (164 kB gzip) without any chart library.
 
-  | | [Recharts](https://recharts.org) 3 | [visx](https://airbnb.io/visx) 4 | [uPlot](https://github.com/leeoniya/uPlot) 1.6 |
-  | --- | --- | --- | --- |
-  | Model | React components that draw a whole chart | d3 scales and shapes; you write the SVG | Imperative canvas, no React bindings |
-  | Stacked bars, reference lines and areas | Built in (`stackId`, `ReferenceLine`, `ReferenceArea`) | `BarStack`; lines and areas by hand | Not built in: running totals, labels and guides drawn on the canvas |
-  | Tooltips, keyboard, hit testing | Built in, custom tooltip content | All by hand | All by hand, plus finding the segment under the cursor |
-  | Theme colors | CSS variables work in SVG attributes | Same | Canvas needs them resolved with `getComputedStyle` |
-  | Bundle | 906 kB (273 kB gzip) | 564 kB (181 kB gzip) | 572 kB (187 kB gzip) |
-  | Dependencies | Redux Toolkit, react-redux, immer, reselect (an internal store per chart) | d3 modules | None |
+  |                                         | [Recharts](https://recharts.org) 3                                        | [visx](https://airbnb.io/visx) 4        | [uPlot](https://github.com/leeoniya/uPlot) 1.6                      |
+  | --------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
+  | Model                                   | React components that draw a whole chart                                  | d3 scales and shapes; you write the SVG | Imperative canvas, no React bindings                                |
+  | Stacked bars, reference lines and areas | Built in (`stackId`, `ReferenceLine`, `ReferenceArea`)                    | `BarStack`; lines and areas by hand     | Not built in: running totals, labels and guides drawn on the canvas |
+  | Tooltips, keyboard, hit testing         | Built in, custom tooltip content                                          | All by hand                             | All by hand, plus finding the segment under the cursor              |
+  | Theme colors                            | CSS variables work in SVG attributes                                      | Same                                    | Canvas needs them resolved with `getComputedStyle`                  |
+  | Bundle                                  | 906 kB (273 kB gzip)                                                      | 564 kB (181 kB gzip)                    | 572 kB (187 kB gzip)                                                |
+  | Dependencies                            | Redux Toolkit, react-redux, immer, reselect (an internal store per chart) | d3 modules                              | None                                                                |
 
   Recharts won on the least chart code to own: the charts are declarations, not drawing and event
   code. Its costs: the largest bundle, the Redux dependencies (see recharts/recharts#6117 for the
@@ -356,6 +356,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   `LabelList` on the stack's topmost segment, read from the label's own entry because indexes go stale
   while the shown months change. visx is the fallback if the bundle starts to matter; uPlot pays off
   only for far bigger series than a year of days.
+
 - **Median over complete months.** The chart's median leaves out the running month, which would
   pull it down, counts months without spending as zero when a category or merchant is selected, and
   covers only the months the period filter shows (every month for all time or a week).
@@ -399,7 +400,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 
 - [x] This month against the usual: each category's spending vs its median («Продукти +34%»)
 - [x] Recurring payments: detect subscriptions (same merchant, similar amount each month) and show the
-  committed monthly total
+      committed monthly total
 - [x] Spread, not only the median: p25–p75 band or the worst month, since Runway assumes flat spending
 - [x] Year-over-year: same month last year and yearly totals per category
 - [x] Pace within the month: «spent X by the 14th, on track for Y»
@@ -419,16 +420,16 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 Deliberate shortcuts, each fine at today's size, with what would make it worth fixing:
 
 - [ ] **Reports split between browser and API.** Spending per year is summed in the API; This month,
-  Category budgets, Cash flow and Recurring still sum in the browser, so the Spending page loads every
-  transaction (~1.4 MB, ~30 ms today). Move them one at a time if loading gets slow; Cash flow needs
-  the daily rate history in the API.
+      Category budgets, Cash flow and Recurring still sum in the browser, so the Spending page loads every
+      transaction (~1.4 MB, ~30 ms today). Move them one at a time if loading gets slow; Cash flow needs
+      the daily rate history in the API.
 - [ ] **Spending per year returns unused years.** Rows keep amounts for years outside `years`; the
-  table ignores them.
+      table ignores them.
 - [ ] **Monobank statements are not paged** (`api/src/mono.ts`). A request caps at 500 items; page by
-  `to` if a month ever exceeds that.
+      `to` if a month ever exceeds that.
 - [ ] **Rate history and CPI are cached in memory** (`api/src/routes/rates`, `api/src/routes/inflation`)
-  and refetched after a restart; store them in a table if the NBU gets slow or rate-limits.
+      and refetched after a restart; store them in a table if the NBU gets slow or rate-limits.
 - [ ] **Merchant icons come from Google's favicon service** (`web/src/components/MerchantIcon.tsx`), so
-  Google sees which merchant domains are shown; proxy them through the API if that matters.
+      Google sees which merchant domains are shown; proxy them through the API if that matters.
 - [ ] **Recurring payments detect monthly cycles only** (`web/src/pages/spending/Recurring.tsx`); yearly
-  and weekly payments need their own period detection.
+      and weekly payments need their own period detection.

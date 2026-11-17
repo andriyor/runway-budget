@@ -12,5 +12,11 @@ test('next Monobank sync is the next 09:00 or 21:00 local', () => {
   assert.deepEqual(nextRun(new Date(2026, 10, 30, 22)), new Date(2026, 11, 1, 9))
   assert.deepEqual(nextRun(new Date(2026, 11, 31, 22)), new Date(2027, 0, 1, 9))
   // other times, unsorted
-  assert.deepEqual(nextRun(at(6, 13), [[18, 30], [7, 15]]), at(6, 18, 30))
+  assert.deepEqual(
+    nextRun(at(6, 13), [
+      [18, 30],
+      [7, 15],
+    ]),
+    at(6, 18, 30),
+  )
 })

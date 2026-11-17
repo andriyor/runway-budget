@@ -54,10 +54,10 @@ export type Category = {
   // false for income, own-account moves and investments
   spending: boolean
   // essential: the default for transactions in that subcategory
-  subcategories: Array<{ id: string, label: string, essential: boolean }>
+  subcategories: Array<{ id: string; label: string; essential: boolean }>
 }
 
-export type Rates = { date: string, rates: Record<Currency, number> }
+export type Rates = { date: string; rates: Record<Currency, number> }
 
 // NBU rates (UAH per unit) for every calendar day from the requested one to today, keyed 'YYYY-MM-DD';
 // the NBU publishes weekends and holidays too, repeating the last working day's rate
@@ -80,13 +80,13 @@ export type Budget = {
 }
 
 // keeps: still comes in the "without income" estimates, like a pension or rent
-export type Income = { name: string, amount: number, currency: Currency, keeps: boolean }
+export type Income = { name: string; amount: number; currency: Currency; keeps: boolean }
 
 // wish: a wished-for purchase, which savings do not fill; addedAt is an ISO timestamp
-export type Goal = { id: number, name: string, target: number, currency: Currency, wish: boolean, addedAt: string }
+export type Goal = { id: number; name: string; target: number; currency: Currency; wish: boolean; addedAt: string }
 
 // a monthly spending cap for a top-level spending category
-export type CategoryBudget = { category: string, amount: number, currency: Currency }
+export type CategoryBudget = { category: string; amount: number; currency: Currency }
 
 // Spending per spending category and calendar year, net of refunds, in the requested currency at today's
 // NBU rates. Days are local to the requested time zone. Cancelled pairs, income, own-account moves and

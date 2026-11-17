@@ -10,12 +10,30 @@ import { useFinance } from '../../lib/finance'
 import type { Budget, Currency } from '../../lib/types'
 
 export function Spending() {
-  const { accounts, rates, budget, setBudget, categories, transactions, inflation, error, setError, currency, convert, convertOn } = useFinance({ withTransactions: true, withInflation: true })
+  const {
+    accounts,
+    rates,
+    budget,
+    setBudget,
+    categories,
+    transactions,
+    inflation,
+    error,
+    setError,
+    currency,
+    convert,
+    convertOn,
+  } = useFinance({ withTransactions: true, withInflation: true })
 
   // the cash flow's median income becomes one of Runway's incomes, keeping the rest of the budget
   async function incomeFromCashFlow(amount: number, c: Currency) {
     try {
-      setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(budgetWith(budget!, 'income', Math.round(amount), c)) }))
+      setBudget(
+        await api<Budget>('/budget', {
+          method: 'PUT',
+          body: JSON.stringify(budgetWith(budget!, 'income', Math.round(amount), c)),
+        }),
+      )
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
     }
@@ -27,7 +45,10 @@ export function Spending() {
     <>
       <header className="flex items-center gap-2">
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Spending</h1>
-        <InfoTip label="About spending">All accounts together, in Runway's currency: Cash flow at each day's NBU rate, the other cards at today's. Net of refunds, without own-account moves and investments.</InfoTip>
+        <InfoTip label="About spending">
+          All accounts together, in Runway's currency: Cash flow at each day's NBU rate, the other cards at today's. Net
+          of refunds, without own-account moves and investments.
+        </InfoTip>
       </header>
 
       <ErrorBanner>{error}</ErrorBanner>
@@ -36,7 +57,15 @@ export function Spending() {
         <>
           <ThisMonth {...shared} planned={budget?.monthlySpend} />
           <CategoryBudgets {...shared} />
-          <CashFlow transactions={transactions} accounts={accounts} categories={categories} convertOn={convertOn} currency={currency} onUseIncome={budget ? incomeFromCashFlow : undefined} inflation={inflation} />
+          <CashFlow
+            transactions={transactions}
+            accounts={accounts}
+            categories={categories}
+            convertOn={convertOn}
+            currency={currency}
+            onUseIncome={budget ? incomeFromCashFlow : undefined}
+            inflation={inflation}
+          />
           <Recurring {...shared} />
           <YearOverYear transactions={transactions} categories={categories} currency={currency} />
         </>

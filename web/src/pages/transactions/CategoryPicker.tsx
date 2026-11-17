@@ -5,14 +5,33 @@ import { muted } from '../../lib/styles'
 import type { Category } from '../../lib/types'
 
 // search also holds the parent's name, so «продукти» finds every grocery subcategory
-type Item = { value: string, label: string, search: string }
-type Group = { id: string, emoji: string, name: string, value: string, items: Item[] }
+type Item = { value: string; label: string; search: string }
+type Group = { id: string; emoji: string; name: string; value: string; items: Item[] }
 
 // the leaves to pick from: each category's subcategories, then the categories without any
 const groupsOf = (categories: Category[]): Group[] => [
-  ...categories.filter((c) => c.subcategories.length)
-    .map((c) => ({ id: c.id, emoji: c.emoji, name: c.label, value: `${c.emoji} ${c.label}`, items: c.subcategories.map((s) => ({ value: s.id, label: s.label, search: `${s.label} ${c.label}`.toLowerCase() })) })),
-  { id: 'service', emoji: '⚙️', name: 'Службові', value: '⚙️ Службові', items: categories.filter((c) => !c.subcategories.length).map((c) => ({ value: c.id, label: c.label, search: c.label.toLowerCase() })) },
+  ...categories
+    .filter((c) => c.subcategories.length)
+    .map((c) => ({
+      id: c.id,
+      emoji: c.emoji,
+      name: c.label,
+      value: `${c.emoji} ${c.label}`,
+      items: c.subcategories.map((s) => ({
+        value: s.id,
+        label: s.label,
+        search: `${s.label} ${c.label}`.toLowerCase(),
+      })),
+    })),
+  {
+    id: 'service',
+    emoji: '⚙️',
+    name: 'Службові',
+    value: '⚙️ Службові',
+    items: categories
+      .filter((c) => !c.subcategories.length)
+      .map((c) => ({ value: c.id, label: c.label, search: c.label.toLowerCase() })),
+  },
 ]
 const row = 'flex w-full cursor-default items-center justify-between gap-2 px-3 py-1 text-left outline-none'
 
@@ -48,7 +67,9 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
       filteredItems={query.trim() ? undefined : shown ? [shown] : []}
       autoHighlight
       value={selected}
-      onValueChange={(item: Item | null) => { if (item) pick(item.value) }}
+      onValueChange={(item: Item | null) => {
+        if (item) pick(item.value)
+      }}
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
@@ -75,7 +96,11 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
             />
             {!query.trim() && !shown && (
               <div className="min-h-0 flex-1 overflow-y-auto pb-1">
-                <button type="button" onClick={() => pick(null)} className={`${row} hover:bg-indigo-50 dark:hover:bg-indigo-950/50 ${value ? '' : 'font-semibold text-indigo-700 dark:text-indigo-300'}`}>
+                <button
+                  type="button"
+                  onClick={() => pick(null)}
+                  className={`${row} hover:bg-indigo-50 dark:hover:bg-indigo-950/50 ${value ? '' : 'font-semibold text-indigo-700 dark:text-indigo-300'}`}
+                >
                   Автоматично {!value && <Check size={14} />}
                 </button>
                 {/* tiles rather than rows, so all the categories fit without scrolling */}
@@ -87,7 +112,9 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
                       onClick={() => setParent(g.id)}
                       className={`flex flex-col items-center gap-0.5 rounded-md px-0.5 py-1.5 text-center text-sm leading-tight hover:bg-indigo-50 dark:hover:bg-indigo-950/50 ${g.items.includes(selected!) ? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300' : ''}`}
                     >
-                      <span aria-hidden className="text-2xl">{g.emoji}</span>
+                      <span aria-hidden className="text-2xl">
+                        {g.emoji}
+                      </span>
                       {g.name}
                     </button>
                   ))}
@@ -98,16 +125,21 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
             <Combobox.List className="min-h-0 flex-1 overflow-y-auto pb-1 empty:hidden">
               {(group: Group) => (
                 <Combobox.Group key={group.id} items={group.items}>
-                  {query.trim()
-                    ? <Combobox.GroupLabel className={`px-3 pt-2 pb-0.5 text-xs ${muted}`}>{group.value}</Combobox.GroupLabel>
-                    : (
-                      <Combobox.GroupLabel
-                        render={<button type="button" onClick={() => setParent(undefined)} />}
-                        className={`${row} mb-0.5 border-b border-zinc-100 pb-1.5 font-medium hover:bg-indigo-50 dark:border-zinc-800 dark:hover:bg-indigo-950/50`}
-                      >
-                        <span className="flex min-w-0 items-center gap-1"><ChevronLeft size={14} className="shrink-0 text-zinc-400" /><span className="truncate">{group.value}</span></span>
-                      </Combobox.GroupLabel>
-                    )}
+                  {query.trim() ? (
+                    <Combobox.GroupLabel className={`px-3 pt-2 pb-0.5 text-xs ${muted}`}>
+                      {group.value}
+                    </Combobox.GroupLabel>
+                  ) : (
+                    <Combobox.GroupLabel
+                      render={<button type="button" onClick={() => setParent(undefined)} />}
+                      className={`${row} mb-0.5 border-b border-zinc-100 pb-1.5 font-medium hover:bg-indigo-50 dark:border-zinc-800 dark:hover:bg-indigo-950/50`}
+                    >
+                      <span className="flex min-w-0 items-center gap-1">
+                        <ChevronLeft size={14} className="shrink-0 text-zinc-400" />
+                        <span className="truncate">{group.value}</span>
+                      </span>
+                    </Combobox.GroupLabel>
+                  )}
                   <Combobox.Collection>
                     {(item: Item) => (
                       <Combobox.Item
@@ -116,7 +148,9 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
                         className={`${row} data-highlighted:bg-indigo-50 data-selected:font-semibold data-selected:text-indigo-700 dark:data-highlighted:bg-indigo-950/50 dark:data-selected:text-indigo-300`}
                       >
                         {item.label}
-                        <Combobox.ItemIndicator><Check size={14} /></Combobox.ItemIndicator>
+                        <Combobox.ItemIndicator>
+                          <Check size={14} />
+                        </Combobox.ItemIndicator>
                       </Combobox.Item>
                     )}
                   </Combobox.Collection>
@@ -124,7 +158,12 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
               )}
             </Combobox.List>
             <label className="flex cursor-pointer items-center gap-2 border-t border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
-              <input type="checkbox" checked={forMerchant} onChange={(e) => setForMerchant(e.target.checked)} className="size-3.5 accent-indigo-600" />
+              <input
+                type="checkbox"
+                checked={forMerchant}
+                onChange={(e) => setForMerchant(e.target.checked)}
+                className="size-3.5 accent-indigo-600"
+              />
               Для всіх транзакцій цього продавця
             </label>
           </Combobox.Popup>

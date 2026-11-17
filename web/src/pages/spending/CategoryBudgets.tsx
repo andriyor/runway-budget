@@ -30,7 +30,6 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
   const error = saveError || query.error?.message || ''
   const [now] = useState(() => new Date())
 
-
   const spending = categories.filter((c) => c.spending)
   // picking a category that has a cap fills in its amount, so the form edits it
   function pick(id: string) {
@@ -94,7 +93,8 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Category budgets</h2>
         {rows.length > 0 && (
           <span className={`tabular-nums ${muted}`}>
-            day {now.getDate()} of {daysInMonth} · {wholeMoney(totalSpent, currency)} of {wholeMoney(totalCap, currency)}
+            day {now.getDate()} of {daysInMonth} · {wholeMoney(totalSpent, currency)} of{' '}
+            {wholeMoney(totalCap, currency)}
           </span>
         )}
       </div>
@@ -104,12 +104,19 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
           const share = used / cap
           const tone = share > 1 ? 'rose' : share > gone ? 'amber' : 'emerald'
           const bar = { rose: 'bg-rose-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }[tone]
-          const text = { rose: 'text-rose-600 dark:text-rose-400', amber: 'text-amber-700 dark:text-amber-400', emerald: 'text-emerald-700 dark:text-emerald-400' }[tone]
+          const text = {
+            rose: 'text-rose-600 dark:text-rose-400',
+            amber: 'text-amber-700 dark:text-amber-400',
+            emerald: 'text-emerald-700 dark:text-emerald-400',
+          }[tone]
           return (
             <li key={c.id}>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="truncate text-zinc-900 dark:text-zinc-100">
-                  <span aria-hidden className="mr-2">{c.emoji}</span>{c.label}
+                  <span aria-hidden className="mr-2">
+                    {c.emoji}
+                  </span>
+                  {c.label}
                 </span>
                 <span className="flex shrink-0 items-center gap-2 tabular-nums">
                   <span className="text-zinc-900 dark:text-zinc-100">{wholeMoney(used, currency)}</span>
@@ -134,7 +141,11 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
               >
                 <div className={`h-full rounded-full ${bar}`} style={{ width: `${Math.min(1, share) * 100}%` }} />
                 {/* where an even pace would be by today */}
-                <div aria-hidden className="absolute inset-y-0 w-0.5 bg-zinc-900/60 dark:bg-white/70" style={{ left: `${gone * 100}%` }} />
+                <div
+                  aria-hidden
+                  className="absolute inset-y-0 w-0.5 bg-zinc-900/60 dark:bg-white/70"
+                  style={{ left: `${gone * 100}%` }}
+                />
               </div>
               <p className={`mt-1 text-xs tabular-nums ${text}`}>
                 {share > 1
@@ -145,10 +156,15 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
           )
         })}
       </ul>
-      {rows.length === 0 && <p className={`py-4 text-center ${muted}`}>No budgets yet. Set a monthly cap for a category below.</p>}
+      {rows.length === 0 && (
+        <p className={`py-4 text-center ${muted}`}>No budgets yet. Set a monthly cap for a category below.</p>
+      )}
       <ErrorText>{error}</ErrorText>
 
-      <form className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50" onSubmit={save}>
+      <form
+        className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/50"
+        onSubmit={save}
+      >
         <select
           required
           value={category}
@@ -156,15 +172,31 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
           aria-label="Category"
           className={`min-w-40 flex-1 px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
         >
-          <option value="" disabled>Category…</option>
+          <option value="" disabled>
+            Category…
+          </option>
           {spending.map((c) => (
-            <option key={c.id} value={c.id}>{c.emoji} {c.label}{budgets.some((b) => b.category === c.id) ? ' · has a budget' : ''}</option>
+            <option key={c.id} value={c.id}>
+              {c.emoji} {c.label}
+              {budgets.some((b) => b.category === c.id) ? ' · has a budget' : ''}
+            </option>
           ))}
         </select>
         <div className="w-56">
-          <MoneyInput label="Monthly budget" required min="0.01" placeholder="per month" value={amount} onChange={setAmount} currency={amountCurrency} onCurrency={setAmountCurrency} />
+          <MoneyInput
+            label="Monthly budget"
+            required
+            min="0.01"
+            placeholder="per month"
+            value={amount}
+            onChange={setAmount}
+            currency={amountCurrency}
+            onCurrency={setAmountCurrency}
+          />
         </div>
-        <button className={button}>{budgets.some((b) => b.category === category) ? 'Update budget' : 'Set budget'}</button>
+        <button className={button}>
+          {budgets.some((b) => b.category === category) ? 'Update budget' : 'Set budget'}
+        </button>
       </form>
     </section>
   )

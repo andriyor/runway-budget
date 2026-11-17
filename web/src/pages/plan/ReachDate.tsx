@@ -23,20 +23,31 @@ type ReachDateProps = {
 export function ReachDate({ need, net, spend, inflation, currency, hideUnreachable }: ReachDateProps) {
   const [now] = useState(Date.now)
   if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
-  if (net <= 0) return <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
+  if (net <= 0)
+    return (
+      <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
+    )
   const months = need / net
   const date = (m: number) => dateIn(m, now)
-  const inflated = inflation !== undefined && inflation > 0 && spend !== undefined
-    ? { months: monthsToSave(need, spend, spend + net, inflation) }
-    : undefined
+  const inflated =
+    inflation !== undefined && inflation > 0 && spend !== undefined
+      ? { months: monthsToSave(need, spend, spend + net, inflation) }
+      : undefined
   return (
     <span className="text-zinc-700 tabular-nums dark:text-zinc-300">
       In <strong>{months.toFixed(1)} months</strong>
-      <span className="text-zinc-500 dark:text-zinc-400"> · {date(months)} · saving {format(net, currency)} per month</span>
+      <span className="text-zinc-500 dark:text-zinc-400">
+        {' '}
+        · {date(months)} · saving {format(net, currency)} per month
+      </span>
       {inflated && !(hideUnreachable && inflated.months === undefined) && (
-        <span className={`block ${inflated.months === undefined ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
+        <span
+          className={`block ${inflated.months === undefined ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}
+        >
           With {(inflation! * 100).toFixed(1)}% inflation:{' '}
-          {inflated.months === undefined ? 'not reached before spending catches up with income' : `${inflated.months.toFixed(1)} months · ${date(inflated.months)}`}
+          {inflated.months === undefined
+            ? 'not reached before spending catches up with income'
+            : `${inflated.months.toFixed(1)} months · ${date(inflated.months)}`}
         </span>
       )}
     </span>

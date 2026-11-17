@@ -3,10 +3,12 @@ import type { Convert, Currency, Goal } from './types'
 // Savings fill goals from the top, so a goal is reached once savings cover its target and every target above it.
 // Per goal: that running total in the goal's own currency; undefined while rates load.
 export const cumulativeTargets = (goals: Goal[], convert: Convert) =>
-  goals.map((goal, i) => goals.slice(0, i + 1).reduce<number | undefined>((sum, above) => {
-    const v = convert(above.target, above.currency, goal.currency)
-    return sum === undefined || v === undefined ? undefined : sum + v
-  }, 0))
+  goals.map((goal, i) =>
+    goals.slice(0, i + 1).reduce<number | undefined>((sum, above) => {
+      const v = convert(above.target, above.currency, goal.currency)
+      return sum === undefined || v === undefined ? undefined : sum + v
+    }, 0),
+  )
 
 // Per goal: how much of it savings cover now, and what is still to save for it and every goal above it, in its
 // currency. forGoals is negative while the cushion is not covered, so that shortfall counts first.

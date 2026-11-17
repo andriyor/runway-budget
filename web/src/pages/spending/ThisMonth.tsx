@@ -14,7 +14,15 @@ const ALL = '*'
 const dayMonth = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long' })
 
 // lastYear: the same days of this month a year ago; undefined before the transactions start
-type Row = { id: string, label: string, emoji?: string, now: number, usual: number, lastYear: number | undefined, subs: Row[] }
+type Row = {
+  id: string
+  label: string
+  emoji?: string
+  now: number
+  usual: number
+  lastYear: number | undefined
+  subs: Row[]
+}
 
 // biggest change in money first; rows with nothing now and nothing usual are dropped
 const ranked = (rows: Row[]) =>
@@ -26,11 +34,20 @@ const ranked = (rows: Row[]) =>
 // is not «−50%». Net of refunds; cancelled pairs, income, own-account moves and investments are left out.
 // The pace projects the month: spent so far plus the median of what the past months spent after this day,
 // so rent paid on the 2nd is not stretched over the month the way spent ÷ days × 30 would.
-function thisMonth(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
+function thisMonth(
+  transactions: Transaction[],
+  accounts: Account[],
+  categories: Category[],
+  convert: Convert,
+  currency: Currency,
+  now: Date,
+) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const parentOf = parentsById(categories)
   const current = monthKey(now.toISOString())
-  const past = Array.from({ length: MONTHS }, (_, i) => monthKey(new Date(now.getFullYear(), now.getMonth() - MONTHS + i, 1).toISOString()))
+  const past = Array.from({ length: MONTHS }, (_, i) =>
+    monthKey(new Date(now.getFullYear(), now.getMonth() - MONTHS + i, 1).toISOString()),
+  )
   // category or subcategory id → month key → spent by this day of that month
   const spent = new Map<string, Map<string, number>>()
   const add = (id: string, month: string, amount: number) => {
@@ -60,10 +77,20 @@ function thisMonth(transactions: Transaction[], accounts: Account[], categories:
   const [lastYear] = past
   const row = (id: string, label: string, emoji?: string, subs: Row[] = []): Row => {
     const byMonth = spent.get(id)
-    const ago = months.includes(lastYear) ? byMonth?.get(lastYear) ?? 0 : undefined
-    return { id, label, emoji, now: byMonth?.get(current) ?? 0, usual: median(months.map((m) => byMonth?.get(m) ?? 0)), lastYear: ago, subs }
+    const ago = months.includes(lastYear) ? (byMonth?.get(lastYear) ?? 0) : undefined
+    return {
+      id,
+      label,
+      emoji,
+      now: byMonth?.get(current) ?? 0,
+      usual: median(months.map((m) => byMonth?.get(m) ?? 0)),
+      lastYear: ago,
+      subs,
+    }
   }
-  const rows = categories.map((c) => row(c.id, c.label, c.emoji, ranked(c.subcategories.map((s) => row(s.id, s.label)))))
+  const rows = categories.map((c) =>
+    row(c.id, c.label, c.emoji, ranked(c.subcategories.map((s) => row(s.id, s.label)))),
+  )
   const byDay = spent.get(ALL)
   const sofar = byDay?.get(current) ?? 0
   const pace = {
@@ -97,14 +124,25 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
 
   const line = ({ id, label, emoji, now: spent, usual, lastYear, subs }: Row, sub = false) => {
     const over = spent > usual
-    const change = spent === usual ? '0%' : usual > 0 ? `${over ? '+' : '−'}${percentOf(Math.abs(spent - usual) / usual)}%` : 'new'
+    const change =
+      spent === usual ? '0%' : usual > 0 ? `${over ? '+' : '−'}${percentOf(Math.abs(spent - usual) / usual)}%` : 'new'
     return (
-      <tr key={id} className={`text-right [&>td]:py-1.5 ${sub ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-900 dark:text-zinc-100'}`}>
+      <tr
+        key={id}
+        className={`text-right [&>td]:py-1.5 ${sub ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-900 dark:text-zinc-100'}`}
+      >
         <td className={`text-left ${sub ? 'pl-7' : ''}`}>
           <span className="flex items-center gap-1">
             {/* this month's transactions in the category, on the Transactions page */}
-            <a href={`#/transactions?category=${id}&period=m:${monthKey(now.toISOString())}`} className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
-              {emoji && <span aria-hidden className="mr-2">{emoji}</span>}
+            <a
+              href={`#/transactions?category=${id}&period=m:${monthKey(now.toISOString())}`}
+              className="hover:text-indigo-600 hover:underline dark:hover:text-indigo-400"
+            >
+              {emoji && (
+                <span aria-hidden className="mr-2">
+                  {emoji}
+                </span>
+              )}
               {label}
             </a>
             {subs.length > 0 && (
@@ -122,8 +160,20 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
         </td>
         <td>{wholeMoney(spent, currency)}</td>
         <td className="text-zinc-500 dark:text-zinc-400">{wholeMoney(usual, currency)}</td>
-        <td className="text-zinc-500 dark:text-zinc-400">{lastYear === undefined ? '—' : wholeMoney(lastYear, currency)}</td>
-        <td className={spent === usual ? muted : over ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}>{change}</td>
+        <td className="text-zinc-500 dark:text-zinc-400">
+          {lastYear === undefined ? '—' : wholeMoney(lastYear, currency)}
+        </td>
+        <td
+          className={
+            spent === usual
+              ? muted
+              : over
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-emerald-700 dark:text-emerald-400'
+          }
+        >
+          {change}
+        </td>
       </tr>
     )
   }
@@ -133,19 +183,24 @@ export function ThisMonth({ transactions, accounts, categories, convert, currenc
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">This month against the usual</h2>
         <span className={muted}>
-          {dayMonth.format(first)} – {dayMonth.format(now)} vs the same days, median of {months} {months === 1 ? 'month' : 'months'}
+          {dayMonth.format(first)} – {dayMonth.format(now)} vs the same days, median of {months}{' '}
+          {months === 1 ? 'month' : 'months'}
         </span>
       </div>
 
       {pace && (
         <p className="mt-3 text-sm text-zinc-700 tabular-nums dark:text-zinc-300">
-          Spent <span className="font-semibold text-zinc-900 dark:text-zinc-100">{wholeMoney(pace.sofar, currency)}</span> by {dayMonth.format(now)},
-          on track for{' '}
-          <span className={`font-semibold ${target !== undefined && pace.projected > target ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+          Spent{' '}
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{wholeMoney(pace.sofar, currency)}</span> by{' '}
+          {dayMonth.format(now)}, on track for{' '}
+          <span
+            className={`font-semibold ${target !== undefined && pace.projected > target ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}
+          >
             {wholeMoney(pace.projected, currency)}
           </span>
           <span className={muted}>
-            {' '}· usual month {wholeMoney(pace.usualMonth, currency)}
+            {' '}
+            · usual month {wholeMoney(pace.usualMonth, currency)}
             {planned !== undefined && ` · Runway plans ${wholeMoney(planned, currency)}`}
           </span>
         </p>

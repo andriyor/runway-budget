@@ -6,7 +6,7 @@ import { goalProgress } from '../../lib/goals'
 import { card, muted } from '../../lib/styles'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
-type Cushion = { months: number, currency: Currency }
+type Cushion = { months: number; currency: Currency }
 
 type TimelineProps = {
   // available savings minus the months-without-income cushion; negative while the cushion is not covered
@@ -17,7 +17,7 @@ type TimelineProps = {
   cushion: Cushion | undefined
 }
 
-type Milestone = { key: string, label: string, need: number | undefined, currency: Currency }
+type Milestone = { key: string; label: string; need: number | undefined; currency: Currency }
 
 // The plan in one list: the cushion, then each goal in the order savings fill them, with the date each is reached
 // at today's spending. Inflation-adjusted dates stay with each goal below.
@@ -28,12 +28,17 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
 
   const milestones: Milestone[] = [
     ...(cushion
-      ? [{
-          key: 'cushion',
-          label: `${cushion.months}-month cushion`,
-          need: (() => { const f = forGoalsIn(cushion.currency); return f === undefined ? undefined : -f })(),
-          currency: cushion.currency,
-        }]
+      ? [
+          {
+            key: 'cushion',
+            label: `${cushion.months}-month cushion`,
+            need: (() => {
+              const f = forGoalsIn(cushion.currency)
+              return f === undefined ? undefined : -f
+            })(),
+            currency: cushion.currency,
+          },
+        ]
       : []),
     ...goals.map((g, i) => ({ key: String(g.id), label: g.name, need: progress[i]?.need, currency: g.currency })),
   ]
@@ -53,7 +58,9 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
     const months = m.need / net
     return (
       <>
-        <strong className="text-right text-sm font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{dateIn(months, now)}</strong>
+        <strong className="text-right text-sm font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+          {dateIn(months, now)}
+        </strong>
         <span className={`text-right tabular-nums ${muted}`}>in {months.toFixed(1)} months</span>
       </>
     )
@@ -70,14 +77,22 @@ export function Timeline({ forGoalsIn, convert, netIn, cushion }: TimelineProps)
           return (
             <li key={m.key} className="relative col-span-4 grid grid-cols-subgrid items-baseline pb-4 last:pb-0">
               {/* the line to the next milestone */}
-              {i < milestones.length - 1 && <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-0.5 bg-zinc-200 dark:bg-zinc-800" />}
+              {i < milestones.length - 1 && (
+                <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-0.5 bg-zinc-200 dark:bg-zinc-800" />
+              )}
               <span
                 aria-hidden
                 className={`relative size-3 self-start mt-1.5 rounded-full ${
-                  done ? 'bg-emerald-500' : i === current ? 'bg-indigo-500 ring-4 ring-indigo-500/20' : 'bg-zinc-300 dark:bg-zinc-700'
+                  done
+                    ? 'bg-emerald-500'
+                    : i === current
+                      ? 'bg-indigo-500 ring-4 ring-indigo-500/20'
+                      : 'bg-zinc-300 dark:bg-zinc-700'
                 }`}
               />
-              <span className={`truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              <span
+                className={`truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}
+              >
                 {m.label}
                 {i === current && <span className={`ml-2 ${muted}`}>· saving for now</span>}
               </span>

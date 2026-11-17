@@ -24,12 +24,14 @@ export const accounts = sqliteTable('accounts', {
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date())
-    .$onUpdateFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
 })
 
 export const transactions = sqliteTable('transactions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  accountId: integer('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  accountId: integer('account_id')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
   // bank's own transaction id, keeps re-syncs idempotent
   externalId: text('external_id').notNull().unique(),
   time: integer('time', { mode: 'timestamp' }).notNull(),
@@ -47,19 +49,19 @@ export const transactions = sqliteTable('transactions', {
   // user's free-text note
   note: text('note'),
   // user's essential flag for this transaction only; wins over merchant_essentials
-  essential: integer('essential', { mode: 'boolean' })
+  essential: integer('essential', { mode: 'boolean' }),
 })
 
 // user's category for every transaction of a merchant; key is merchantKey(description)
 export const merchantCategories = sqliteTable('merchant_categories', {
   merchant: text('merchant').primaryKey(),
-  category: text('category', { enum: categoryIds as [string, ...string[]] }).notNull()
+  category: text('category', { enum: categoryIds as [string, ...string[]] }).notNull(),
 })
 
 // user's essential flag for every transaction of a merchant; key is merchantKey(description)
 export const merchantEssentials = sqliteTable('merchant_essentials', {
   merchant: text('merchant').primaryKey(),
-  essential: integer('essential', { mode: 'boolean' }).notNull()
+  essential: integer('essential', { mode: 'boolean' }).notNull(),
 })
 
 export const goals = sqliteTable('goals', {
@@ -72,14 +74,16 @@ export const goals = sqliteTable('goals', {
   // a wished-for purchase: kept on the list but given no savings, so the plan shows what buying it would delay
   wish: integer('wish', { mode: 'boolean' }).notNull().default(false),
   // when the goal or wish was added; the default only fills rows from before the column, inserts set it
-  addedAt: integer('added_at', { mode: 'timestamp' }).notNull().default(sql`0`)
+  addedAt: integer('added_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`0`),
 })
 
 // a monthly spending cap per top-level spending category
 export const categoryBudgets = sqliteTable('category_budgets', {
   category: text('category').primaryKey(),
   amountCents: integer('amount_cents').notNull(),
-  currency: text('currency', { enum: currencies }).notNull()
+  currency: text('currency', { enum: currencies }).notNull(),
 })
 
 // single row (id = 1): how much is spent per month, used for runway
@@ -88,7 +92,10 @@ export const budget = sqliteTable('budget', {
   monthlySpendCents: integer('monthly_spend_cents').notNull(),
   currency: text('currency', { enum: currencies }).notNull(),
   // monthly incomes, e.g. a salary and a side job; amounts in minor units; keeps is missing on rows saved before it, meaning false
-  incomes: text('incomes', { mode: 'json' }).$type<Array<{ name: string, amountCents: number, currency: Currency, keeps?: boolean }>>().notNull().default([]),
+  incomes: text('incomes', { mode: 'json' })
+    .$type<Array<{ name: string; amountCents: number; currency: Currency; keeps?: boolean }>>()
+    .notNull()
+    .default([]),
   // optional amount that is never spent; excluded from runway
   reserveCents: integer('reserve_cents'),
   reserveCurrency: text('reserve_currency', { enum: currencies }),
@@ -96,5 +103,5 @@ export const budget = sqliteTable('budget', {
   minimalSpendCents: integer('minimal_spend_cents'),
   minimalSpendCurrency: text('minimal_spend_currency', { enum: currencies }),
   // optional months to live without salary; drives the max monthly spend
-  targetMonths: integer('target_months')
+  targetMonths: integer('target_months'),
 })

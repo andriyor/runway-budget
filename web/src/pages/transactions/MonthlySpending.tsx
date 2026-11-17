@@ -1,6 +1,18 @@
 import { useState, type ReactNode } from 'react'
 import { ArrowUpDown, Scale, TrendingDown, TrendingUp } from 'lucide-react'
-import { Bar, BarChart, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type LabelListEntry, type XAxisTickContentProps } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  LabelList,
+  ReferenceArea,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  type LabelListEntry,
+  type XAxisTickContentProps,
+} from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, weekDays, weekOfDay } from '../../lib/periods'
@@ -12,10 +24,10 @@ import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
 const SERIES = 7
 const REST = 'rest'
 
-type Segment = { id: string, label: string, color: string, value: number }
-type MonthBar = { month: string, segments: Segment[], total: number }
+type Segment = { id: string; label: string; color: string; value: number }
+type MonthBar = { month: string; segments: Segment[]; total: number }
 // one chart row per bar: segment values by series id, and the whole month's spending for the tooltip
-type Row = { month: string, values: Record<string, number>, total: number, monthTotal: number }
+type Row = { month: string; values: Record<string, number>; total: number; monthTotal: number }
 
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
 
@@ -50,12 +62,16 @@ function spendingByMonth(list: Transaction[], leafById: Map<string, Leaf>, bucke
 // one bar per month, oldest first, with a segment per series. Refunds can push a category below
 // zero in a month; a stack only shows what was spent.
 function stack(months: Map<string, Map<string, number>>, series: Omit<Segment, 'value'>[]): MonthBar[] {
-  return [...months].sort(([a], [b]) => a.localeCompare(b)).map(([month, byCategory]) => {
-    const values = new Map<string, number>()
-    for (const [id, value] of byCategory) add(values, series.some((s) => s.id === id) ? id : REST, value)
-    const segments = series.map((s) => ({ ...s, value: Math.max(0, values.get(s.id) ?? 0) })).filter((s) => s.value > 0)
-    return { month, segments, total: sum(segments.map((s) => s.value)) }
-  })
+  return [...months]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, byCategory]) => {
+      const values = new Map<string, number>()
+      for (const [id, value] of byCategory) add(values, series.some((s) => s.id === id) ? id : REST, value)
+      const segments = series
+        .map((s) => ({ ...s, value: Math.max(0, values.get(s.id) ?? 0) }))
+        .filter((s) => s.value > 0)
+      return { month, segments, total: sum(segments.map((s) => s.value)) }
+    })
 }
 
 const inQuarter = (quarter: string, month: string) => quarterMonths(quarter).includes(month)
@@ -105,7 +121,7 @@ type MonthlySpendingProps = {
   selected?: string
   onSelect: (category?: string) => void
   // selected merchant: the bars show only its spending (within the selected category, if any)
-  merchant?: { key: string, name: string }
+  merchant?: { key: string; name: string }
   onClearMerchant: () => void
   // list holds only essential spending; the median is then the minimal month
   essentialOnly?: boolean
@@ -116,7 +132,19 @@ type MonthlySpendingProps = {
 // Spending per month split by category: the SERIES biggest categories over the whole range keep
 // their own color in a fixed order, everything else folds into one neutral "Решта" segment.
 // With a category or merchant selected, each bar holds only that, rescaled to show its trend.
-export function MonthlySpending({ list, currency, leafById, period, onPick, selected, onSelect, merchant, onClearMerchant, essentialOnly, onUseMedian }: MonthlySpendingProps) {
+export function MonthlySpending({
+  list,
+  currency,
+  leafById,
+  period,
+  onPick,
+  selected,
+  onSelect,
+  merchant,
+  onClearMerchant,
+  essentialOnly,
+  onUseMedian,
+}: MonthlySpendingProps) {
   const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
 
@@ -127,7 +155,10 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const days = week ? weekDays(week) : undefined
   const bucket = days ? dayKey : monthKey
   const { months, totals } = spendingByMonth(list, leafById, bucket)
-  const top = [...totals].filter(([, x]) => x > 0).sort((a, b) => b[1] - a[1]).slice(0, SERIES)
+  const top = [...totals]
+    .filter(([, x]) => x > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, SERIES)
   const series = [
     ...top.map(([id], i) => ({ id, label: parents.get(id)!.label, color: `var(--series-${i + 1})` })),
     { id: REST, label: 'Решта', color: 'var(--series-rest)' },
@@ -141,8 +172,11 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   const selectedParent = selectedLeaf?.parent ?? (selected ? parents.get(selected) : undefined)
   const merchantPurchase = merchant && list.find((t) => t.merchant === merchant.key && t.amount < 0)
   const colorParent = selectedParent ?? (merchantPurchase ? leafById.get(merchantPurchase.category)?.parent : undefined)
-  const categoryLabel = selectedParent &&
-    (selectedLeaf && selectedLeaf.id !== selectedParent.id ? `${selectedParent.label} › ${selectedLeaf.label}` : selectedParent.label)
+  const categoryLabel =
+    selectedParent &&
+    (selectedLeaf && selectedLeaf.id !== selectedParent.id
+      ? `${selectedParent.label} › ${selectedLeaf.label}`
+      : selectedParent.label)
   const focus = (selectedParent || merchant) && {
     id: merchant ? `merchant:${merchant.key}` : selected!,
     label: [merchant?.name, categoryLabel].filter(Boolean).join(' · '),
@@ -166,16 +200,25 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   // the median is a monthly figure, so a week of days has none
   const typical = !days && complete.length ? median(complete.map((b) => b.total)) : undefined
   // the usual range (middle half of the complete months), the lowest and the worst one; too few months make no range
-  const spread = typical !== undefined && complete.length >= 4
-    ? {
-        low: quantile(complete.map((b) => b.total), 0.25),
-        high: quantile(complete.map((b) => b.total), 0.75),
-        lowest: complete.reduce((a, b) => (b.total < a.total ? b : a)),
-        worst: complete.reduce((a, b) => (b.total > a.total ? b : a)),
-      }
-    : undefined
+  const spread =
+    typical !== undefined && complete.length >= 4
+      ? {
+          low: quantile(
+            complete.map((b) => b.total),
+            0.25,
+          ),
+          high: quantile(
+            complete.map((b) => b.total),
+            0.75,
+          ),
+          lowest: complete.reduce((a, b) => (b.total < a.total ? b : a)),
+          worst: complete.reduce((a, b) => (b.total > a.total ? b : a)),
+        }
+      : undefined
   const shownWindow = phone && !days ? phoneWindow(period, scoped.at(-1)?.month) : undefined
-  const isShown = (month: string) => inScope(period, month) && (!phone || days !== undefined || (shownWindow !== undefined && shownWindow.months.includes(month)))
+  const isShown = (month: string) =>
+    inScope(period, month) &&
+    (!phone || days !== undefined || (shownWindow !== undefined && shownWindow.months.includes(month)))
   const shown = bars.filter((b) => isShown(b.month))
   const shownStacked = stacked.filter((b) => isShown(b.month))
   if (!stacked.some((b) => b.total > 0)) return null
@@ -199,7 +242,8 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
   }
   const isPicked = (month: string) => period === `m:${month}` || period === `d:${month}`
   const toggle = (id: string) => onSelect(selected === id ? undefined : id)
-  const legendButton = 'flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900'
+  const legendButton =
+    'flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-50 aria-pressed:ring-1 aria-pressed:ring-indigo-200 dark:hover:bg-zinc-800 dark:aria-pressed:bg-indigo-950/40 dark:aria-pressed:ring-indigo-900'
   const legendContent = (color: string, text: string, amount: number) => (
     <>
       <Swatch color={color} />
@@ -221,15 +265,51 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
       {typical !== undefined && (
         <>
           <p className={`mt-0.5 tabular-nums ${muted}`}>
-            {focus && `${focus.label} · `}{complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
+            {focus && `${focus.label} · `}
+            {complete.length} повних міс.{shownWindow && ` · показано ${shownWindow.label}`}
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat icon={<span className="text-indigo-600 dark:text-indigo-400"><Scale /></span>} label="Медіана за місяць" value={format(typical, currency)} strong />
+            <Stat
+              icon={
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  <Scale />
+                </span>
+              }
+              label="Медіана за місяць"
+              value={format(typical, currency)}
+              strong
+            />
             {spread && (
               <>
-                <Stat icon={<span className="text-violet-600 dark:text-violet-400"><ArrowUpDown /></span>} label="Звично (середня половина)" value={`${wholeMoney(spread.low, currency)}–${wholeMoney(spread.high, currency)}`} />
-                <Stat icon={<span className="text-emerald-600 dark:text-emerald-400"><TrendingDown /></span>} label="Найменший" value={wholeMoney(spread.lowest.total, currency)} note={shortMonth.format(firstDay(spread.lowest.month))} />
-                <Stat icon={<span className="text-rose-600 dark:text-rose-400"><TrendingUp /></span>} label="Найгірший" value={wholeMoney(spread.worst.total, currency)} note={shortMonth.format(firstDay(spread.worst.month))} />
+                <Stat
+                  icon={
+                    <span className="text-violet-600 dark:text-violet-400">
+                      <ArrowUpDown />
+                    </span>
+                  }
+                  label="Звично (середня половина)"
+                  value={`${wholeMoney(spread.low, currency)}–${wholeMoney(spread.high, currency)}`}
+                />
+                <Stat
+                  icon={
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      <TrendingDown />
+                    </span>
+                  }
+                  label="Найменший"
+                  value={wholeMoney(spread.lowest.total, currency)}
+                  note={shortMonth.format(firstDay(spread.lowest.month))}
+                />
+                <Stat
+                  icon={
+                    <span className="text-rose-600 dark:text-rose-400">
+                      <TrendingUp />
+                    </span>
+                  }
+                  label="Найгірший"
+                  value={wholeMoney(spread.worst.total, currency)}
+                  note={shortMonth.format(firstDay(spread.worst.month))}
+                />
               </>
             )}
           </dl>
@@ -238,18 +318,36 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 
       <ul className="-mx-1.5 mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm" aria-label="Legend">
         {/* categories with nothing in the shown months are left out, unless selected */}
-        {series.filter((s) => seriesTotal(s.id) > 0 || s.id === selected).map((s) => (
-          <li key={s.id} className={focus && focus.id !== s.id ? 'opacity-50' : undefined}>
-            {/* "Решта" is several categories, so it cannot be selected */}
-            {s.id === REST
-              ? <span className="flex items-center gap-1.5 px-1.5 py-0.5">{legendContent(s.color, s.label, seriesTotal(s.id))}</span>
-              : <button type="button" aria-pressed={selected === s.id} onClick={() => toggle(s.id)} className={legendButton}>{legendContent(s.color, s.label, seriesTotal(s.id))}</button>}
-          </li>
-        ))}
+        {series
+          .filter((s) => seriesTotal(s.id) > 0 || s.id === selected)
+          .map((s) => (
+            <li key={s.id} className={focus && focus.id !== s.id ? 'opacity-50' : undefined}>
+              {/* "Решта" is several categories, so it cannot be selected */}
+              {s.id === REST ? (
+                <span className="flex items-center gap-1.5 px-1.5 py-0.5">
+                  {legendContent(s.color, s.label, seriesTotal(s.id))}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  aria-pressed={selected === s.id}
+                  onClick={() => toggle(s.id)}
+                  className={legendButton}
+                >
+                  {legendContent(s.color, s.label, seriesTotal(s.id))}
+                </button>
+              )}
+            </li>
+          ))}
         {/* a focus without its own series entry (subcategory, merchant, small category) gets one to clear it */}
         {focus && !series.some((s) => s.id === focus.id) && (
           <li>
-            <button type="button" aria-pressed onClick={() => (merchant ? onClearMerchant() : onSelect(undefined))} className={legendButton}>
+            <button
+              type="button"
+              aria-pressed
+              onClick={() => (merchant ? onClearMerchant() : onSelect(undefined))}
+              className={legendButton}
+            >
               {legendContent(focus.color, focus.label, sum(shown.map((b) => b.total)))}
             </button>
           </li>
@@ -259,30 +357,65 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
       <div className="mt-5 h-64" onMouseDown={(e) => e.preventDefault()}>
         <ResponsiveContainer>
           <BarChart data={rows} margin={{ top: 20, right: 0, bottom: 0, left: 0 }} barCategoryGap={phone ? 2 : '15%'}>
-            <XAxis dataKey="month" interval={0} height={36} tickLine={false} tick={(props: XAxisTickContentProps) => (
-              <g transform={`translate(${props.x},${props.y})`} className="cursor-pointer" onClick={() => pickMonth(String(props.payload.value))}>
-                <text textAnchor="middle" dy={12} fontSize={12} fontWeight={isPicked(String(props.payload.value)) ? 700 : 400} fill="currentColor">
-                  {days ? weekday.format(date(String(props.payload.value))) : monthOnly.format(firstDay(String(props.payload.value)))}
-                </text>
-                <text textAnchor="middle" dy={26} fontSize={10} fill="currentColor" opacity={0.7}>
-                  {days ? dayMonth.format(date(String(props.payload.value))) : String(props.payload.value).slice(0, 4)}
-                </text>
-              </g>
-            )} />
+            <XAxis
+              dataKey="month"
+              interval={0}
+              height={36}
+              tickLine={false}
+              tick={(props: XAxisTickContentProps) => (
+                <g
+                  transform={`translate(${props.x},${props.y})`}
+                  className="cursor-pointer"
+                  onClick={() => pickMonth(String(props.payload.value))}
+                >
+                  <text
+                    textAnchor="middle"
+                    dy={12}
+                    fontSize={12}
+                    fontWeight={isPicked(String(props.payload.value)) ? 700 : 400}
+                    fill="currentColor"
+                  >
+                    {days
+                      ? weekday.format(date(String(props.payload.value)))
+                      : monthOnly.format(firstDay(String(props.payload.value)))}
+                  </text>
+                  <text textAnchor="middle" dy={26} fontSize={10} fill="currentColor" opacity={0.7}>
+                    {days
+                      ? dayMonth.format(date(String(props.payload.value)))
+                      : String(props.payload.value).slice(0, 4)}
+                  </text>
+                </g>
+              )}
+            />
             {/* bars use 85% of the height at most; the scale includes the median so its line stays inside */}
             <YAxis hide domain={[0, max / 0.85]} />
             {/* the usual range: the middle half of the complete months */}
             {spread && spread.high > 0 && <ReferenceArea y1={spread.low} y2={spread.high} fillOpacity={0.1} />}
             {typical !== undefined && typical > 0 && (
-              <ReferenceLine y={typical} strokeDasharray="4 4" label={{ value: `медіана ${wholeMoney(typical, currency)}`, position: 'insideTopRight', fontSize: 11 }} />
+              <ReferenceLine
+                y={typical}
+                strokeDasharray="4 4"
+                label={{ value: `медіана ${wholeMoney(typical, currency)}`, position: 'insideTopRight', fontSize: 11 }}
+              />
             )}
-            <Tooltip shared={false} cursor={false} content={({ active, payload }) => {
-              const item = payload?.[0]
-              const segment = item && segmentsOf.get(String(item.name))
-              if (!active || !segment) return null
-              const row = item.payload as Row
-              return <SegmentTooltip month={label(row.month)} monthTotal={row.monthTotal} segment={{ ...segment, value: Number(item.value) }} currency={currency} />
-            }} />
+            <Tooltip
+              shared={false}
+              cursor={false}
+              content={({ active, payload }) => {
+                const item = payload?.[0]
+                const segment = item && segmentsOf.get(String(item.name))
+                if (!active || !segment) return null
+                const row = item.payload as Row
+                return (
+                  <SegmentTooltip
+                    month={label(row.month)}
+                    monthTotal={row.monthTotal}
+                    segment={{ ...segment, value: Number(item.value) }}
+                    currency={currency}
+                  />
+                )
+              }}
+            />
             {barSeries.map((s) => (
               <Bar
                 key={s.id}
@@ -298,12 +431,16 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
                 }}
               >
                 {/* the month's total rides on the topmost segment of its stack */}
-                <LabelList position="top" fontSize={phone ? 11 : 12} fill="currentColor"
+                <LabelList
+                  position="top"
+                  fontSize={phone ? 11 : 12}
+                  fill="currentColor"
                   valueAccessor={(entry: LabelListEntry) => {
                     const row = entry.payload as Row | undefined
                     if (!row || topSeries(row) !== s.id) return undefined
                     return phone ? compact.format(row.total) : wholeMoney(row.total, currency)
-                  }} />
+                  }}
+                />
               </Bar>
             ))}
           </BarChart>
@@ -314,14 +451,30 @@ export function MonthlySpending({ list, currency, leafById, period, onPick, sele
 }
 
 // one figure above the chart: an icon and a small label over the value, and the month it belongs to
-function Stat({ icon, label, value, note, strong }: { icon: ReactNode, label: string, value: string, note?: string, strong?: boolean }) {
+function Stat({
+  icon,
+  label,
+  value,
+  note,
+  strong,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  note?: string
+  strong?: boolean
+}) {
   return (
     <div className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/50">
       <dt className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-        <span aria-hidden className="shrink-0 [&_svg]:size-3.5">{icon}</span>
+        <span aria-hidden className="shrink-0 [&_svg]:size-3.5">
+          {icon}
+        </span>
         {label}
       </dt>
-      <dd className={`mt-0.5 tabular-nums ${strong ? 'font-semibold text-zinc-900 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-300'}`}>
+      <dd
+        className={`mt-0.5 tabular-nums ${strong ? 'font-semibold text-zinc-900 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-300'}`}
+      >
         {value}
         {note && <span className="ml-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">{note}</span>}
       </dd>
@@ -329,10 +482,22 @@ function Stat({ icon, label, value, note, strong }: { icon: ReactNode, label: st
   )
 }
 
-function SegmentTooltip({ month, monthTotal, segment, currency }: { month: string, monthTotal: number, segment: Segment, currency: Currency }) {
+function SegmentTooltip({
+  month,
+  monthTotal,
+  segment,
+  currency,
+}: {
+  month: string
+  monthTotal: number
+  segment: Segment
+  currency: Currency
+}) {
   return (
     <div className="w-max max-w-56 rounded-lg bg-white px-3 py-2 text-sm shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
-      <p className={muted}>{month} · {format(monthTotal, currency)}</p>
+      <p className={muted}>
+        {month} · {format(monthTotal, currency)}
+      </p>
       <p className="mt-1 flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
         <Swatch color={segment.color} />
         <span className="truncate">{segment.label}</span>

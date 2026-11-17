@@ -15,7 +15,7 @@ type Slice = {
   detail: string
 }
 
-function ShareBar({ title, slices }: { title: string, slices: Slice[] }) {
+function ShareBar({ title, slices }: { title: string; slices: Slice[] }) {
   return (
     <div>
       <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{title}</h3>
@@ -55,7 +55,7 @@ const kindColors: Record<AccountKind, string> = { bank: 'bg-violet-600', cash: '
 
 const accountCount = (n: number) => `${n} ${n === 1 ? 'account' : 'accounts'}`
 
-export function Allocation({ accounts, convert }: { accounts: Account[], convert: Convert }) {
+export function Allocation({ accounts, convert }: { accounts: Account[]; convert: Convert }) {
   if (accounts.length === 0) return null
   const uahOf = (list: Account[]) => {
     let total = 0
@@ -81,7 +81,10 @@ export function Allocation({ accounts, convert }: { accounts: Account[], convert
       icon: <CurrencyIcon currency={c} />,
       color: iconColors[c],
       share: shareOf(list),
-      detail: `${format(list.reduce((sum, a) => sum + a.balance, 0), c)} · ${accountCount(list.length)}`,
+      detail: `${format(
+        list.reduce((sum, a) => sum + a.balance, 0),
+        c,
+      )} · ${accountCount(list.length)}`,
     }))
 
   const byKind: Slice[] = accountKinds
@@ -94,7 +97,10 @@ export function Allocation({ accounts, convert }: { accounts: Account[], convert
         key: k,
         label: kindLabels[k],
         icon: (
-          <span className={`inline-grid size-6 shrink-0 place-items-center rounded-full text-white ${kindColors[k]}`} aria-hidden="true">
+          <span
+            className={`inline-grid size-6 shrink-0 place-items-center rounded-full text-white ${kindColors[k]}`}
+            aria-hidden="true"
+          >
             <Icon />
           </span>
         ),

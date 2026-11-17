@@ -18,18 +18,25 @@ const ACTIVE_DAYS = 40
 
 const day = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 
-type Payment = { latest: Transaction, emoji: string, amount: number, next: Date }
+type Payment = { latest: Transaction; emoji: string; amount: number; next: Date }
 
 // Payments that repeat monthly: a merchant charged in at least MIN_MONTHS of the last MONTHS complete
 // months (or the running one), about once a month, mostly for a similar amount, and charged within
 // ACTIVE_DAYS. The monthly amount is the latest charge, so a raised price counts. Spending categories only; cancelled pairs skipped.
 // ponytail: monthly cycles only; yearly or weekly payments need their own period detection
-function recurring(transactions: Transaction[], accounts: Account[], categories: Category[], convert: Convert, currency: Currency, now: Date) {
+function recurring(
+  transactions: Transaction[],
+  accounts: Account[],
+  categories: Category[],
+  convert: Convert,
+  currency: Currency,
+  now: Date,
+) {
   const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
   const parentOf = parentsById(categories)
   const since = new Date(now.getFullYear(), now.getMonth() - MONTHS, 1)
   // merchant key → its charges in the window, in the budget currency
-  const charges = new Map<string, Array<{ t: Transaction, amount: number }>>()
+  const charges = new Map<string, Array<{ t: Transaction; amount: number }>>()
   for (const t of transactions) {
     if (t.cancelled || t.amount >= 0 || new Date(t.time) < since || !parentOf.get(t.category)?.spending) continue
     const amount = convert(-t.amount, currencyOf.get(t.accountId)!, currency)
@@ -68,32 +75,39 @@ export function Recurring({ transactions, accounts, categories, convert, currenc
   if (!payments?.length) return null
   const total = payments.reduce((sum, p) => sum + p.amount, 0)
   const saved = payments.reduce((sum, p) => sum + (dropped.has(p.latest.merchant) ? p.amount : 0), 0)
-  const toggle = (merchant: string) => setDropped((set) => {
-    const next = new Set(set)
-    if (!next.delete(merchant)) next.add(merchant)
-    return next
-  })
+  const toggle = (merchant: string) =>
+    setDropped((set) => {
+      const next = new Set(set)
+      if (!next.delete(merchant)) next.add(merchant)
+      return next
+    })
 
   return (
     <section className={card}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Recurring payments</h2>
         <span className={`tabular-nums ${muted}`}>
-          {payments.length} · <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(total, currency)}</span> per month committed
+          {payments.length} ·{' '}
+          <span className="font-medium text-zinc-900 dark:text-zinc-100">{format(total, currency)}</span> per month
+          committed
         </span>
       </div>
       <p className={`mt-1 ${muted}`}>
-        Charged about once a month for a similar amount, in at least {MIN_MONTHS} of the last {MONTHS} months. Uncheck one to see the total without it.
+        Charged about once a month for a similar amount, in at least {MIN_MONTHS} of the last {MONTHS} months. Uncheck
+        one to see the total without it.
       </p>
       {saved > 0 && (
         <p className="mt-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 tabular-nums dark:bg-emerald-950/40 dark:text-emerald-300">
-          After cancelling {dropped.size}: <span className="font-semibold">{format(total - saved, currency)}</span> per month
-          · {format(saved, currency)} saved per month, {format(saved * 12, currency)} a year
+          After cancelling {dropped.size}: <span className="font-semibold">{format(total - saved, currency)}</span> per
+          month · {format(saved, currency)} saved per month, {format(saved * 12, currency)} a year
         </p>
       )}
       <ul className="mt-3 flex flex-col gap-2">
         {payments.map(({ latest, emoji, amount, next }) => (
-          <li key={latest.merchant} className={`flex items-center gap-3 ${dropped.has(latest.merchant) ? 'opacity-50' : ''}`}>
+          <li
+            key={latest.merchant}
+            className={`flex items-center gap-3 ${dropped.has(latest.merchant) ? 'opacity-50' : ''}`}
+          >
             <input
               type="checkbox"
               checked={!dropped.has(latest.merchant)}
@@ -108,7 +122,9 @@ export function Recurring({ transactions, accounts, categories, convert, currenc
                 last {day.format(new Date(latest.time))} · next ≈ {day.format(next)}
               </p>
             </div>
-            <span className="shrink-0 text-sm font-medium text-zinc-900 tabular-nums dark:text-zinc-100">{format(amount, currency)}</span>
+            <span className="shrink-0 text-sm font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+              {format(amount, currency)}
+            </span>
           </li>
         ))}
       </ul>

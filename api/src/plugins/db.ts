@@ -11,7 +11,9 @@ export default fp(async (fastify) => {
   migrate(db, { migrationsFolder: join(__dirname, '..', '..', 'drizzle') })
 
   fastify.decorate('db', db)
-  fastify.addHook('onClose', async () => { sqlite.close() })
+  fastify.addHook('onClose', async () => {
+    sqlite.close()
+  })
 })
 
 declare module 'fastify' {
