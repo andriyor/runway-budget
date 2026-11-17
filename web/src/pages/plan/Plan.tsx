@@ -8,7 +8,8 @@ import { InfoTip } from '../../components/InfoTip'
 import { useFinance } from '../../lib/finance'
 import { annualRate } from '../../lib/inflation'
 import { useState } from 'react'
-import { currencies, type Currency } from '../../lib/types'
+import { api } from '../../lib/api'
+import { currencies, type Budget, type Currency } from '../../lib/types'
 
 export function Plan() {
   const {
@@ -40,6 +41,14 @@ export function Plan() {
     } catch {
       // private mode: the pick lasts until reload
     }
+  }
+  // saves a what-if spending from the timeline as the budget's, in the budget's own currency
+  async function saveSpending(amount: number) {
+    if (!budget) return
+    const monthlySpend = Math.round((convert(amount, currency, budget.currency) ?? amount) * 100) / 100
+    // the API takes optional fields left out rather than null
+    const body = Object.fromEntries(Object.entries({ ...budget, monthlySpend }).filter(([, v]) => v !== null))
+    setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(body) }))
   }
   // the fund in the shown currency; finance computes it in the spending's
   const fund = cushion && {
@@ -88,8 +97,10 @@ export function Plan() {
         netIn={netIn}
         cushion={fund}
         usualSpend={spendIn(currency)}
+        essentialSpend={minimalIn(currency)}
         keptIncome={keptIncomeIn(currency)}
         currency={currency}
+        onUseSpending={saveSpending}
       />
 
       {budget !== undefined && (
