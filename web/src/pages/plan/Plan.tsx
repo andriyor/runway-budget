@@ -40,7 +40,13 @@ export function Plan() {
 
       <ErrorBanner>{error}</ErrorBanner>
 
-      <Timeline forGoalsIn={forGoalsIn} convert={convert} netIn={netIn} cushion={cushion} />
+      <Timeline
+        forGoalsIn={forGoalsIn}
+        convert={convert}
+        netIn={netIn}
+        cushion={cushion}
+        usualSpend={budget?.monthlySpend}
+      />
 
       {budget !== undefined && (
         <Runway
