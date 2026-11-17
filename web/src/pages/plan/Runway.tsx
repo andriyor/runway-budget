@@ -527,6 +527,18 @@ export function Runway({
                     </span>
                   </li>
                 ))}
+                {sales.length > 1 &&
+                  (() => {
+                    const all = sales.reduce((sum, s) => sum + s.amount, 0)
+                    return (
+                      <li className="mt-0.5 border-t border-zinc-200 pt-1 dark:border-zinc-800">
+                        Selling everything (≈ {format(all, c)}):{' '}
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                          +{(all / (spend - kept)).toFixed(1)} months
+                        </span>
+                      </li>
+                    )
+                  })()}
               </ul>
             )}
             {minimalInSpendCurrency !== undefined && (
