@@ -1,9 +1,19 @@
 # Runway Budget
 
-Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at the official
-[National Bank of Ukraine](https://bank.gov.ua) rate. It analyses spending from Monobank transactions
-(against the usual, budgets, recurring payments, inflation) and estimates how long your savings last
-and when you reach your goals.
+A calm money tracker: it answers "am I going to be okay?" before "where did my money go?". Made with
+anxious and ADHD brains in mind, though it is a tool, not treatment.
+
+- **One reassuring number**: how many months your savings last without income, and when you reach each goal.
+- **No manual entry**: Monobank transactions sync on their own twice a day and sort themselves into categories.
+- **A cooling-off list for impulse buys**: the wishlist shows how long a wish has waited and which goal buying
+  it would push back, instead of saying no.
+- **"What if" without commitment**: try a lower spending, a new rent or a course, or selling the car, and see the
+  plan move before deciding anything.
+- **Nothing forgotten**: recurring payments and subscriptions are found from your transactions.
+
+Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, converted at the official
+[National Bank of Ukraine](https://bank.gov.ua) rate, that analyses spending from Monobank transactions
+(against the usual, budgets, recurring payments, inflation).
 
 ![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a364d49c-8b09-4c5a-95a2-b7b6b949643f)
 
