@@ -67,7 +67,7 @@ export function EmergencyFund({
       </div>
       <p className={`mt-1 ${muted}`}>
         {months === null
-          ? 'The usual 6 months; set “Months to cover without income” in Runway to change it.'
+          ? 'The usual 6 months; set “Emergency fund” in Runway to change it.'
           : 'Savings for the usual spending are kept aside before goals.'}
         {essential === undefined && ' Set “Essential spending per month” in Runway to see essentials alone.'}
       </p>
@@ -137,7 +137,7 @@ function Tile({ label, monthly, kept, target, available, net, spend, inflation, 
 
       <p className={`mt-1.5 text-sm tabular-nums ${tone.text}`}>
         {covered === Infinity
-          ? 'Incomes that keep coming cover it.'
+          ? 'Income that continues without a job covers it.'
           : have >= goal
             ? `Covered · ${format(have - goal, currency)} beyond it`
             : `${format(goal - have, currency)} short${covered < MINIMUM ? ` · below the ${MINIMUM}-month minimum` : ''}`}

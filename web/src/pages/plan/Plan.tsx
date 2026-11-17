@@ -46,6 +46,7 @@ export function Plan() {
         netIn={netIn}
         cushion={cushion}
         usualSpend={budget?.monthlySpend}
+        keptIncome={budget ? keptIncomeIn(budget.currency) : 0}
       />
 
       {budget !== undefined && (

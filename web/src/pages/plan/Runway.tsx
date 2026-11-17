@@ -136,14 +136,16 @@ function Settings({ budget: b }: { budget: Budget }) {
         b.incomes.length === 0 ? (
           unset
         ) : (
-          <span className="flex flex-col items-end">
+          <span className="flex flex-col items-end gap-1">
             {b.incomes.map((i, n) => (
-              <span key={n}>
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  {i.name}
-                  {i.keeps && ' · keeps coming'}{' '}
+              <span key={n} className="flex flex-col items-end">
+                <span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{i.name} </span>
+                  {format(i.amount, i.currency)}
                 </span>
-                {format(i.amount, i.currency)}
+                <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                  {i.keeps ? 'continues without a job' : 'stops if I lose my job'}
+                </span>
               </span>
             ))}
           </span>
@@ -164,8 +166,8 @@ function Settings({ budget: b }: { budget: Budget }) {
           <Calendar />
         </span>
       ),
-      label: 'Months to cover without income',
-      value: b.targetMonths !== null ? `${b.targetMonths} months` : unset,
+      label: 'Emergency fund',
+      value: b.targetMonths !== null ? `${b.targetMonths} months of spending` : unset,
     },
   ]
   return (
@@ -374,49 +376,48 @@ export function Runway({
               My income per month {optional}
             </legend>
             {form.incomes.map((income, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={income.keeps}
-                  onChange={(e) => incomeField(index, 'keeps')(e.target.checked)}
-                  aria-label={`${income.name || `Income ${index + 1}`} keeps coming without income`}
-                  title="Keeps coming without income"
-                  className="size-4 shrink-0 accent-indigo-600"
-                />
-                <input
-                  placeholder="Salary"
-                  maxLength={100}
-                  value={income.name}
-                  onChange={(e) => incomeField(index, 'name')(e.target.value)}
-                  aria-label={`Income ${index + 1} name`}
-                  className={`w-28 min-w-0 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <MoneyInput
-                    label={`Income ${index + 1} per month`}
-                    min="0.01"
-                    placeholder="per month"
-                    value={income.amount}
-                    onChange={incomeField(index, 'amount')}
-                    currency={income.currency}
-                    onCurrency={incomeField(index, 'currency')}
+              <div key={index} className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    placeholder="Salary"
+                    maxLength={100}
+                    value={income.name}
+                    onChange={(e) => incomeField(index, 'name')(e.target.value)}
+                    aria-label={`Income ${index + 1} name`}
+                    className={`w-28 min-w-0 px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 ${inputBox}`}
                   />
+                  <div className="min-w-0 flex-1">
+                    <MoneyInput
+                      label={`Income ${index + 1} per month`}
+                      min="0.01"
+                      placeholder="per month"
+                      value={income.amount}
+                      onChange={incomeField(index, 'amount')}
+                      currency={income.currency}
+                      onCurrency={incomeField(index, 'currency')}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeIncome(index)}
+                    aria-label={`Remove income ${income.name || index + 1}`}
+                    className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                  >
+                    <Trash2 />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeIncome(index)}
-                  aria-label={`Remove income ${income.name || index + 1}`}
-                  className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                {/* decides the emergency fund: only an income that continues lowers what savings must hold */}
+                <select
+                  value={income.keeps ? 'continues' : 'stops'}
+                  onChange={(e) => incomeField(index, 'keeps')(e.target.value === 'continues')}
+                  aria-label={`${income.name || `Income ${index + 1}`} if I lose my job`}
+                  className={`self-start px-2 py-1 text-sm text-zinc-700 outline-none dark:text-zinc-300 ${inputBox}`}
                 >
-                  <Trash2 />
-                </button>
+                  <option value="stops">Stops if I lose my job</option>
+                  <option value="continues">Continues without a job</option>
+                </select>
               </div>
             ))}
-            {form.incomes.length > 0 && (
-              <p className={muted}>
-                Check an income that keeps coming in the “without income” estimates, like a pension or rent.
-              </p>
-            )}
             <button type="button" className={`self-start text-sm ${linkButton}`} onClick={addIncome}>
               + Add income
             </button>
@@ -444,7 +445,7 @@ export function Runway({
               <span className="text-violet-600">
                 <Calendar />
               </span>{' '}
-              Months to cover without income {optional}
+              Emergency fund: months of spending to keep {optional}
             </span>
             <div className={`flex items-center ${inputBox}`}>
               <input

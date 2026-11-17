@@ -68,7 +68,12 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
 
   // need: what is still to save for this goal and every goal above it
   function status(goal: Goal, have: number, need: number) {
-    if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
+    if (have >= goal.target)
+      return (
+        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+          Reached{cushion && ` · buying it keeps your ${cushion.months}-month emergency fund`}
+        </span>
+      )
     return (
       <ReachDate
         need={need}
@@ -110,7 +115,8 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           <p className={`mt-1 flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
             <Calendar />
             <span>
-              {format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month cushion
+              {format(cushion.amount, cushion.currency)} kept as a {cushion.months}-month emergency fund before any
+              goal, so on a goal's date you can buy it and still last {cushion.months} months without income
             </span>
             {cushion.available < cushion.amount && (
               <span className="text-amber-700 dark:text-amber-400">
@@ -142,8 +148,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
           // nothing saved for it yet because savings go to the goal above, or the cushion: said instead of an empty bar
           const waitingFor =
             p?.have === 0
-              ? (goals[i - 1]?.name ??
-                (cushion && forGoalsIn(g.currency)! < 0 ? `the ${cushion.months}-month cushion` : undefined))
+              ? (goals[i - 1]?.name ?? (cushion && forGoalsIn(g.currency)! < 0 ? 'the emergency fund' : undefined))
               : undefined
           if (editing === g.id) {
             return (
