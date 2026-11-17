@@ -65,7 +65,9 @@ export const goals = sqliteTable('goals', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   targetCents: integer('target_cents').notNull(),
-  currency: text('currency', { enum: currencies }).notNull()
+  currency: text('currency', { enum: currencies }).notNull(),
+  // savings fill goals in this order: a goal waits for the ones before it
+  position: integer('position').notNull().default(0)
 })
 
 // a monthly spending cap per top-level spending category

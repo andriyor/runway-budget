@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { ReachDate } from './ReachDate'
 import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
-import { Calendar, Pencil, Trash2 } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
-import { api, useApi } from '../../lib/api'
+import { api, setCached, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
 import type { Currency, Goal } from '../../lib/types'
@@ -13,6 +13,8 @@ type Cushion = { months: number, amount: number, available: number, currency: Cu
 type GoalsProps = {
   // available savings minus the months-without-income cushion
   forGoalsIn: (c: Currency) => number | undefined
+  // undefined while rates load
+  convert: (amount: number, from: Currency, to: Currency) => number | undefined
   cushion: Cushion | undefined
   // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
@@ -22,7 +24,7 @@ type GoalsProps = {
   inflation: number | undefined
 }
 
-export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsProps) {
+export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation }: GoalsProps) {
   const query = useApi<Goal[]>('/goals')
   const goals = query.data ?? []
   // the goal shown as a form instead of its progress
@@ -37,6 +39,18 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
     setEditing(undefined)
   }
 
+  async function move(index: number, by: -1 | 1) {
+    const next = [...goals]
+    ;[next[index], next[index + by]] = [next[index + by], next[index]]
+    setCached('/goals', next)
+    try {
+      await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: next.map((g) => g.id) }) })
+    } catch (err) {
+      setCached('/goals', goals)
+      setError(`Reorder: ${(err as Error).message}`)
+    }
+  }
+
   async function remove(goal: Goal) {
     if (!confirm(`Delete goal "${goal.name}"?`)) return
     try {
@@ -46,16 +60,17 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
     }
   }
 
-  function status(goal: Goal, have: number) {
+  // need: what is still to save for this goal and every goal above it
+  function status(goal: Goal, have: number, need: number) {
     if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
-    return <ReachDate need={goal.target - have} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} />
+    return <ReachDate need={need} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} />
   }
 
   return (
     <section className={card}>
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Goals</h2>
-        <p className={muted}>Measured against your available savings. Each goal assumes your whole monthly surplus goes to it.</p>
+        <p className={muted}>Your available savings and monthly surplus fill goals from the top: each goal waits for the ones above it.</p>
         {cushion && (
           <p className={`mt-1 flex flex-wrap items-center gap-x-2 tabular-nums ${muted}`}>
             <Calendar />
@@ -68,10 +83,16 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
       </div>
 
       <ul className="mt-4 flex flex-col gap-5">
-        {goals.map((g) => {
-          const forGoals = forGoalsIn(g.currency)
-          const have = Math.max(0, forGoals ?? 0)
-          const progress = Math.min(1, have / g.target)
+        {goals.map((g, i) => {
+          // the targets of the goals above, which savings fill first; undefined while rates load
+          const ahead = goals.slice(0, i).reduce<number | undefined>(
+            (sum, above) => { const v = convert(above.target, above.currency, g.currency); return sum === undefined || v === undefined ? undefined : sum + v },
+            0
+          )
+          const forGoals = ahead === undefined ? undefined : forGoalsIn(g.currency)
+          const saved = Math.max(0, forGoals ?? 0)
+          const have = Math.min(g.target, Math.max(0, saved - (ahead ?? 0)))
+          const progress = have / g.target
           if (editing === g.id) {
             return (
               <li key={g.id}>
@@ -83,12 +104,20 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
             <li key={g.id}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
+                  <div className="-ml-2 flex flex-col">
+                    <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move goal ${g.name} up`} className={moveButton}>
+                      <ChevronUp strokeWidth={2} />
+                    </button>
+                    <button type="button" onClick={() => move(i, 1)} disabled={i === goals.length - 1} aria-label={`Move goal ${g.name} down`} className={moveButton}>
+                      <ChevronDown strokeWidth={2} />
+                    </button>
+                  </div>
                   <CurrencyIcon currency={g.currency} />
                   <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{g.name}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
-                    {format(Math.min(have, g.target), g.currency)} / {format(g.target, g.currency)}
+                    {format(have, g.currency)} / {format(g.target, g.currency)}
                   </span>
                   <button
                     type="button"
@@ -121,7 +150,7 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-sm">{forGoals === undefined ? <Skeleton /> : status(g, have)}</p>
+              <p className="mt-1.5 text-sm">{forGoals === undefined ? <Skeleton /> : status(g, have, ahead! + g.target - saved)}</p>
             </li>
           )
         })}
@@ -135,6 +164,8 @@ export function Goals({ forGoalsIn, cushion, netIn, spendIn, inflation }: GoalsP
     </section>
   )
 }
+
+const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
 type GoalValues = { name: string, target: number, currency: Currency }
 

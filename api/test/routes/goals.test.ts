@@ -33,3 +33,22 @@ test('edit a goal', async (t) => {
   const missing = await app.inject({ method: 'PUT', url: `/api/goals/${id + 1}`, payload: { name: 'X', target: 1, currency: 'USD' } })
   assert.equal(missing.statusCode, 404)
 })
+
+test('reorder goals', async (t) => {
+  const app = await build(t)
+  const add = async (name: string) => (await app.inject({ method: 'POST', url: '/api/goals', payload: { name, target: 100, currency: 'USD' } })).json().id
+  const a = await add('A')
+  const b = await add('B')
+  const c = await add('C')
+  const names = async () => (await app.inject({ url: '/api/goals' })).json().map((g: { name: string }) => g.name)
+  assert.deepEqual(await names(), ['A', 'B', 'C'])
+
+  assert.equal((await app.inject({ method: 'PUT', url: '/api/goals/order', payload: { ids: [c, a, b] } })).statusCode, 204)
+  assert.deepEqual(await names(), ['C', 'A', 'B'])
+  // a new goal goes last
+  await add('D')
+  assert.deepEqual(await names(), ['C', 'A', 'B', 'D'])
+
+  const partial = await app.inject({ method: 'PUT', url: '/api/goals/order', payload: { ids: [a, b] } })
+  assert.equal(partial.statusCode, 400)
+})

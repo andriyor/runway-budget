@@ -38,7 +38,7 @@ export function Plan() {
         />
       )}
 
-      <Goals forGoalsIn={forGoalsIn} cushion={cushion} netIn={netIn} spendIn={spendIn} inflation={inflation} />
+      <Goals forGoalsIn={forGoalsIn} convert={convert} cushion={cushion} netIn={netIn} spendIn={spendIn} inflation={inflation} />
     </>
   )
 }

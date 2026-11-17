@@ -134,6 +134,13 @@
       "when": 1794668863885,
       "tag": "0018_category_budgets",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794928815981,
+      "tag": "0019_many_rictor",
+      "breakpoints": true
     }
   ]
 }
