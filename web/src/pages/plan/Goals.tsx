@@ -7,6 +7,7 @@ import { api, setCached, useApi } from '../../lib/api'
 import { format } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
 import { goalProgress } from '../../lib/goals'
+import { monthsToSave } from '../../lib/inflation'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
 type Cushion = { months: number, amount: number, available: number, currency: Currency }
@@ -68,8 +69,19 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
   // need: what is still to save for this goal and every goal above it
   function status(goal: Goal, have: number, need: number) {
     if (have >= goal.target) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Reached</span>
-    return <ReachDate need={need} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} />
+    return <ReachDate need={need} net={netIn(goal.currency)} spend={spendIn(goal.currency)} inflation={inflation} currency={goal.currency} hideUnreachable />
   }
+
+  // goals that spending, growing with inflation, catches up with income before; said once for the list
+  const unreachable = inflation !== undefined && inflation > 0
+    ? goals.filter((g, i) => {
+        const need = progressOf[i]?.need
+        const spend = spendIn(g.currency)
+        const net = netIn(g.currency)
+        return need !== undefined && need > 0 && spend !== undefined && net !== undefined && net > 0
+          && monthsToSave(need, spend, spend + net, inflation) === undefined
+      })
+    : []
 
   return (
     <section className={card}>
@@ -83,6 +95,12 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
             {cushion.available < cushion.amount && (
               <span className="text-amber-700 dark:text-amber-400">· {format(cushion.amount - Math.max(0, cushion.available), cushion.currency)} short of covering it</span>
             )}
+          </p>
+        )}
+        {unreachable.length > 0 && (
+          <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+            With {(inflation! * 100).toFixed(1)}% inflation, spending catches up with income before{' '}
+            {unreachable.length === goals.length ? 'any goal is' : <><NameList names={unreachable.map((g) => g.name)} /> {unreachable.length === 1 ? 'is' : 'are'}</>} reached.
           </p>
         )}
       </div>
@@ -162,6 +180,12 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
       </div>
     </section>
   )
+}
+
+// "Car, House and Trip", names in bold
+export function NameList({ names }: { names: string[] }) {
+  return new Intl.ListFormat('en', { type: 'conjunction' }).formatToParts(names)
+    .map((part, i) => (part.type === 'element' ? <strong key={i}>{part.value}</strong> : part.value))
 }
 
 const moveButton = 'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GoalForm, type GoalValues } from './Goals'
+import { GoalForm, NameList, type GoalValues } from './Goals'
 import { Skeleton, ErrorText } from '../../components/controls'
 import { Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
@@ -61,16 +61,24 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
     if (rows.some((r) => r === undefined)) return undefined
     const hit = rows.map((r) => r!).filter((r) => r.further > 0.005)
     if (hit.length === 0) return <span className="font-medium text-emerald-600 dark:text-emerald-400">Buying it now delays no goal</span>
+    // goals pushed back by the same amount share one phrase: "Car and House by 5.4 months"
+    const groups = new Map<string, string[]>()
+    for (const { goal, further, net } of hit) {
+      const by = net !== undefined && net > 0 ? `${(further / net).toFixed(1)} months` : format(further, goal.currency)
+      groups.set(by, [...(groups.get(by) ?? []), goal.name])
+    }
+    const every = groups.size === 1 && hit.length === goals.length && goals.length > 1
     return (
       <span className="text-amber-700 tabular-nums dark:text-amber-400">
         Buying it now pushes back{' '}
-        {hit.map(({ goal, further, net }, i) => (
-          <span key={goal.id}>
-            {i > 0 && ' · '}
-            <strong>{goal.name}</strong>{' '}
-            {net !== undefined && net > 0 ? `by ${(further / net).toFixed(1)} months` : `by ${format(further, goal.currency)}`}
-          </span>
-        ))}
+        {every
+          ? `every goal by ${[...groups.keys()][0]}`
+          : [...groups].map(([by, names], i) => (
+            <span key={by}>
+              {i > 0 && ' · '}
+              <NameList names={names} /> by {by}
+            </span>
+          ))}
       </span>
     )
   }
