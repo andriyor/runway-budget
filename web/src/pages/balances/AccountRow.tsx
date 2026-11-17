@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { KindToggle, ErrorText, MoneyInput } from '../../components/controls'
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api } from '../../lib/api'
 import { button, inputBox } from '../../lib/styles'
 import { format, symbols } from '../../lib/format'
+import { kindLabels } from '../../lib/display'
 import type { Account } from '../../lib/types'
 
 type AccountRowProps = {
@@ -46,8 +47,19 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
 
   const [delta, setDelta] = useState('')
   const [busy, setBusy] = useState(false)
-  // swaps the balance field for a −/+ amount stepper
-  const [adjusting, setAdjusting] = useState(false)
+  // view shows the balance; edit swaps in the fields; adjust swaps in a −/+ amount stepper.
+  // A save re-keys the row on updatedAt, so it remounts in view.
+  const [mode, setMode] = useState<'view' | 'edit' | 'adjust'>('view')
+  // back to view, dropping unsaved edits
+  function close() {
+    setMode('view')
+    setDelta('')
+    setName(account.name)
+    setBalance(String(account.balance))
+    setCurrency(account.currency)
+    setKind(account.kind)
+    setError('')
+  }
 
   // sign: 1 adds, -1 subtracts; the list re-keys the row on updatedAt, so it remounts with the new balance
   async function adjust(sign: 1 | -1) {
@@ -76,6 +88,8 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
     }
   }
 
+  const iconButton = 'rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+
   return (
     <li className="py-3">
       <form className="flex flex-wrap items-center gap-x-3 gap-y-2" onSubmit={save}>
@@ -96,18 +110,22 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             )
           : <CurrencyIcon currency={account.currency} className="size-9 text-sm" />}
         <div className="min-w-32 flex-1">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={100}
-            pattern=".*\S.*"
-            aria-label="Account name"
-            title="Click to rename"
-            className="-mx-1.5 w-full rounded-md bg-transparent px-1.5 py-0.5 font-medium text-zinc-900 outline-none hover:bg-zinc-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-950"
-          />
+          {mode === 'edit'
+            ? (
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={100}
+                pattern=".*\S.*"
+                autoFocus
+                aria-label="Account name"
+                className={`w-full px-2 py-1 font-medium text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+              />
+              )
+            : <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">{account.name}</p>}
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
+            {kindLabels[account.kind]} · updated {new Date(account.updatedAt).toLocaleString('uk-UA')}
             {account.transactionCount > 0 && (
               <>
                 {' · '}
@@ -116,60 +134,66 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             )}
           </p>
         </div>
-        {/* a narrow list (phones, the desktop sidebar): delete sits on the name line and the controls take
-            a full second line; a list wide enough (the @container around it) gets one row with delete last */}
-        <button
-          type="button"
-          onClick={remove}
-          aria-label={`Delete account ${account.name}`}
-          className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 @2xl:order-last dark:hover:bg-zinc-800"
-        >
-          <Trash2 />
-        </button>
-        <div className="flex w-full items-center gap-2 @2xl:w-auto @2xl:gap-3">
-          <KindToggle value={kind} onChange={setKind} />
-          <div className="min-w-0 flex-1 @2xl:w-56 @2xl:flex-none">
-            {adjusting ? (
-              <div className={`flex h-9 items-stretch ${inputBox}`}>
-                <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(-1)} aria-label={`Subtract from ${account.name}`} className={`rounded-l-lg border-r border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950`}>
-                  −
-                </button>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  autoFocus
-                  placeholder={`Amount, ${symbols[account.currency]}`}
-                  aria-label={`Amount to add to or subtract from ${account.name}`}
-                  value={delta}
-                  onChange={(e) => setDelta(e.target.value)}
-                  // Enter would submit the row's Save
-                  onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
-                  className="w-full min-w-0 flex-1 bg-transparent px-3 text-center text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
-                />
-                <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(1)} aria-label={`Add to ${account.name}`} className={`rounded-r-lg border-l border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950`}>
-                  +
-                </button>
-              </div>
-            ) : (
-              <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+
+        {mode === 'view' && (
+          <div className="flex items-center gap-1">
+            <span className="mr-2 font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">{format(account.balance, account.currency)}</span>
+            {/* synced accounts take their balance from the bank */}
+            {!account.monoAccountId && (
+              <button type="button" onClick={() => setMode('adjust')} aria-label={`Add to or subtract from ${account.name}`} title="Add or subtract an amount" className={`${iconButton} size-9 p-0 text-lg leading-none`}>
+                ±
+              </button>
             )}
+            <button type="button" onClick={() => setMode('edit')} aria-label={`Edit account ${account.name}`} className={iconButton}>
+              <Pencil />
+            </button>
+            <button type="button" onClick={remove} aria-label={`Delete account ${account.name}`} className={`${iconButton} hover:text-rose-600`}>
+              <Trash2 />
+            </button>
           </div>
-          {/* synced accounts take their balance from the bank */}
-          {!account.monoAccountId && <button
-            type="button"
-            onClick={() => { setAdjusting(!adjusting); setDelta('') }}
-            aria-pressed={adjusting}
-            aria-label={adjusting ? 'Back to editing the balance' : `Add to or subtract from ${account.name}`}
-            title={adjusting ? 'Back to balance' : 'Add or subtract an amount'}
-            className="size-9 shrink-0 rounded-lg text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 aria-pressed:bg-zinc-100 aria-pressed:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:aria-pressed:bg-zinc-800 dark:aria-pressed:text-zinc-100"
-          >
-            {adjusting ? '×' : '±'}
-          </button>}
-          <button className={button} disabled={!dirty}>Save</button>
-        </div>
+        )}
+
+        {mode === 'adjust' && (
+          <div className="flex w-full items-center gap-2 @2xl:w-64">
+            <div className={`flex h-9 min-w-0 flex-1 items-stretch ${inputBox}`}>
+              <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(-1)} aria-label={`Subtract from ${account.name}`} className={`rounded-l-lg border-r border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950`}>
+                −
+              </button>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                autoFocus
+                placeholder={`Amount, ${symbols[account.currency]}`}
+                aria-label={`Amount to add to or subtract from ${account.name}`}
+                value={delta}
+                onChange={(e) => setDelta(e.target.value)}
+                // Enter would submit the row's form
+                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); if (e.key === 'Escape') close() }}
+                className="w-full min-w-0 flex-1 bg-transparent px-3 text-center text-sm text-zinc-900 tabular-nums outline-none placeholder:text-zinc-400 dark:text-zinc-100"
+              />
+              <button type="button" disabled={!canAdjust || busy} onClick={() => adjust(1)} aria-label={`Add to ${account.name}`} className={`rounded-r-lg border-l border-zinc-200 dark:border-zinc-700 ${stepButton} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950`}>
+                +
+              </button>
+            </div>
+            <button type="button" onClick={close} aria-label="Cancel" className={`${iconButton} size-9 p-0 text-lg leading-none`}>×</button>
+          </div>
+        )}
+
+        {mode === 'edit' && (
+          <div className="flex w-full items-center gap-2 @2xl:w-auto @2xl:gap-3">
+            <KindToggle value={kind} onChange={setKind} />
+            <div className="min-w-0 flex-1 @2xl:w-56 @2xl:flex-none">
+              <MoneyInput label={`${account.name} balance`} required value={balance} onChange={setBalance} currency={currency} onCurrency={setCurrency} />
+            </div>
+            <button className={button} disabled={!dirty}>Save</button>
+            <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700">
+              Cancel
+            </button>
+          </div>
+        )}
       </form>
-      {adjusting && canAdjust && (
+      {mode === 'adjust' && canAdjust && (
         <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums dark:text-zinc-400" aria-live="polite">
           − <span className="text-rose-600 dark:text-rose-400">{format(account.balance - Number(delta), account.currency)}</span>
           {' · '}

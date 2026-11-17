@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { ErrorText, MoneyInput } from '../../components/controls'
-import { Briefcase, Calendar, Lock, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
+import { Briefcase, Calendar, Lock, Pencil, ShoppingBag, Trash2, TrendingDown } from 'lucide-react'
 import { api } from '../../lib/api'
 import { dateIn, format } from '../../lib/format'
 import { monthsLasting } from '../../lib/inflation'
@@ -83,6 +83,43 @@ function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimi
   )
 }
 
+// the saved settings, read-only: what the estimates beside them are based on
+function Settings({ budget: b }: { budget: Budget }) {
+  const unset = <span className="text-zinc-400">Not set</span>
+  const rows: { icon: ReactNode, label: string, value: ReactNode }[] = [
+    { icon: <span className="text-rose-500"><ShoppingBag /></span>, label: 'I spend per month', value: format(b.monthlySpend, b.currency) },
+    { icon: <span className="text-sky-600"><TrendingDown /></span>, label: 'Essential spending', value: b.minimalSpend !== null && b.minimalSpendCurrency ? format(b.minimalSpend, b.minimalSpendCurrency) : unset },
+    {
+      icon: <span className="text-emerald-600"><Briefcase /></span>,
+      label: 'Income per month',
+      value: b.incomes.length === 0
+        ? unset
+        : (
+          <span className="flex flex-col items-end">
+            {b.incomes.map((i, n) => (
+              <span key={n}>
+                <span className="text-zinc-500 dark:text-zinc-400">{i.name}{i.keeps && ' · keeps coming'} </span>
+                {format(i.amount, i.currency)}
+              </span>
+            ))}
+          </span>
+          ),
+    },
+    { icon: <span className="text-amber-500"><Lock /></span>, label: 'Untouchable reserve', value: b.reserve !== null && b.reserveCurrency ? format(b.reserve, b.reserveCurrency) : unset },
+    { icon: <span className="text-violet-600"><Calendar /></span>, label: 'Months to cover without income', value: b.targetMonths !== null ? `${b.targetMonths} months` : unset },
+  ]
+  return (
+    <dl className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+      {rows.map(({ icon, label, value }) => (
+        <div key={label} className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0">
+          <dt className="flex shrink-0 items-center gap-1.5 self-start text-sm text-zinc-700 dark:text-zinc-300">{icon} {label}</dt>
+          <dd className="text-right text-sm font-medium text-zinc-900 tabular-nums dark:text-zinc-100">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 const amountString = (n: number | null) => (n === null ? '' : String(n))
 
 // amounts as typed in the inputs; '' means not set
@@ -137,6 +174,8 @@ type RunwayProps = {
 
 export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptIncomeIn, minimalIn, inflation }: RunwayProps) {
   const [form, setForm] = useState(() => toForm(saved))
+  // the settings show as a summary once saved; Plan re-keys this on the saved budget, so a save returns to it
+  const [editing, setEditing] = useState(!saved)
   const [error, setError] = useState('')
   const field = <K extends keyof BudgetForm>(key: K) => (value: BudgetForm[K]) => setForm((f) => ({ ...f, [key]: value }))
   const incomeField = <K extends keyof IncomeRow>(index: number, key: K) => (value: IncomeRow[K]) =>
@@ -171,14 +210,28 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
 
   const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
+  const heading = (
+    <div>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Runway</h2>
+      <p className={muted}>How long your savings last.</p>
+    </div>
+  )
 
   return (
     <section className={`${card} grid gap-4 sm:gap-6 md:grid-cols-2`}>
-      <form className="flex flex-col gap-4" onSubmit={save}>
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Runway</h2>
-          <p className={muted}>How long your savings last.</p>
+      {!editing && saved ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            {heading}
+            <button type="button" onClick={() => setEditing(true)} className={`flex items-center gap-1.5 text-sm ${linkButton}`}>
+              <Pencil /> Edit
+            </button>
+          </div>
+          <Settings budget={saved} />
         </div>
+      ) : (
+      <form className="flex flex-col gap-4" onSubmit={save}>
+        {heading}
         <label className="flex flex-col gap-1.5">
           <span className={fieldLabel}><span className="text-rose-500"><ShoppingBag /></span> I spend per month</span>
           <MoneyInput id="spend" label="Monthly spend" required min="0.01" value={form.spend} onChange={field('spend')} currency={form.currency} onCurrency={field('currency')} />
@@ -246,10 +299,22 @@ export function Runway({ saved, onSaved, availableIn, reserveIn, incomeIn, keptI
           </div>
         </label>
         <div>
-          <button className={button} disabled={!dirty}>Save</button>
+          <div className="flex items-center gap-2">
+            <button className={button} disabled={!dirty}>Save</button>
+            {saved && (
+              <button
+                type="button"
+                onClick={() => { setForm(toForm(saved)); setError(''); setEditing(false) }}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
+      )}
       <div className="flex flex-col justify-center gap-3">
         {saved && available !== undefined
           ? (
