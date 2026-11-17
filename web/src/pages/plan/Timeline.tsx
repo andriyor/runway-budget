@@ -163,7 +163,7 @@ export function Timeline({
     if (m.need === undefined) return both(<Skeleton />)
     if (m.need <= 0) return both(<span className="font-medium text-emerald-600 dark:text-emerald-400">Done</span>)
     if (m.net === undefined) return both(<span className={muted}>Set spending and income</span>)
-    if (m.net <= 0) return both(<span className="text-rose-600 dark:text-rose-400">Not reachable</span>)
+    if (m.net <= 0) return both(<span className="text-amber-700 dark:text-amber-400">Not reachable</span>)
     const months = m.need / m.net
     const shift = tried && plannedMonths !== undefined ? months - plannedMonths : undefined
     return (

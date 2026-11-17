@@ -62,7 +62,7 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
       </p>
       <p className="mt-1 text-sm tabular-nums">
         <span className="text-zinc-500 dark:text-zinc-400">until {date(months)} · </span>
-        <span className="text-rose-600 dark:text-rose-400">−{format(burn, currency)} per month</span>
+        <span className="text-zinc-700 dark:text-zinc-300">−{format(burn, currency)} per month</span>
       </p>
       {withInflation}
     </div>
@@ -89,7 +89,7 @@ function SpendLimit({ months, total, kept, spend, minimal, currency }: SpendLimi
         {format(limit, currency)} <span className="text-base font-normal text-zinc-500">per month at most</span>
       </p>
       <p
-        className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+        className={`mt-1 text-sm tabular-nums ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}
       >
         {diff >= 0
           ? `${format(diff, currency)} more than you spend now`
@@ -110,7 +110,7 @@ function Settings({ budget: b }: { budget: Budget }) {
   const rows: { icon: ReactNode; label: string; value: ReactNode }[] = [
     {
       icon: (
-        <span className="text-rose-500">
+        <span className="text-zinc-400">
           <ShoppingBag />
         </span>
       ),
@@ -345,7 +345,7 @@ export function Runway({
           {heading}
           <label className="flex flex-col gap-1.5">
             <span className={fieldLabel}>
-              <span className="text-rose-500">
+              <span className="text-zinc-400">
                 <ShoppingBag />
               </span>{' '}
               I spend per month

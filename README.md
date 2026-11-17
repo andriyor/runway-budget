@@ -58,10 +58,10 @@ All accounts together, in Runway's currency.
   of the same days in the last 12 complete months, with the change in percent («Продукти +34%»), and
   the same days a year ago. Same days rather than whole months, so a half-gone month does not look cheap.
   Above it, the pace: «spent X by 14 листопада, on track for Y», where Y is X plus the median of what past
-  months spent after that day, red when above Runway's monthly spending (or the usual month without a budget).
+  months spent after that day, amber when above Runway's monthly spending (or the usual month without a budget).
 - **Category budgets**: a monthly cap per top-level spending category, in any currency, with this
-  month's spending against it: a bar with a tick at an even pace for the day, amber once ahead of that
-  pace, red once over the cap. Picking a category that has a cap edits it.
+  month's spending against it: a bar with a tick at an even pace for the day, blue once ahead of that
+  pace, amber once over the cap. Picking a category that has a cap edits it.
 - **Cash flow**: income (`Надходження`), spending and savings rate over the last 12 complete
   months across all accounts, with a per-month table. The median income can be sent to Runway as an
   `Average income` entry (sending it again updates that entry), so runway and goal dates use what you actually earn.
@@ -95,6 +95,10 @@ All accounts together, in Runway's currency.
 
 ### Plan
 
+It opens with a calm summary in plain sentences: how long your savings last without income, what a month
+puts aside or takes, and what you are saving for next, with its date. Red is kept for errors: money that is
+over a budget or behind uses amber, and ordinary spending stays neutral.
+
 Shown in USD, EUR or UAH: a switcher in the header converts every calculated figure and is remembered in
 the browser. Goal and wish amounts keep their own currency, with the converted value beside them.
 
@@ -114,7 +118,7 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
   Under the estimate without income, how many more months selling each thing you own would add.
 - **Emergency fund**: how many months of essential and of usual spending your available savings cover,
-  against the months set in Runway (6 if not set) and the 3-month minimum: red below 3, amber below the
+  against the months set in Runway (6 if not set) and the 3-month minimum: amber below 3, blue below the
   target, green once funded. Income that continues without a job lowers what a month takes from savings.
 - **Goals**: target amounts in priority order. Savings fill the emergency fund first, then goals from the
   top, so on a goal's date you can buy it and still keep the fund. Each shows its progress and the date at

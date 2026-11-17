@@ -103,11 +103,12 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
       <ul className="mt-3 flex flex-col gap-4">
         {rows.map(({ category: c, budget, cap, spent: used }) => {
           const share = used / cap
-          const tone = share > 1 ? 'rose' : share > gone ? 'amber' : 'emerald'
-          const bar = { rose: 'bg-rose-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }[tone]
+          // calm tones: over the cap is amber, ahead of an even pace sky; red is kept for errors
+          const tone = share > 1 ? 'amber' : share > gone ? 'sky' : 'emerald'
+          const bar = { amber: 'bg-amber-500', sky: 'bg-sky-500', emerald: 'bg-emerald-500' }[tone]
           const text = {
-            rose: 'text-rose-600 dark:text-rose-400',
             amber: 'text-amber-700 dark:text-amber-400',
+            sky: 'text-sky-700 dark:text-sky-400',
             emerald: 'text-emerald-700 dark:text-emerald-400',
           }[tone]
           return (

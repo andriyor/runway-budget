@@ -2,6 +2,7 @@ import { EmergencyFund } from './EmergencyFund'
 import { Goals } from './Goals'
 import { PlannedExpenses } from './PlannedExpenses'
 import { Runway } from './Runway'
+import { Summary } from './Summary'
 import { Timeline } from './Timeline'
 import { Wishlist } from './Wishlist'
 import { ErrorBanner } from '../../components/ErrorBanner'
@@ -102,6 +103,17 @@ export function Plan() {
       </header>
 
       <ErrorBanner>{error}</ErrorBanner>
+
+      <Summary
+        available={availableIn(currency)}
+        spend={spendIn(currency)}
+        kept={keptIncomeIn(currency)}
+        net={netIn(currency)}
+        forGoalsIn={forGoalsIn}
+        netIn={netIn}
+        convert={convert}
+        currency={currency}
+      />
 
       <Timeline
         forGoalsIn={forGoalsIn}

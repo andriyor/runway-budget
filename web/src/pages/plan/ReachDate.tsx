@@ -25,7 +25,7 @@ export function ReachDate({ need, net, spend, inflation, currency, hideUnreachab
   if (net === undefined) return <span className={muted}>Set monthly spending and income to see when.</span>
   if (net <= 0)
     return (
-      <span className="text-rose-600 dark:text-rose-400">Not reachable: you spend at least as much as you earn.</span>
+      <span className="text-amber-700 dark:text-amber-400">Not reachable: you spend at least as much as you earn.</span>
     )
   const months = need / net
   const date = (m: number) => dateIn(m, now)

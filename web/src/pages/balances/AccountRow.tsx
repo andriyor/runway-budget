@@ -283,7 +283,7 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
       {mode === 'adjust' && canAdjust && (
         <p className="mt-1 text-right text-xs text-zinc-500 tabular-nums dark:text-zinc-400" aria-live="polite">
           −{' '}
-          <span className="text-rose-600 dark:text-rose-400">
+          <span className="text-zinc-700 dark:text-zinc-300">
             {format(account.balance - Number(delta), account.currency)}
           </span>
           {' · '}+{' '}
