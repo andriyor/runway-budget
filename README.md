@@ -15,14 +15,14 @@ Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, c
 [National Bank of Ukraine](https://bank.gov.ua) rate, that analyses spending from Monobank transactions
 (against the usual, budgets, recurring payments, inflation).
 
-![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a364d49c-8b09-4c5a-95a2-b7b6b949643f)
+![Plan: timeline, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/57eb14d4-fd70-4e9e-8cb5-d2191422db0e)
 
 <details>
 <summary>More screenshots</summary>
 
 |                                                                                                                                                                |                                                                                                                                                                  |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Balances: totals, balance over time, allocation, things owned and accounts](https://github.com/user-attachments/assets/f39b6343-8408-4bb0-8e3a-c3aea7f8e3d5) | ![Plan: timeline, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/57eb14d4-fd70-4e9e-8cb5-d2191422db0e) |
+| ![Balances: totals, balance over time, allocation, things owned and accounts](https://github.com/user-attachments/assets/f39b6343-8408-4bb0-8e3a-c3aea7f8e3d5) | ![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a364d49c-8b09-4c5a-95a2-b7b6b949643f) |
 | ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)                  | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)                     |
 | ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                              | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                                     |
 | ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                                        |                                                                                                                                                                  |
