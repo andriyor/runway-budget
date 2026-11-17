@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ReachDate } from './ReachDate'
-import { Skeleton, ErrorText, MoneyInput } from '../../components/controls'
+import { ConfirmButton, Skeleton, ErrorText, MoneyInput } from '../../components/controls'
 import { Calendar, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, setCached, useApi } from '../../lib/api'
@@ -58,7 +58,6 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
   }
 
   async function remove(goal: Goal) {
-    if (!confirm(`Delete goal "${goal.name}"?`)) return
     try {
       await api(`/goals/${goal.id}`, { method: 'DELETE' })
     } catch (err) {
@@ -202,14 +201,15 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation 
                   >
                     <Pencil />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(g)}
-                    aria-label={`Delete goal ${g.name}`}
+                  <ConfirmButton
+                    label={`Delete goal ${g.name}`}
                     className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                    title={`Delete goal “${g.name}”?`}
+                    confirmLabel="Delete"
+                    onConfirm={() => remove(g)}
                   >
                     <Trash2 />
-                  </button>
+                  </ConfirmButton>
                 </div>
               </div>
               {waitingFor !== undefined ? (

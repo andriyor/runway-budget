@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { ErrorText, MoneyInput } from '../../components/controls'
+import { ConfirmButton, ErrorText, MoneyInput } from '../../components/controls'
 import { Trash2 } from 'lucide-react'
 import { api, useApi } from '../../lib/api'
 import { format, wholeMoney } from '../../lib/format'
@@ -56,8 +56,7 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
     }
   }
 
-  async function remove(budget: CategoryBudget, label: string) {
-    if (!confirm(`Remove the budget for ${label}?`)) return
+  async function remove(budget: CategoryBudget) {
     try {
       await api(`/category-budgets/${budget.category}`, { method: 'DELETE' })
     } catch (err) {
@@ -121,14 +120,15 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
                 <span className="flex shrink-0 items-center gap-2 tabular-nums">
                   <span className="text-zinc-900 dark:text-zinc-100">{wholeMoney(used, currency)}</span>
                   <span className={muted}>of {format(budget.amount, budget.currency)}</span>
-                  <button
-                    type="button"
-                    onClick={() => remove(budget, c.label)}
-                    aria-label={`Remove the budget for ${c.label}`}
+                  <ConfirmButton
+                    label={`Remove the budget for ${c.label}`}
                     className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
+                    title={`Remove the budget for ${c.label}?`}
+                    confirmLabel="Remove"
+                    onConfirm={() => remove(budget)}
                   >
                     <Trash2 />
-                  </button>
+                  </ConfirmButton>
                 </span>
               </div>
               <div

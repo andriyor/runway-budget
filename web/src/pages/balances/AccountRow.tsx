@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { KindToggle, ErrorText, MoneyInput } from '../../components/controls'
+import { ConfirmButton, KindToggle, ErrorText, MoneyInput } from '../../components/controls'
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api } from '../../lib/api'
@@ -86,7 +86,6 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
   const canAdjust = Number(delta) > 0
 
   async function remove() {
-    if (!confirm(`Delete account "${account.name}"? Its balance will no longer be counted.`)) return
     try {
       await api(`/accounts/${account.id}`, { method: 'DELETE' })
       onDeleted(account.id)
@@ -190,14 +189,16 @@ export function AccountRow({ account, onSaved, onDeleted, onMoveUp, onMoveDown }
             >
               <Pencil />
             </button>
-            <button
-              type="button"
-              onClick={remove}
-              aria-label={`Delete account ${account.name}`}
+            <ConfirmButton
+              label={`Delete account ${account.name}`}
               className={`${iconButton} hover:text-rose-600`}
+              title={`Delete account “${account.name}”?`}
+              description="Its balance will no longer be counted."
+              confirmLabel="Delete"
+              onConfirm={remove}
             >
               <Trash2 />
-            </button>
+            </ConfirmButton>
           </div>
         )}
 

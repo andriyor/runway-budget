@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { GoalForm, NameList, type GoalValues } from './Goals'
-import { Skeleton, ErrorText } from '../../components/controls'
+import { ConfirmButton, Skeleton, ErrorText } from '../../components/controls'
 import { Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
@@ -51,8 +51,7 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
         body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false }),
       }),
     )
-  const remove = (w: Goal) =>
-    confirm(`Remove "${w.name}" from the wishlist?`) && act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
+  const remove = (w: Goal) => act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
 
   // what buying `wish` today does to each goal; undefined while rates or balances load
   function impact(wish: Goal) {
@@ -148,14 +147,15 @@ export function Wishlist({ forGoalsIn, convert, netIn }: WishlistProps) {
                   >
                     <Pencil />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(w)}
-                    aria-label={`Remove wish ${w.name}`}
+                  <ConfirmButton
+                    label={`Remove wish ${w.name}`}
                     className={`${iconButton} hover:text-rose-600`}
+                    title={`Remove “${w.name}” from the wishlist?`}
+                    confirmLabel="Remove"
+                    onConfirm={() => remove(w)}
                   >
                     <Trash2 />
-                  </button>
+                  </ConfirmButton>
                 </div>
               </div>
               <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
