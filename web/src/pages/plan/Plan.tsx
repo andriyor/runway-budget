@@ -1,5 +1,6 @@
 import { EmergencyFund } from './EmergencyFund'
 import { Goals } from './Goals'
+import { PlannedExpenses } from './PlannedExpenses'
 import { Runway } from './Runway'
 import { Timeline } from './Timeline'
 import { Wishlist } from './Wishlist'
@@ -27,10 +28,12 @@ export function Plan() {
     cushion,
     netIn,
     salesIn,
+    spendIn,
+    plannedSpendIn,
+    planned,
   } = useFinance({ withInflation: true })
   // spending in the estimates grows by the last 12 months' inflation
   const inflation = cpi && annualRate(cpi)
-  const spendIn = (c: Currency) => (budget ? convert(budget.monthlySpend, budget.currency, c) : undefined)
 
   // the currency the plan is shown in: picked here and remembered, else the spending's
   const [picked, setPicked] = useState<Currency | undefined>(readPicked)
@@ -43,13 +46,21 @@ export function Plan() {
       // private mode: the pick lasts until reload
     }
   }
-  // saves a what-if spending from the timeline as the budget's, in the budget's own currency
-  async function saveSpending(amount: number) {
+  // saves a monthly spending in the shown currency as the budget's, in the budget's own currency
+  async function saveBudgetSpend(amount: number) {
     if (!budget) return
     const monthlySpend = Math.round((convert(amount, currency, budget.currency) ?? amount) * 100) / 100
     // the API takes optional fields left out rather than null
     const body = Object.fromEntries(Object.entries({ ...budget, monthlySpend }).filter(([, v]) => v !== null))
     setBudget(await api<Budget>('/budget', { method: 'PUT', body: JSON.stringify(body) }))
+  }
+  // a what-if from the timeline includes the turned-on planned expenses, which stay on their own
+  const saveSpending = (amount: number) => saveBudgetSpend(amount - plannedSpendIn(currency))
+  // an ongoing planned expense that is now real: into the budget's spending, off the planned list
+  async function startPaying(id: number, monthly: number) {
+    const budgetSpend = (spendIn(currency) ?? 0) - plannedSpendIn(currency)
+    await saveBudgetSpend(budgetSpend + monthly)
+    await api(`/planned-expenses/${id}`, { method: 'DELETE' })
   }
   // the fund in the shown currency; finance computes it in the spending's
   const fund = cushion && {
@@ -102,6 +113,17 @@ export function Plan() {
         keptIncome={keptIncomeIn(currency)}
         currency={currency}
         onUseSpending={saveSpending}
+      />
+
+      <PlannedExpenses
+        planned={planned}
+        convert={convert}
+        availableIn={availableIn}
+        spendIn={spendIn}
+        keptIncomeIn={keptIncomeIn}
+        netIn={netIn}
+        currency={currency}
+        onStartPaying={budget ? startPaying : undefined}
       />
 
       {budget !== undefined && (

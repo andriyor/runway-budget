@@ -89,6 +89,17 @@ export type Goal = { id: number; name: string; target: number; currency: Currenc
 // lost in a quick sale, and sellable false for things kept whatever happens, like the home you live in
 export type Asset = { id: number; name: string; value: number; currency: Currency; discount: number; sellable: boolean }
 
+// a monthly cost being considered, like rent or a course. months: how long it lasts, null for one with no end.
+// active: the plan counts it, an ongoing one as monthly spending and one with months as amount × months spent now
+export type PlannedExpense = {
+  id: number
+  name: string
+  amount: number
+  currency: Currency
+  months: number | null
+  active: boolean
+}
+
 // a monthly spending cap for a top-level spending category
 export type CategoryBudget = { category: string; amount: number; currency: Currency }
 

@@ -11,6 +11,7 @@ export type {
   Currency,
   Goal,
   Income,
+  PlannedExpense,
   Inflation,
   Rates,
   RateHistory,

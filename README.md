@@ -92,6 +92,10 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   reached at today's spending, what is already saved and what is left. A "What if I spend per month" slider,
   from essential spending to 1.5× the usual, re-plans it without saving: the fund's size and every date
   move, each with how many months sooner or later than the plan, and "Use as my spending" saves it.
+- **Planned expenses**: costs you are considering, like rent or an English course, per month and in any
+  currency, ongoing or for a number of months. Each shows the runway without income and the monthly surplus
+  without it and with it. Turned on, the timeline and every card below count it: an ongoing one as monthly
+  spending, one with months as its whole cost spent now. "Start paying" moves an ongoing one into your spending.
 - **Runway**: settings shown read-only until you edit them: monthly spending, optional named incomes (each in
   its own currency, marked as stopping if you lose your job, like a salary, or continuing without one, like
   rent or a pension), an optional essential-spending budget, an optional untouchable reserve and how many

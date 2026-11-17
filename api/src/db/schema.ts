@@ -118,3 +118,14 @@ export const assets = sqliteTable('assets', {
   // false for things you would not sell, like the home you live in: net worth only, no extra runway
   sellable: integer('sellable', { mode: 'boolean' }).notNull().default(true),
 })
+
+// a monthly cost being considered, like rent or a course; turned on, the plan counts it
+export const plannedExpenses = sqliteTable('planned_expenses', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  currency: text('currency', { enum: currencies }).notNull(),
+  // how many months it lasts, counted as amount × months taken from savings at once; null for one with no end
+  months: integer('months'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(false),
+})

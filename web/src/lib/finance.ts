@@ -11,6 +11,7 @@ import type {
   ConvertOn,
   Currency,
   Inflation,
+  PlannedExpense,
   Rates,
   RateHistory,
   Transaction,
@@ -37,11 +38,13 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   const budgetQuery = useApi<Budget | null>('/budget')
   const categoriesQuery = useApi<Category[]>('/categories')
   const assetsQuery = useApi<Asset[]>('/assets')
+  const plannedQuery = useApi<PlannedExpense[]>('/planned-expenses')
   const accounts = accountsQuery.data ?? []
   const rates = ratesQuery.data
   const budget = budgetQuery.data
   const categories = categoriesQuery.data ?? []
   const assets = assetsQuery.data ?? []
+  const planned = plannedQuery.data ?? []
   // errors of the page itself, e.g. a failed save; load errors come from the queries
   const [error, setError] = useState('')
 
@@ -79,7 +82,8 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   const inflation = inflationQuery.data
 
   const loadError =
-    (budgetQuery.error ?? categoriesQuery.error ?? accountsQuery.error ?? assetsQuery.error)?.message ??
+    (budgetQuery.error ?? categoriesQuery.error ?? accountsQuery.error ?? assetsQuery.error ?? plannedQuery.error)
+      ?.message ??
     (ratesQuery.error && `Rates: ${ratesQuery.error.message}`) ??
     (fetched.error && `Transactions: ${fetched.error.message}`) ??
     (historyQuery.error && `Rate history: ${historyQuery.error.message}, so past amounts use today's rates`) ??
@@ -108,6 +112,18 @@ export function useFinance({ withTransactions = false, withInflation = false } =
           .filter((a) => a.sellable)
           .map((a) => ({ name: a.name, amount: convert(a.value * (1 - a.discount / 100), a.currency, c)! }))
       : []
+  // turned-on planned expenses: ongoing ones add to monthly spending, ones with months are spent now in full
+  const sumPlanned = (c: Currency, ongoing: boolean) =>
+    rates
+      ? planned
+          .filter((p) => p.active && (p.months === null) === ongoing)
+          .reduce((sum, p) => sum + convert(p.amount * (p.months ?? 1), p.currency, c)!, 0)
+      : 0
+  const plannedSpendIn = (c: Currency) => sumPlanned(c, true)
+  const plannedCostIn = (c: Currency) => sumPlanned(c, false)
+  // monthly spending in the plan: the budget's plus the turned-on ongoing planned expenses
+  const spendIn = (c: Currency) =>
+    budget && rates ? convert(budget.monthlySpend, budget.currency, c)! + plannedSpendIn(c) : undefined
   const fromBudget = (amount: number | null | undefined, from: Currency | null | undefined, to: Currency) =>
     amount != null && from ? convert(amount, from, to) : undefined
   const reserveIn = (c: Currency) => fromBudget(budget?.reserve, budget?.reserveCurrency, c) ?? 0
@@ -124,13 +140,11 @@ export function useFinance({ withTransactions = false, withInflation = false } =
   const minimalIn = (c: Currency) => fromBudget(budget?.minimalSpend, budget?.minimalSpendCurrency, c)
   const availableIn = (c: Currency) => {
     const total = totalIn(c)
-    return total === undefined ? undefined : total - reserveIn(c)
+    return total === undefined ? undefined : total - reserveIn(c) - plannedCostIn(c)
   }
   // months without income, covering what the incomes that keep coming do not
   const cushionIn = (c: Currency) =>
-    budget?.targetMonths
-      ? budget.targetMonths * Math.max(0, fromBudget(budget.monthlySpend, budget.currency, c)! - keptIncomeIn(c))
-      : 0
+    budget?.targetMonths ? budget.targetMonths * Math.max(0, spendIn(c)! - keptIncomeIn(c)) : 0
   const forGoalsIn = (c: Currency) => {
     const available = availableIn(c)
     return available === undefined ? undefined : available - cushionIn(c)
@@ -144,8 +158,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
           currency: budget.currency,
         }
       : undefined
-  const netIn = (c: Currency) =>
-    budget && rates ? (incomeIn(c) ?? 0) - convert(budget.monthlySpend, budget.currency, c)! : undefined
+  const netIn = (c: Currency) => (budget && rates ? (incomeIn(c) ?? 0) - spendIn(c)! : undefined)
 
   return {
     accounts,
@@ -154,6 +167,7 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     budget,
     setBudget,
     assets,
+    planned,
     categories,
     transactions,
     inflation,
@@ -167,6 +181,8 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     ownedIn,
     salesIn,
     reserveIn,
+    spendIn,
+    plannedSpendIn,
     incomeIn,
     keptIncomeIn,
     minimalIn,
