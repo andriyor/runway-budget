@@ -86,7 +86,9 @@ Shown in USD, EUR or UAH: a switcher in the header converts every calculated fig
 the browser. Goal and wish amounts keep their own currency, with the converted value beside them.
 
 - **Timeline**: the emergency fund, then each goal in the order savings fill them, with the date each is
-  reached at today's spending, what is already saved and what is left.
+  reached at today's spending, what is already saved and what is left. A "What if I spend per month" slider,
+  from essential spending to 1.5× the usual, re-plans it without saving: the fund's size and every date
+  move, each with how many months sooner or later than the plan, and "Use as my spending" saves it.
 - **Runway**: settings shown read-only until you edit them: monthly spending, optional named incomes (each in
   its own currency, marked as stopping if you lose your job, like a salary, or continuing without one, like
   rent or a pension), an optional essential-spending budget, an optional untouchable reserve and how many
