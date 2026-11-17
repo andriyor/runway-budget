@@ -5,22 +5,22 @@ Personal balance tracker for USD, EUR and UAH accounts. Totals are converted at 
 (against the usual, budgets, recurring payments, inflation) and estimates how long your savings last
 and when you reach your goals.
 
-![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a5198fb3-1030-4634-9eff-e075e627bae8)
+![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a364d49c-8b09-4c5a-95a2-b7b6b949643f)
 
 <details>
 <summary>More screenshots</summary>
 
-|                                                                                                                                                  |                                                                                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/6e6d28a3-1d85-4005-bb8c-57c2fc5265c4) | ![Plan: runway, emergency fund and goals](https://github.com/user-attachments/assets/b855b0ac-c7c2-40fd-aa4b-f7d4ab375c7e)                   |
-| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/f01ddaba-42ad-40b3-958b-494687923089)    | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/b52bda7b-55d1-4ee9-a6ec-63d21293ffa0) |
-| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/30a041b9-02ce-48bf-99db-26baa0022958)                | ![Essential spending only, with its median](https://github.com/user-attachments/assets/6f5f2994-372b-4eec-98d6-d0ba0abc8a83)                 |
-| ![Balances on a phone](https://github.com/user-attachments/assets/017acbef-b289-4472-80fa-2d52ed7f5ce2)                                          |                                                                                                                                              |
+|                                                                                                                                                  |                                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Balances: totals, balance over time, allocation and accounts](https://github.com/user-attachments/assets/60b2ac6c-d78a-44fa-8f8f-909c0cc3db1d) | ![Plan: timeline, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/e0d3221b-531d-4723-9dbd-c49a05754d05) |
+| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)    | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)   |
+| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                   |
+| ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                          |                                                                                                                                                |
 
 </details>
 
 Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)) and were taken on
-2026-11-14; they live in [issue #2](https://github.com/andriyor/runway-budget/issues/2).
+2026-11-17; they live in [issue #3](https://github.com/andriyor/runway-budget/issues/3).
 
 ## Features
 
@@ -28,7 +28,8 @@ Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **P
 
 ### Balances
 
-- **Accounts**: add cash or bank accounts in USD, EUR or UAH, update their balances, rename, reorder or delete them.
+- **Accounts**: add cash or bank accounts in USD, EUR or UAH. Each row shows its balance, with buttons to add or
+  subtract an amount, edit its name, type, balance and currency, or delete it after a confirmation; reorder them with the arrows.
 - **Totals**: all balances summed in each currency at the NBU rate of the day.
 - **Allocation**: the share of the total by currency and by account type (bank or cash).
 - **Balance over time**: the total at the end of every day since the first transaction, each day at its
@@ -81,19 +82,27 @@ All accounts together, in Runway's currency.
 
 ### Plan
 
-- **Runway**: enter monthly spending, optional named incomes (a salary, a side job, rent, each in its own
-  currency, marked if it keeps coming when the others stop, like a pension), an optional essential-spending
-  budget and an optional untouchable reserve, and see how many months your savings last with and without income. Enter how many months you want to live
-  without income to see the most you can spend per month. Each estimate also shows how long it lasts
-  with spending growing by the last 12 months' inflation and incomes staying flat.
-- **Emergency fund**: how many months of essential spending your available savings cover, against
-  Runway's "Months to cover without income" (6 if not set) and the 3-month minimum: red below 3, amber
-  below the target, green once funded. Essentials are Runway's essential spending (the usual spending
-  without one), less incomes that keep coming.
-- **Goals**: set a target amount and see progress and the date you reach it at your current monthly
-  surplus (income minus spending). Months you want to live without income are kept aside as a cushion
-  and not counted toward goals. Each date also shows when, with spending growing by inflation and
-  income flat, or that spending catches up first.
+Shown in USD, EUR or UAH: a switcher in the header converts every calculated figure and is remembered in
+the browser. Goal and wish amounts keep their own currency, with the converted value beside them.
+
+- **Timeline**: the emergency fund, then each goal in the order savings fill them, with the date each is
+  reached at today's spending, what is already saved and what is left.
+- **Runway**: settings shown read-only until you edit them: monthly spending, optional named incomes (each in
+  its own currency, marked as stopping if you lose your job, like a salary, or continuing without one, like
+  rent or a pension), an optional essential-spending budget, an optional untouchable reserve and how many
+  months the emergency fund should cover. Beside them, how many months your savings last with and without
+  income, and the most you can spend per month to last the fund's months. Each estimate also shows how long
+  it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
+- **Emergency fund**: how many months of essential and of usual spending your available savings cover,
+  against the months set in Runway (6 if not set) and the 3-month minimum: red below 3, amber below the
+  target, green once funded. Income that continues without a job lowers what a month takes from savings.
+- **Goals**: target amounts in priority order. Savings fill the emergency fund first, then goals from the
+  top, so on a goal's date you can buy it and still keep the fund. Each shows its progress and the date at
+  your monthly surplus (income minus spending), and when, with spending growing by inflation and income
+  flat, or that spending catches up first. A goal not started yet says what it waits for.
+- **Wishlist**: purchases you are tempted by but have not committed to. They take no savings; each shows how
+  far buying it today pushes back each goal, how many months of surplus it costs and how long it has been on
+  the list, and can be turned into a goal.
 
 ### Everywhere
 
@@ -192,6 +201,8 @@ Run from the repository root:
 | `pnpm build`                         | Build both apps                                                        |
 | `pnpm test`                          | Type-check and run API tests (in-memory SQLite); does not touch `dist` |
 | `pnpm lint`                          | Lint the web app with oxlint                                           |
+| `pnpm format`                        | Format every file with Prettier                                        |
+| `pnpm format:check`                  | Check formatting without changing files                                |
 | `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                   |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
@@ -224,13 +235,15 @@ integer minor units (cents/kopiykas).
 | `PATCH`  | `/accounts/:id`                                        | Update any of `name`, `currency`, `balance`, `kind`                                                                                                                   |
 | `DELETE` | `/accounts/:id`                                        | Delete account                                                                                                                                                        |
 | `GET`    | `/budget`                                              | Monthly spend, incomes and reserve, or `null`                                                                                                                         |
-| `PUT`    | `/budget`                                              | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }`             |
+| `PUT`    | `/budget`                                              | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency, keeps }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }`      |
 | `GET`    | `/category-budgets`                                    | Monthly caps per category                                                                                                                                             |
 | `PUT`    | `/category-budgets/:category`                          | Set or replace a top-level spending category's cap `{ amount, currency }`                                                                                             |
 | `DELETE` | `/category-budgets/:category`                          | Remove a cap                                                                                                                                                          |
-| `GET`    | `/goals`                                               | List goals                                                                                                                                                            |
-| `POST`   | `/goals`                                               | Create goal `{ name, target, currency }`                                                                                                                              |
-| `DELETE` | `/goals/:id`                                           | Delete goal                                                                                                                                                           |
+| `GET`    | `/goals`                                               | List goals and wishes in priority order, each with `wish` and `addedAt`                                                                                               |
+| `POST`   | `/goals`                                               | Create a goal, or a wish with `wish: true`, last in order `{ name, target, currency, wish? }`                                                                         |
+| `PUT`    | `/goals/order`                                         | Reorder: `{ ids }` with every goal and wish id in order                                                                                                               |
+| `PUT`    | `/goals/:id`                                           | Replace a goal's `{ name, target, currency, wish? }`; `wish` is kept when left out, `false` makes a wish a goal                                                       |
+| `DELETE` | `/goals/:id`                                           | Delete a goal or wish                                                                                                                                                 |
 | `GET`    | `/rates`                                               | NBU rates as UAH per unit, cached for an hour                                                                                                                         |
 | `GET`    | `/rates/history?from=YYYY-MM-DD`                       | NBU rates for every day from `from` to today, cached for 12 hours                                                                                                     |
 | `GET`    | `/inflation?from=YYYY-MM`                              | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day                                                                  |
@@ -251,8 +264,10 @@ integer minor units (cents/kopiykas).
 - **Savings rate** = (income − spending) ÷ income, summed over the shown months rather than a median
   of monthly rates, so one month of tiny income cannot skew it. Moves between your own accounts and
   investments count as neither income nor spending.
-- **Goal ETA** = (target − available savings) ÷ monthly surplus. Each goal is measured on its own,
-  as if the whole surplus goes to it.
+- **Emergency fund** = months to cover × (usual spending − income that continues without a job).
+- **Goal ETA** = (emergency fund + the targets of this goal and every goal above it − available savings)
+  ÷ monthly surplus. Savings and the surplus fill the fund first, then goals in order.
+- **Wish delay** = how much further each goal ends up once the price leaves savings, ÷ monthly surplus.
 
 Estimates assume flat spending and income, and ignore interest and inflation.
 
@@ -392,7 +407,7 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - [x] Monobank sync: pull account balances from the [Monobank API](https://api.monobank.ua/docs/) with a personal token
 - [x] Delete and rename accounts
 - [x] Balance history over time
-- [ ] Goals in priority order (reach one after another instead of each on its own)
+- [x] Goals in priority order (reach one after another instead of each on its own)
 - [x] Shared package for types used by both `api` and `web`
 - [x] Income and savings rate from transactions (Cash flow card)
 
