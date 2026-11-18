@@ -149,6 +149,15 @@ add(new Date(2026, 9, 2), 'Zara', 5651, -3200)
 
 // the landlord is paid by transfer: corrected once for the whole merchant
 sqlite.prepare("insert into merchant_categories (merchant, category) values ('фоп коваленко олег', 'rent')").run()
+// a few more hand-made corrections, so the Rules page has something to show
+sqlite.prepare("insert into merchant_categories (merchant, category) values ('епіцентр', 'renovation')").run()
+sqlite.prepare("insert into merchant_essentials (merchant, essential) values ('добробут', 1)").run()
+sqlite.prepare("insert into merchant_essentials (merchant, essential) values ('yakaboo', 0)").run()
+// one transaction differs from its merchant: this Rozetka refund was for a gift
+sqlite
+  .prepare("update transactions set category = 'gifts' where description = 'Скасування. Rozetka'")
+  .run()
+sqlite.prepare("update transactions set essential = 1 where description = 'Укрзалізниця'").run()
 
 sqlite.close()
 console.log(`${file}: ${accounts.length} accounts, ${n} transactions`)
