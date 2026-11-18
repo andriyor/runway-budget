@@ -170,7 +170,7 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation,
           }
           return (
             <li key={g.id}>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="-ml-2 flex flex-col">
                     <button
@@ -193,9 +193,9 @@ export function Goals({ forGoalsIn, convert, cushion, netIn, spendIn, inflation,
                     </button>
                   </div>
                   <CurrencyIcon currency={g.currency} />
-                  <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{g.name}</span>
+                  <span className="min-w-0 break-words sm:truncate font-medium text-zinc-900 dark:text-zinc-100">{g.name}</span>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
                     {waitingFor === undefined && `${format(have, g.currency)} / `}
                     {withConverted(g.target, g.currency, currency, convert)}

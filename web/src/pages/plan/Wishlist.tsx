@@ -133,12 +133,12 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
           const effect = impact(w)
           return (
             <li key={w.id}>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <CurrencyIcon currency={w.currency} />
-                  <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{w.name}</span>
+                  <span className="min-w-0 break-words sm:truncate font-medium text-zinc-900 dark:text-zinc-100">{w.name}</span>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
                   <span className={`tabular-nums ${muted}`}>
                     {withConverted(w.target, w.currency, currency, convert)}
                   </span>

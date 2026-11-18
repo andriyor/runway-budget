@@ -114,7 +114,7 @@ export function PlannedExpenses({
       <ul className="mt-4 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
         {planned.map((p) => (
           <li key={p.id} className="py-3 first:pt-0">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <input
                 type="checkbox"
                 checked={p.active}
@@ -122,7 +122,7 @@ export function PlannedExpenses({
                 aria-label={`Count ${p.name} in the plan`}
                 className="size-4 accent-indigo-600"
               />
-              <span className="min-w-0 flex-1 truncate font-medium text-zinc-900 dark:text-zinc-100">{p.name}</span>
+              <span className="min-w-40 flex-1 break-words sm:min-w-0 sm:truncate font-medium text-zinc-900 dark:text-zinc-100">{p.name}</span>
               <span className={`tabular-nums ${muted}`}>
                 {format(p.amount, p.currency)} a month{p.months !== null && ` × ${p.months}`}
               </span>

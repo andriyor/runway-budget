@@ -157,8 +157,11 @@ export function Timeline({
   const current = milestones.findIndex((m) => m.need === undefined || m.need > 0)
 
   // the date and months columns; a state without a date spans both. With a what-if, how much sooner or later
-  // than the plan
+  // than the plan. On phones the two stack in one column, leaving the label room
   function when(m: Milestone, plannedMonths: number | undefined) {
+    return <span className="flex flex-col items-end sm:contents">{whenColumns(m, plannedMonths)}</span>
+  }
+  function whenColumns(m: Milestone, plannedMonths: number | undefined) {
     const both = (node: ReactNode) => <span className="col-span-2 text-right text-sm">{node}</span>
     if (m.need === undefined) return both(<Skeleton />)
     if (m.need <= 0) return both(<span className="font-medium text-emerald-600 dark:text-emerald-400">Done</span>)
@@ -219,11 +222,11 @@ export function Timeline({
         {tried ? 'at the spending you are trying' : "at today's spending"}.
       </p>
       {/* one grid for all rows, so labels, dates and months line up in columns */}
-      <ol className="mt-4 grid grid-cols-[auto_1fr_auto_auto] gap-x-3 sm:gap-x-5">
+      <ol className="mt-4 grid grid-cols-[auto_1fr_auto] gap-x-3 sm:grid-cols-[auto_1fr_auto_auto] sm:gap-x-5">
         {milestones.map((m, i) => {
           const done = m.need !== undefined && m.need <= 0
           return (
-            <li key={m.key} className="relative col-span-4 grid grid-cols-subgrid items-baseline pb-4 last:pb-0">
+            <li key={m.key} className="relative col-span-3 grid grid-cols-subgrid sm:col-span-4 items-baseline pb-4 last:pb-0">
               {/* the line to the next milestone */}
               {i < milestones.length - 1 && (
                 <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-0.5 bg-zinc-200 dark:bg-zinc-800" />
@@ -240,7 +243,7 @@ export function Timeline({
               />
               <span className="min-w-0">
                 <span
-                  className={`block truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}
+                  className={`block sm:truncate ${i === current ? 'font-medium text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300'}`}
                 >
                   {m.label}
                   {i === current && <span className={`ml-2 ${muted}`}>· saving for now</span>}
