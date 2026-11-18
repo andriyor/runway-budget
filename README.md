@@ -128,8 +128,9 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
 
 - **Monobank sync**: pull the last month of one Monobank card's transactions and set the account
   balance from them, on demand and automatically at 09:00 and 21:00.
-- **Phones**: a bottom tab bar with icons, one line per currency total, two-line account rows, and a
-  Transactions page whose monthly chart shows one quarter at a time.
+- **Phones**: a bottom tab bar with icons, one line per currency total, two-line account rows, a
+  Transactions page whose monthly chart shows one quarter at a time, and Plan rows that keep the name on
+  its own line (the timeline's date over its months, a goal's, wish's or planned expense's amount under it).
 - **Categories**: transactions are sorted into categories and subcategories automatically from their
   MCC. Correct one transaction or every transaction from a merchant, and mark transfers as income,
   moves between your own accounts or investments so they do not count as spending.
@@ -227,6 +228,19 @@ Run from the repository root:
 | `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                   |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
+
+## Claude skills
+
+`.claude/skills/` holds [Claude Code](https://claude.com/claude-code) skills for this repository:
+
+| Skill                                                     | What                                                                                     |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `runway-api`                                              | Read and change your data through the API («how long do my savings last», «add rent»)    |
+| `screenshots`                                             | Retake the README screenshots from the demo seed and publish them in an issue            |
+| `rozetka-notes`, `prom-notes`, `olx-notes`, `brain-notes` | Note what was bought on each shop's transactions, read from your order history in Chrome |
+
+The shop skills match orders by date and amount (`match-orders.py` for Rozetka and Prom), note refunds and
+OLX sales too, and ask before writing.
 
 ## Database
 
@@ -336,7 +350,11 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   day's rate. Both rows come back with `cancelled: true`; the charts, summaries and cash flow skip
   them, so a purchase on the 30th cancelled on the 2nd no longer moves spending between months, and
   the list shows them struck through. The balance chart keeps them, since the money did move. A
-  partial refund has no exact pair and stays an ordinary refund. Rows synced before the operation
+  partial refund has no exact pair and stays an ordinary refund. Some shops refund with a transfer
+  instead: OLX sends `Від: OLX_DOSTAVKA UAPAY`, which pairs with an earlier OLX purchase the same way, and
+  sometimes a sender Monobank hides (`Від: #traceable #traceable`), which pairs with any purchase of the
+  exact amount up to 3 days earlier; the OLX payout for something you sold has no purchase and stays
+  income. Rows synced before the operation
   columns pair on `amount` until a sync of their window fills them in (see [Monobank](#monobank)).
 - **A merchant is its normalized description.** The API returns `merchant` (lowercased, `Скасування. `
   stripped), the same key merchant overrides use, so the merchant summary, filter and corrections
