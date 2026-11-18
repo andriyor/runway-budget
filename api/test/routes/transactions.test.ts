@@ -141,6 +141,14 @@ test('a cancellation pairs with the purchase it reverses', async (t) => {
       // rows synced before the operation columns pair on the account amount
       row('silpo', 1000, 'Сільпо', -9500),
       row('back', 2000, 'Скасування. СІЛЬПО', 9500),
+      // OLX refunds come as transfers: from OLX's payout sender, or from a hidden one within 3 days
+      row('olx', 1000, 'OLX', -153500),
+      row('olxback', 2000, 'Від: OLX_DOSTAVKA UAPAY', 153500),
+      row('sale', 2000, 'Від: OLX_DOSTAVKA UAPAY', 96000),
+      row('lens', 1000, 'OLX', -1299500),
+      row('hidden', 1000 + 864e5, 'Від: #traceable #traceable', 1299500),
+      row('vinyl', 1000, 'OLX', -178833),
+      row('tooLate', 1000 + 4 * 864e5, 'Від: #traceable #traceable', 178833),
     ])
     .run()
   const list = (await app.inject({ url: `/api/accounts/${account.id}/transactions` })).json()
@@ -149,6 +157,6 @@ test('a cancellation pairs with the purchase it reverses', async (t) => {
       .filter((x: { cancelled: boolean }) => x.cancelled)
       .map((x: { externalId: string }) => x.externalId)
       .sort(),
-    ['back', 'buy', 'drop', 'new', 'silpo', 'undo'],
+    ['back', 'buy', 'drop', 'hidden', 'lens', 'new', 'olx', 'olxback', 'silpo', 'undo'],
   )
 })
