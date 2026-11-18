@@ -57,6 +57,32 @@ export type Category = {
   subcategories: Array<{ id: string; label: string; essential: boolean }>
 }
 
+// the user's category and essential overrides, for the Rules page; null where that part is left automatic
+export type CategoryRules = {
+  // apply to every transaction of a merchant, most transactions first
+  merchants: Array<{
+    // merchantKey of the description, what the rule is stored under
+    merchant: string
+    // the merchant's latest description, to show and to send back when changing the rule
+    description: string
+    category: string | null
+    essential: boolean | null
+    transactionCount: number
+  }>
+  // set on one transaction only, newest first
+  transactions: Array<{
+    id: number
+    accountId: number
+    description: string
+    // ISO 8601
+    time: string
+    amount: number
+    currency: Currency
+    category: string | null
+    essential: boolean | null
+  }>
+}
+
 export type Rates = { date: string; rates: Record<Currency, number> }
 
 // NBU rates (UAH per unit) for every calendar day from the requested one to today, keyed 'YYYY-MM-DD';

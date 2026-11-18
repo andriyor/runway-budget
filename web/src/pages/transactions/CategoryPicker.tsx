@@ -41,12 +41,14 @@ type CategoryPickerProps = {
   categories: Category[]
   // category: null goes back to automatic; forMerchant applies it to every transaction from the merchant
   onPick: (category: string | null, forMerchant: boolean) => void
+  // hides "for every transaction of this merchant", for a picker that already changes a merchant's rule
+  merchantOnly?: boolean
 }
 
 // ▾ that opens the categories, one level at a time so neither level scrolls: the categories, then the
 // picked one's subcategories (opening on the current category's). Typing searches every subcategory at once.
 // Mounted only while open, so it costs nothing per row.
-export function CategoryPicker({ label, value, categories, onPick }: CategoryPickerProps) {
+export function CategoryPicker({ label, value, categories, onPick, merchantOnly }: CategoryPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   // the category whose subcategories are shown; undefined shows the categories
@@ -157,15 +159,17 @@ export function CategoryPicker({ label, value, categories, onPick }: CategoryPic
                 </Combobox.Group>
               )}
             </Combobox.List>
-            <label className="flex cursor-pointer items-center gap-2 border-t border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
-              <input
-                type="checkbox"
-                checked={forMerchant}
-                onChange={(e) => setForMerchant(e.target.checked)}
-                className="size-3.5 accent-indigo-600"
-              />
-              Для всіх транзакцій цього продавця
-            </label>
+            {!merchantOnly && (
+              <label className="flex cursor-pointer items-center gap-2 border-t border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={forMerchant}
+                  onChange={(e) => setForMerchant(e.target.checked)}
+                  className="size-3.5 accent-indigo-600"
+                />
+                Для всіх транзакцій цього продавця
+              </label>
+            )}
           </Combobox.Popup>
         </Combobox.Positioner>
       </Combobox.Portal>

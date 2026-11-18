@@ -415,27 +415,32 @@ export function TransactionsPage() {
                   </button>
                 )}
               </span>
-              <div
-                role="group"
-                aria-label="Sort by"
-                className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
-              >
-                {(['date', 'amount'] as const).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={sortBy === key}
-                    onClick={() => setSortBy(key)}
-                    className={`rounded-md px-2.5 py-1 font-medium ${
-                      sortBy === key
-                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
-                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-                    }`}
-                  >
-                    {key === 'date' ? 'Date' : 'Amount'}
-                  </button>
-                ))}
-              </div>
+              <span className="flex items-center gap-3">
+                <a href="#/rules" className={linkButton}>
+                  Rules
+                </a>
+                <div
+                  role="group"
+                  aria-label="Sort by"
+                  className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+                >
+                  {(['date', 'amount'] as const).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={sortBy === key}
+                      onClick={() => setSortBy(key)}
+                      className={`rounded-md px-2.5 py-1 font-medium ${
+                        sortBy === key
+                          ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
+                          : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      {key === 'date' ? 'Date' : 'Amount'}
+                    </button>
+                  ))}
+                </div>
+              </span>
             </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}

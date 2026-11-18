@@ -8,6 +8,7 @@ export type {
   Budget,
   Category,
   CategoryBudget,
+  CategoryRules,
   Currency,
   Goal,
   Income,

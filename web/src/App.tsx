@@ -4,6 +4,7 @@ import { Nav } from './components/Nav'
 import { Balances } from './pages/balances/Balances'
 import { Plan } from './pages/plan/Plan'
 import { Spending } from './pages/spending/Spending'
+import { Rules } from './pages/transactions/Rules'
 import { TransactionsPage } from './pages/transactions/Transactions'
 
 export default function App() {
@@ -22,11 +23,14 @@ export default function App() {
     <main
       className={`mx-auto flex ${path === '#/' ? 'max-w-7xl' : 'max-w-5xl'} flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10`}
     >
-      <Nav page={path} />
+      {/* Rules belongs to Transactions, so that tab stays current */}
+      <Nav page={path === '#/rules' ? '#/transactions' : path} />
       {/* keyed by page so switching pages clears an error */}
       <ErrorBoundary key={path}>
         {path === '#/transactions' ? (
           <TransactionsPage />
+        ) : path === '#/rules' ? (
+          <Rules />
         ) : path === '#/spending' ? (
           <Spending />
         ) : path === '#/plan' ? (

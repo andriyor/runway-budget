@@ -97,3 +97,52 @@ test('categories come from MCC, description rules and merchant overrides', async
     { id: 'income', label: 'Надходження', emoji: '💰', spending: false, subcategories: [] },
   )
 })
+
+test('rules list merchant and single-transaction overrides', async (t) => {
+  const app = await build(t)
+  const [account] = app.db.insert(accounts).values({ name: 'Mono', currency: 'EUR', balanceCents: 0 }).returning().all()
+  const add = (externalId: string, description: string, seconds: number, amountCents = -100) =>
+    app.db
+      .insert(transactions)
+      .values({
+        accountId: account.id,
+        externalId,
+        time: new Date(seconds * 1000),
+        description,
+        mcc: 5262,
+        amountCents,
+      })
+      .returning()
+      .get()
+  add('1', 'Rozetka', 1)
+  add('2', 'ROZETKA', 2)
+  add('3', 'Скасування. Rozetka', 3, 100)
+  const own = add('4', 'Сільпо', 4)
+  add('5', 'Сільпо', 5)
+
+  const put = (url: string, payload: object) => app.inject({ method: 'PUT', url: `/api/categories${url}`, payload })
+  await put('/merchants', { description: 'Rozetka', category: 'renovation' })
+  await put('/merchants/essential', { description: 'Rozetka', essential: true })
+  // only an essential rule, the category stays automatic
+  await put('/merchants/essential', { description: 'Nova Poshta', essential: false })
+  await put(`/transactions/${own.id}`, { category: 'pharmacy' })
+
+  const rules = (await app.inject({ url: '/api/categories/rules' })).json()
+  assert.deepEqual(rules.merchants, [
+    // latest description that isn't a refund, refunds counted
+    { merchant: 'rozetka', description: 'ROZETKA', category: 'renovation', essential: true, transactionCount: 3 },
+    { merchant: 'nova poshta', description: 'nova poshta', category: null, essential: false, transactionCount: 0 },
+  ])
+  assert.deepEqual(rules.transactions, [
+    {
+      id: own.id,
+      accountId: account.id,
+      description: 'Сільпо',
+      time: new Date(4000).toISOString(),
+      amount: -1,
+      currency: 'EUR',
+      category: 'pharmacy',
+      essential: null,
+    },
+  ])
+})
