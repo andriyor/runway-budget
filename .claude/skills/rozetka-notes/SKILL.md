@@ -72,7 +72,7 @@ email; leave them out.
 ## 3. Match
 
 ```sh
-python3 .claude/skills/rozetka-notes/match.py "$D/rozetka-orders.txt" "$D/local-tx.jsonl" "$D/notes.json"
+python3 .claude/skills/match-orders.py "$D/rozetka-orders.txt" "$D/local-tx.jsonl" "$D/notes.json"
 ```
 
 It pairs each transaction with at most one order:
