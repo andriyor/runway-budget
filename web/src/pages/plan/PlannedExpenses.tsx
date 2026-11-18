@@ -114,7 +114,7 @@ export function PlannedExpenses({
       <ul className="mt-4 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
         {planned.map((p) => (
           <li key={p.id} className="py-3 first:pt-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={p.active}
@@ -122,20 +122,26 @@ export function PlannedExpenses({
                 aria-label={`Count ${p.name} in the plan`}
                 className="size-4 accent-indigo-600"
               />
-              <span className="min-w-40 flex-1 break-words sm:min-w-0 sm:truncate font-medium text-zinc-900 dark:text-zinc-100">{p.name}</span>
-              <span className={`tabular-nums ${muted}`}>
-                {format(p.amount, p.currency)} a month{p.months !== null && ` × ${p.months}`}
-              </span>
-              {p.months === null && onStartPaying && (
-                <button
-                  type="button"
-                  onClick={() => act(() => onStartPaying(p.id, convert(p.amount, p.currency, c) ?? p.amount))}
-                  title="Add it to your monthly spending in Runway and take it off this list"
-                  className={`text-sm ${linkButton}`}
-                >
-                  Start paying
-                </button>
-              )}
+              <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
+                <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
+                  {p.name}
+                </span>
+                <span className="flex shrink-0 flex-wrap items-center gap-x-3">
+                  <span className={`tabular-nums ${muted}`}>
+                    {format(p.amount, p.currency)} a month{p.months !== null && ` × ${p.months}`}
+                  </span>
+                  {p.months === null && onStartPaying && (
+                    <button
+                      type="button"
+                      onClick={() => act(() => onStartPaying(p.id, convert(p.amount, p.currency, c) ?? p.amount))}
+                      title="Add it to your monthly spending in Runway and take it off this list"
+                      className={`text-sm ${linkButton}`}
+                    >
+                      Start paying
+                    </button>
+                  )}
+                </span>
+              </div>
               <ConfirmButton
                 label={`Remove ${p.name}`}
                 className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800"
