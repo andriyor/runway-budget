@@ -1,5 +1,35 @@
 import { useEffect, type ReactNode } from 'react'
-import { Hourglass, Repeat, RefreshCw, SlidersHorizontal, Sun } from 'lucide-react'
+import {
+  Activity,
+  ArrowLeftRight,
+  BadgeCheck,
+  Briefcase,
+  CalendarClock,
+  Car,
+  ChartBar,
+  ChartColumn,
+  Flag,
+  Gauge,
+  Hourglass,
+  List,
+  Lock,
+  Milestone,
+  Percent,
+  Plane,
+  Receipt,
+  RefreshCw,
+  Repeat,
+  ShieldCheck,
+  ShoppingBag,
+  SlidersHorizontal,
+  Sun,
+  Tags,
+  Target,
+  TrendingUp,
+  Undo2,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { card, muted } from '../lib/styles'
 
 // the README's points, each linking to the page it lives on
@@ -41,26 +71,31 @@ const ideas = [
   },
 ]
 
-type Term = { id: string; term: string; text: ReactNode }
+type Term = { id: string; icon: LucideIcon; term: string; text: ReactNode }
 
 // What the app's words mean and how each number is made. Kept short and in step with the code comments;
 // #/about?term=<id> scrolls to one term, which is how the ⓘ tips link here.
-const sections: { title: string; terms: Term[] }[] = [
+const sections: { title: string; icon: LucideIcon; tint: string; terms: Term[] }[] = [
   {
     title: 'Balances',
+    icon: Wallet,
+    tint: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400',
     terms: [
       {
         id: 'rates',
+        icon: ArrowLeftRight,
         term: 'Currencies and rates',
         text: 'USD, EUR and UAH accounts are converted at the National Bank of Ukraine rate: today’s for totals, each day’s for history and cash flow.',
       },
       {
         id: 'sync',
+        icon: RefreshCw,
         term: 'Monobank sync',
         text: 'Monobank transactions arrive on their own twice a day and sort themselves into categories. Cash and other accounts are kept by hand.',
       },
       {
         id: 'owned',
+        icon: Car,
         term: 'Things you own',
         text: 'A car, a flat or anything else worth selling. They count in net worth, not in balances or the runway. A sellable thing’s quick-sale price is its value minus its discount, and the Plan shows how many months selling it would add.',
       },
@@ -68,54 +103,66 @@ const sections: { title: string; terms: Term[] }[] = [
   },
   {
     title: 'Plan',
+    icon: Target,
+    tint: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
     terms: [
       {
         id: 'spending',
+        icon: ShoppingBag,
         term: 'Usual and essential spending',
         text: 'Usual is what you spend in a month, set in Runway (the Transactions chart’s monthly median can fill it in). Essential is the part you cannot cut: rent, groceries, medicine, transport.',
       },
       {
         id: 'income',
+        icon: Briefcase,
         term: 'Income that stops or continues',
         text: 'Each income is marked as stopping if you lose your job (a salary) or continuing without one (rent, a pension). Only continuing incomes count in the “without income” estimates.',
       },
       {
         id: 'reserve',
+        icon: Lock,
         term: 'Untouchable reserve and available savings',
         text: 'The reserve is money you never plan to spend. Available savings are all balances minus the reserve and minus planned expenses with a fixed number of months, which count as spent now.',
       },
       {
         id: 'runway',
+        icon: Plane,
         term: 'Runway',
         text: 'How many months available savings last: savings ÷ (monthly spending − continuing income). Shown without income, on essentials only, and with all income.',
       },
       {
         id: 'surplus',
+        icon: TrendingUp,
         term: 'Monthly surplus',
         text: 'All income minus monthly spending. Positive, it fills the emergency fund and goals; negative, savings shrink by that much each month.',
       },
       {
         id: 'inflation',
+        icon: Percent,
         term: 'Inflation',
         text: 'The NBU consumer price index over the last 12 published months. The inflation-adjusted dates let spending grow with it while income stays flat, the cautious case.',
       },
       {
         id: 'emergency-fund',
+        icon: ShieldCheck,
         term: 'Emergency fund',
         text: 'Savings kept for a set number of months without a job: months × (usual spending − continuing income). It is filled before any goal.',
       },
       {
         id: 'timeline',
+        icon: Milestone,
         term: 'Timeline',
         text: 'The emergency fund, then goals from the top, in the order savings fill them. Each date is when savings plus the monthly surplus cover it and everything above it. The what-if slider tries another monthly spending without saving it.',
       },
       {
         id: 'goals',
+        icon: Flag,
         term: 'Goals and wishlist',
         text: 'Goals take savings, in order. Wishes take none: each shows how much buying it today would push back the goals, and how long it has been on the list, so a wish can wait before it becomes a goal.',
       },
       {
         id: 'planned',
+        icon: CalendarClock,
         term: 'Planned expenses',
         text: 'Costs you are considering, like rent or a course. Turned on, an ongoing one adds to monthly spending, and one with months counts as spent now in full.',
       },
@@ -123,24 +170,30 @@ const sections: { title: string; terms: Term[] }[] = [
   },
   {
     title: 'Spending',
+    icon: ChartColumn,
+    tint: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400',
     terms: [
       {
         id: 'net-spending',
+        icon: Receipt,
         term: 'What counts as spending',
         text: 'All accounts together, net of refunds. Moves between your own accounts, investments and cancelled purchases are left out.',
       },
       {
         id: 'usual',
+        icon: Activity,
         term: 'Usual, this month',
         text: 'The median of the same days in each of the last 12 complete months, so a half-gone month is compared with half-months. The month’s projection adds the median of what past months spent after today.',
       },
       {
         id: 'budgets',
+        icon: Gauge,
         term: 'Category budgets',
         text: 'A monthly cap per category. The tick on each bar is an even pace through the month; amber once ahead of it, red once over the cap.',
       },
       {
         id: 'recurring',
+        icon: Repeat,
         term: 'Recurring payments',
         text: 'Merchants charged in at least 3 of the last 6 months, about once a month, mostly for a similar amount, and within the last 40 days. The monthly amount is the latest charge.',
       },
@@ -148,24 +201,30 @@ const sections: { title: string; terms: Term[] }[] = [
   },
   {
     title: 'Transactions',
+    icon: List,
+    tint: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
     terms: [
       {
         id: 'categories',
+        icon: Tags,
         term: 'Categories',
         text: 'A transaction’s own category wins over its merchant’s, and the merchant’s over the automatic one from the card payment’s MCC. The Rules page lists every one set by hand.',
       },
       {
         id: 'essential',
+        icon: BadgeCheck,
         term: 'Essential flag',
         text: 'Each category is essential or optional by default; a merchant or a single transaction can override it. The «Необхідні» switch shows essential spending only.',
       },
       {
         id: 'usual-range',
+        icon: ChartBar,
         term: 'Median and usual range',
         text: 'On the monthly chart: the median complete month, and the usual range, the middle half of the complete months.',
       },
       {
         id: 'cancellations',
+        icon: Undo2,
         term: 'Cancelled purchases',
         text: 'Monobank does not link a «Скасування.» to its purchase, so it is paired with the closest earlier purchase from that merchant for the exact opposite amount. Both are left out of spending. A partial refund pairs with nothing and counts as a refund.',
       },
@@ -220,18 +279,30 @@ export function About() {
       </section>
       {sections.map((s) => (
         <section key={s.title} className={card}>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{s.title}</h2>
-          <dl className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
+          <h2 className="flex items-center gap-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <span aria-hidden className={`grid size-8 place-items-center rounded-lg ${s.tint}`}>
+              <s.icon size={18} />
+            </span>
+            {s.title}
+          </h2>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             {s.terms.map((t) => (
               <div
                 key={t.id}
                 id={t.id}
-                className={`scroll-mt-6 py-3 sm:grid sm:grid-cols-[14rem_1fr] sm:gap-4 ${
-                  t.id === term ? '-mx-2 rounded-lg bg-indigo-50 px-2 dark:bg-indigo-950/40' : ''
+                className={`flex scroll-mt-6 gap-3 rounded-xl p-3 ring-1 sm:odd:last:col-span-2 ${
+                  t.id === term
+                    ? 'bg-indigo-50 ring-indigo-300 dark:bg-indigo-950/40 dark:ring-indigo-700'
+                    : 'bg-zinc-50 ring-zinc-200 dark:bg-zinc-800/40 dark:ring-zinc-800'
                 }`}
               >
-                <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.term}</dt>
-                <dd className="mt-1 text-sm text-zinc-600 sm:mt-0 dark:text-zinc-400">{t.text}</dd>
+                <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-lg ${s.tint}`}>
+                  <t.icon size={16} />
+                </span>
+                <div>
+                  <dt className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t.term}</dt>
+                  <dd className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{t.text}</dd>
+                </div>
               </div>
             ))}
           </dl>
