@@ -1,5 +1,45 @@
 import { useEffect, type ReactNode } from 'react'
+import { Hourglass, Repeat, RefreshCw, SlidersHorizontal, Sun } from 'lucide-react'
 import { card, muted } from '../lib/styles'
+
+// the README's points, each linking to the page it lives on
+const ideas = [
+  {
+    icon: Sun,
+    title: 'One reassuring number',
+    text: 'How many months your savings last without income, and when you reach each goal.',
+    href: '#/plan',
+    tint: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+  },
+  {
+    icon: RefreshCw,
+    title: 'No manual entry',
+    text: 'Monobank transactions sync on their own and sort themselves into categories.',
+    href: '#/transactions',
+    tint: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400',
+  },
+  {
+    icon: Hourglass,
+    title: 'A cooling-off list',
+    text: 'The wishlist shows how long a wish has waited and which goal buying it would push back, instead of saying no.',
+    href: '#/plan',
+    tint: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+  },
+  {
+    icon: SlidersHorizontal,
+    title: '“What if” without commitment',
+    text: 'Try a lower spending, a new rent or a course, or selling the car, and see the plan move first.',
+    href: '#/plan',
+    tint: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400',
+  },
+  {
+    icon: Repeat,
+    title: 'Nothing forgotten',
+    text: 'Recurring payments and subscriptions are found from your transactions.',
+    href: '#/spending',
+    tint: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
+  },
+]
 
 type Term = { id: string; term: string; text: ReactNode }
 
@@ -147,31 +187,33 @@ export function About() {
         <p className={`mt-1 ${muted}`}>What the app is for, what its words mean, and how each number is made.</p>
       </header>
       {/* the same idea as the top of the README */}
-      <section className={card}>
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">The idea</h2>
-        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-          A calm money tracker: it answers “am I going to be okay?” before “where did my money go?”. Made with anxious
-          and ADHD brains in mind, though it is a tool, not treatment.
+      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-6 ring-1 ring-zinc-200 sm:p-8 dark:from-indigo-950/60 dark:via-zinc-900 dark:to-emerald-950/40 dark:ring-zinc-800">
+        <p className="text-xs font-semibold tracking-wider text-indigo-600 uppercase dark:text-indigo-400">
+          A calm money tracker
         </p>
-        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
-          {[
-            [
-              'One reassuring number',
-              'how many months your savings last without income, and when you reach each goal.',
-            ],
-            ['No manual entry', 'Monobank transactions sync on their own and sort themselves into categories.'],
-            [
-              'A cooling-off list for impulse buys',
-              'the wishlist shows how long a wish has waited and which goal buying it would push back, instead of saying no.',
-            ],
-            [
-              '“What if” without commitment',
-              'try a lower spending, a new rent or a course, or selling the car, and see the plan move before deciding anything.',
-            ],
-            ['Nothing forgotten', 'recurring payments and subscriptions are found from your transactions.'],
-          ].map(([title, text]) => (
-            <li key={title}>
-              <strong className="font-medium text-zinc-900 dark:text-zinc-100">{title}</strong>: {text}
+        <h2 className="mt-2 text-2xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-zinc-50">
+          “Am I going to be okay?”
+        </h2>
+        <p className="mt-1 text-lg text-zinc-500 sm:text-xl dark:text-zinc-400">before “where did my money go?”</p>
+        <p className="mt-4 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+          Made with anxious and ADHD brains in mind, though it is a tool, not treatment.
+        </p>
+        {/* three tiles, then two wider ones, so no gap is left on desktop */}
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          {ideas.map(({ icon: Icon, title, text, href, tint }, i) => (
+            <li key={title} className={i < 3 ? 'lg:col-span-2' : 'lg:col-span-3'}>
+              <a
+                href={href}
+                className="flex h-full gap-3 rounded-xl bg-white/70 p-4 ring-1 ring-zinc-200 transition hover:bg-white hover:ring-zinc-300 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:bg-zinc-900/60 dark:ring-zinc-800 dark:hover:bg-zinc-900 dark:hover:ring-zinc-700"
+              >
+                <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-lg ${tint}`}>
+                  <Icon size={18} />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</span>
+                  <span className="mt-0.5 block text-sm text-zinc-600 dark:text-zinc-400">{text}</span>
+                </span>
+              </a>
             </li>
           ))}
         </ul>
