@@ -111,6 +111,8 @@ for (let month = 0; month < 11; month++) {
   add(day(14), 'Київстар', 4814, -350)
   add(day(15), 'Воля', 4899, -260)
   add(day(6), 'Interactive Brokers', 6211, -10000)
+  // the rest of the salary goes to savings, so the card's balance stays level month to month
+  add(day(7), 'Переказ на ПриватБанк', 4829, -between(27000, 33000))
 
   spread(2026, month, 8, 'Сільпо', 5411, 300, 1500)
   spread(2026, month, 6, 'АТБ', 5411, 150, 700)
@@ -149,6 +151,8 @@ add(new Date(2026, 9, 2), 'Zara', 5651, -3200)
 
 // the landlord is paid by transfer: corrected once for the whole merchant
 sqlite.prepare("insert into merchant_categories (merchant, category) values ('фоп коваленко олег', 'rent')").run()
+// moving money to savings is not spending
+sqlite.prepare("insert into merchant_categories (merchant, category) values ('переказ на приватбанк', 'own')").run()
 // a few more hand-made corrections, so the Rules page has something to show
 sqlite.prepare("insert into merchant_categories (merchant, category) values ('епіцентр', 'renovation')").run()
 sqlite.prepare("insert into merchant_essentials (merchant, essential) values ('добробут', 1)").run()

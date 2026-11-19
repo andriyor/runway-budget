@@ -15,25 +15,25 @@ Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, c
 [National Bank of Ukraine](https://bank.gov.ua) rate, that analyses spending from Monobank transactions
 (against the usual, budgets, recurring payments, inflation).
 
-![A calm money tracker: "Am I going to be okay?" before "where did my money go?", with the five ideas](https://github.com/user-attachments/assets/41551f7f-877d-43e0-8f04-e59fa868ac36)
+![A calm money tracker: "Am I going to be okay?" before "where did my money go?", with the five ideas](https://github.com/user-attachments/assets/6858dca2-572a-4228-9ec0-b8eb6584920f)
 
-![Plan: timeline headed by the monthly surplus, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/6a5b6cc8-b4be-42be-9159-2d75c1e83a7d)
+![Plan: timeline with the surplus, savings rate and what-if sliders, tips, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/2394767a-de7e-4d4b-a274-3b92e27092a4)
 
 <details>
 <summary>More screenshots</summary>
 
-|                                                                                                                                                                |                                                                                                                                                                  |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Balances: totals, balance over time, allocation, things owned and accounts](https://github.com/user-attachments/assets/f39b6343-8408-4bb0-8e3a-c3aea7f8e3d5) | ![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/a364d49c-8b09-4c5a-95a2-b7b6b949643f) |
-| ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)                  | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)                     |
-| ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                              | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                                     |
-| ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                                        | ![Category rules: merchant rules and single-transaction overrides](https://github.com/user-attachments/assets/81075360-6f54-4402-b14c-41271f77bdf7)              |
-| ![About: the app's idea and the terms of each page](https://github.com/user-attachments/assets/d9e07c57-c397-4d32-bded-636e311c02ef)                           |                                                                                                                                                                  |
+|                                                                                                                                                                                                          |                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Balances: totals, balance over time from tracked accounts, allocation, things owned and accounts](https://github.com/user-attachments/assets/94ca5d8f-8237-4214-99bc-f7f3dfcb030c)                     | ![Spending: this month against the usual, category budgets, cash flow and more](https://github.com/user-attachments/assets/bbee7629-4815-440b-9613-1548111e2e1e) |
+| ![Transactions: balance over time, spending per month, and spending by category and merchant against the period before](https://github.com/user-attachments/assets/11cc7894-2bfb-489d-a76d-bd586733eb53) | ![A category selected: its monthly trend, subcategories and merchants](https://github.com/user-attachments/assets/867aed42-38cf-4c7a-acf4-458f4d647ee9)          |
+| ![Spending by merchant against the period before](https://github.com/user-attachments/assets/257acfdc-c039-4013-9fda-9dbd0ae0cab9)                                                                       | ![Essential spending only, with its median](https://github.com/user-attachments/assets/097d9900-7805-4e2a-9ba9-31bcdb7b91f5)                                     |
+| ![Balances on a phone](https://github.com/user-attachments/assets/004714b9-b85d-4bf4-ab6e-119dc4b74ba0)                                                                                                  | ![Category rules: merchant rules and single-transaction overrides](https://github.com/user-attachments/assets/1eb545a8-348e-4659-8717-0a29793f6a88)              |
+| ![About: the app's idea and the terms of each page](https://github.com/user-attachments/assets/87d7f7c4-169b-4345-9909-d82c316ce7a4)                                                                     |                                                                                                                                                                  |
 
 </details>
 
 Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)) and were taken on
-2026-11-17; they live in [issue #3](https://github.com/andriyor/runway-budget/issues/3).
+2026-11-19; they live in [issue #5](https://github.com/andriyor/runway-budget/issues/5).
 
 ## Features
 
@@ -92,7 +92,7 @@ All accounts together, in Runway's currency.
   from the period before (the month, quarter, year or week before; a week earlier for a day; as many days
   before for a range; a running period against as many days of the one before), left out when that period
   starts before the first transaction;
-- spending by merchant;
+- spending by merchant, with the same change from the period before (within a picked category);
 - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
   the period picker chooses the kind (Усе, Рік, Квартал, Місяць, Тиждень), steps with ‹ › and lists
   only that kind's periods ([Base UI](https://base-ui.com) toggle group and select);
