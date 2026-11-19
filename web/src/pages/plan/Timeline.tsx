@@ -373,6 +373,7 @@ type WhatIfProps = {
 // One what-if slider: its value and how far from today's, the track, and its ends with "now" under today's
 function WhatIf({ id, label, value, now, min, max, step, minLabel, lowerIsBetter, currency, onChange }: WhatIfProps) {
   const isImprovement = lowerIsBetter ? value < now : value > now
+  const thumb = (value - min) / (max - min)
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -391,16 +392,27 @@ function WhatIf({ id, label, value, now, min, max, step, minLabel, lowerIsBetter
           )}
         </span>
       </div>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-2 w-full accent-indigo-600"
-      />
+      {/* the value in a tooltip over the thumb while it's hovered, focused or dragged */}
+      <div className="group relative mt-2">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-900 px-1.5 py-0.5 text-xs text-white tabular-nums opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 dark:bg-zinc-100 dark:text-zinc-900"
+          // shortcut: assumes a 16px thumb (Chrome's), so in other browsers it may sit a few px off the thumb's centre
+          style={{ left: `calc(${thumb * 100}% + ${(0.5 - thumb) * 16}px)` }}
+        >
+          {wholeMoney(value, currency)}
+        </span>
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full accent-indigo-600"
+        />
+      </div>
       {/* the ends, and "now" under its place on the track */}
       <div className={`relative h-4 text-xs tabular-nums ${muted}`}>
         <span className="absolute left-0">
