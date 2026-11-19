@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { CategoryPicker } from './CategoryPicker'
 import { BalanceHistory } from '../balances/BalanceHistory'
 import { CategorySpending } from './CategorySpending'
+import type { ChangeMode } from './Change'
 import { MerchantIcon } from '../../components/MerchantIcon'
 import { RefreshCw } from 'lucide-react'
 import { MerchantSpending } from './MerchantSpending'
@@ -27,6 +28,16 @@ import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
 
 const PAGE = 100
+const CHANGE_MODE_KEY = 'changeMode'
+
+// the change column's form, remembered in this browser; money by default, since percentages run wild on small sums
+function readChangeMode(): ChangeMode {
+  try {
+    return localStorage.getItem(CHANGE_MODE_KEY) === 'percent' ? 'percent' : 'amount'
+  } catch {
+    return 'amount'
+  }
+}
 const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
 
 // opens a dropdown that was just put in place of its button; the click still counts as user activation
@@ -106,6 +117,15 @@ export function TransactionsPage() {
   const [notice, setNotice] = useState('')
   // today's day key, read once: the comparison cuts a running period at it
   const [today] = useState(() => dayKey(new Date().toISOString()))
+  const [changeMode, setChangeMode] = useState(readChangeMode)
+  function pickChangeMode(mode: ChangeMode) {
+    setChangeMode(mode)
+    try {
+      localStorage.setItem(CHANGE_MODE_KEY, mode)
+    } catch {
+      // private mode: lasts until reload
+    }
+  }
   const account = accounts.find((a) => a.id === accountId)
   const offered = withTransactions(accounts)
   const leafById = new Map<string, Leaf>(
@@ -427,6 +447,8 @@ export function TransactionsPage() {
             selected={category}
             onSelect={pickCategory}
             previous={previous && { ...previous, list: counted(previous.list) }}
+            changeMode={changeMode}
+            onChangeMode={pickChangeMode}
           />
           <MerchantSpending
             list={counted(inCategory!)}
@@ -440,6 +462,8 @@ export function TransactionsPage() {
                 list: counted(category ? previous.list.filter(inSelection) : previous.list),
               }
             }
+            changeMode={changeMode}
+            onChangeMode={pickChangeMode}
           />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">

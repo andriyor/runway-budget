@@ -1,6 +1,6 @@
 import { format, percentOf } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
-import { Change } from './Change'
+import { Change, ChangeModeSwitch, type ChangeMode } from './Change'
 import type { Currency, Transaction, Leaf } from '../../lib/types'
 
 const day = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' })
@@ -13,6 +13,9 @@ type CategorySpendingProps = {
   onSelect: (category?: string) => void
   // the period before, to show how spending changed; none for all time
   previous?: { list: Transaction[]; label: string }
+  // the change column in money or percent; one setting with the merchant card, switchable from either
+  changeMode: ChangeMode
+  onChangeMode: (mode: ChangeMode) => void
 }
 
 // spending per top-level category and per subcategory; refunds (positive amounts) reduce their category
@@ -31,7 +34,16 @@ function totals(list: Transaction[], leafById: Map<string, Leaf>) {
 // Totals per category, and per subcategory for the one that is open. Categories marked not spending
 // (income, own-account moves) stay out; refunds (positive amounts) reduce their category. With `previous`,
 // the header and each row say how much that changed from the period before.
-export function CategorySpending({ list, currency, leafById, selected, onSelect, previous }: CategorySpendingProps) {
+export function CategorySpending({
+  list,
+  currency,
+  leafById,
+  selected,
+  onSelect,
+  previous,
+  changeMode,
+  onChangeMode,
+}: CategorySpendingProps) {
   const parents = new Map([...leafById.values()].map((l) => [l.parent.id, l.parent]))
   const { byParent, byLeaf } = totals(list, leafById)
   const rows = [...byParent].filter(([, sum]) => sum > 0).sort((a, b) => b[1] - a[1])
@@ -76,9 +88,18 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect,
             </span>
             <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
               {format(sum, currency)}
-              <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(sum / total)}%</span>
+              {/* the share hides on phones, where the bar already shows it and the change needs the room */}
+              <span className={`ml-2 inline-block w-12 text-right max-sm:hidden ${muted}`}>
+                {percentOf(sum / total)}%
+              </span>
               {before && (
-                <Change now={sum} before={sumBefore ?? 0} className="ml-1 inline-block w-12 text-right text-xs" />
+                <Change
+                  now={sum}
+                  before={sumBefore ?? 0}
+                  mode={changeMode}
+                  currency={currency}
+                  className={`ml-1 inline-block text-right text-xs ${changeMode === 'amount' ? 'w-20' : 'w-12'}`}
+                />
               )}
             </span>
           </div>
@@ -96,13 +117,22 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect,
   return (
     <section className={card}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by category</h2>
+        <h2 className="flex items-center gap-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          Spending by category
+          {previous && <ChangeModeSwitch mode={changeMode} currency={currency} onChange={onChangeMode} />}
+        </h2>
         <span className={`tabular-nums ${muted}`}>
           {day.format(new Date(list.at(-1)!.time))} – {day.format(new Date(list[0].time))} · {format(total, currency)}
           {previous && totalBefore !== undefined && (
             <>
               {' · '}
-              <Change now={total} before={totalBefore} className="font-medium" /> vs {previous.label}
+              <Change
+                now={total}
+                before={totalBefore}
+                mode="percent"
+                currency={currency}
+                className="font-medium"
+              /> vs {previous.label}
               {totalBefore > 0 &&
                 ` (${total >= totalBefore ? '+' : '−'}${format(Math.abs(total - totalBefore), currency)})`}
             </>

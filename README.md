@@ -91,7 +91,8 @@ All accounts together, in Runway's currency.
 - spending by category with a drill-down into subcategories, and how the total and each category changed
   from the period before (the month, quarter, year or week before; a week earlier for a day; as many days
   before for a range; a running period against as many days of the one before), left out when that period
-  starts before the first transaction;
+  starts before the first transaction; a **грн | %** switch shows each change in money (the default) or percent,
+  with the other form and both totals on hover;
 - spending by merchant, with the same change from the period before (within a picked category);
 - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
   the period picker chooses the kind (Усе, Рік, Квартал, Місяць, Тиждень), steps with ‹ › and lists

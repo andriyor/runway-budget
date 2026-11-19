@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { MerchantIcon } from '../../components/MerchantIcon'
 import { format, percentOf } from '../../lib/format'
 import { card, linkButton, muted } from '../../lib/styles'
-import { Change } from './Change'
+import { Change, ChangeModeSwitch, type ChangeMode } from './Change'
 import type { Currency, Leaf, Transaction } from '../../lib/types'
 
 const TOP = 10
@@ -15,6 +15,9 @@ type MerchantSpendingProps = {
   onSelect: (merchant?: string) => void
   // the period before, to show how spending changed; none for all time
   previous?: { list: Transaction[]; label: string }
+  // the change column in money or percent; one setting with the category card, switchable from either
+  changeMode: ChangeMode
+  onChangeMode: (mode: ChangeMode) => void
 }
 
 // spending per merchant key, net of refunds, with its purchase count and latest purchase
@@ -35,7 +38,16 @@ function byMerchant(list: Transaction[], leafById: Map<string, Leaf>) {
 // Spending per merchant, net of refunds, same exclusions as the category summary.
 // A merchant is shown under its latest purchase's description, icon and category emoji. With `previous`, the
 // header and each row say how much that changed from the period before.
-export function MerchantSpending({ list, currency, leafById, selected, onSelect, previous }: MerchantSpendingProps) {
+export function MerchantSpending({
+  list,
+  currency,
+  leafById,
+  selected,
+  onSelect,
+  previous,
+  changeMode,
+  onChangeMode,
+}: MerchantSpendingProps) {
   const [showAll, setShowAll] = useState(false)
   const merchants = byMerchant(list, leafById)
   const rows = [...merchants].filter(([, m]) => m.total > 0 && m.latest).sort((a, b) => b[1].total - a[1].total)
@@ -49,13 +61,22 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect,
   return (
     <section className={card}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by merchant</h2>
+        <h2 className="flex items-center gap-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          Spending by merchant
+          {previous && <ChangeModeSwitch mode={changeMode} currency={currency} onChange={onChangeMode} />}
+        </h2>
         <span className={`tabular-nums ${muted}`}>
           {rows.length} · {format(total, currency)}
           {previous && totalBefore !== undefined && (
             <>
               {' · '}
-              <Change now={total} before={totalBefore} className="font-medium" /> vs {previous.label}
+              <Change
+                now={total}
+                before={totalBefore}
+                mode="percent"
+                currency={currency}
+                className="font-medium"
+              /> vs {previous.label}
               {totalBefore > 0 &&
                 ` (${total >= totalBefore ? '+' : '−'}${format(Math.abs(total - totalBefore), currency)})`}
             </>
@@ -83,12 +104,17 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect,
                   </span>
                   <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
                     {format(m.total, currency)}
-                    <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(m.total / total)}%</span>
+                    {/* the share hides on phones, where the bar already shows it and the change needs the room */}
+                    <span className={`ml-2 inline-block w-12 text-right max-sm:hidden ${muted}`}>
+                      {percentOf(m.total / total)}%
+                    </span>
                     {before && (
                       <Change
                         now={m.total}
                         before={before.get(key)?.total ?? 0}
-                        className="ml-1 inline-block w-12 text-right text-xs"
+                        mode={changeMode}
+                        currency={currency}
+                        className={`ml-1 inline-block text-right text-xs ${changeMode === 'amount' ? 'w-20' : 'w-12'}`}
                       />
                     )}
                   </span>
