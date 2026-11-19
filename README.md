@@ -109,7 +109,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   reached at today's spending, what is already saved and what is left. The monthly surplus heads it. A "What if I spend per month" slider,
   from essential spending to 1.5× the usual, re-plans it without saving: the fund's size and every date
   move, along with the surplus, each with how many months sooner or later than the plan, and "Use as my
-  spending" saves it.
+  spending" saves it. A "What if my salary is" slider, from no job to twice today's, does the same for the
+  incomes that stop without a job, to see what a new job would do to each goal; the emergency fund stays.
 - **Planned expenses**: costs you are considering, like rent or an English course, per month and in any
   currency, ongoing or for a number of months. Each shows the runway without income and the monthly surplus
   without it and with it. Turned on, the timeline and every card below count it: an ongoing one as monthly

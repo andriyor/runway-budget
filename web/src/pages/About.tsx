@@ -152,7 +152,7 @@ const sections: { title: string; icon: LucideIcon; tint: string; terms: Term[] }
         id: 'timeline',
         icon: Milestone,
         term: 'Timeline',
-        text: 'The emergency fund, then goals from the top, in the order savings fill them. Each date is when savings plus the monthly surplus cover it and everything above it. The what-if slider tries another monthly spending without saving it.',
+        text: 'The emergency fund, then goals from the top, in the order savings fill them. Each date is when savings plus the monthly surplus cover it and everything above it. The what-if sliders try another monthly spending or salary without saving them.',
       },
       {
         id: 'goals',

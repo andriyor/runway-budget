@@ -114,6 +114,7 @@ export function Plan() {
         usualSpend={spendIn(currency)}
         essentialSpend={minimalIn(currency)}
         keptIncome={keptIncomeIn(currency)}
+        salary={(incomeIn(currency) ?? 0) - keptIncomeIn(currency)}
         currency={currency}
         onUseSpending={saveSpending}
       />

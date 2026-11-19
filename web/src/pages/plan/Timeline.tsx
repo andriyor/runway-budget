@@ -22,6 +22,8 @@ type TimelineProps = {
   usualSpend: number | undefined
   essentialSpend: number | undefined
   keptIncome: number
+  // the incomes that stop without a job, e.g. a salary, in the same currency: the salary slider spans them
+  salary: number
   // the currency amounts are shown in; a goal's own amounts are converted to it
   currency: Currency
   // saves a monthly spending in `currency` as the plan's
@@ -114,12 +116,15 @@ export function Timeline({
   usualSpend,
   essentialSpend,
   keptIncome,
+  salary,
   currency,
   onUseSpending,
 }: TimelineProps) {
   const [now] = useState(Date.now)
   // the what-if spending as a share of the usual one, so it survives a currency switch; undefined is the plan
-  const [ratio, setRatio] = useState<number>()
+  const [spendRatio, setSpendRatio] = useState<number>()
+  // the what-if salary as a share of today's, likewise; a new job changes the surplus, not the emergency fund
+  const [salaryRatio, setSalaryRatio] = useState<number>()
   const [error, setError] = useState('')
   // in the shown currency; as it is while rates load
   const money = (amount: number, from: Currency) => {
@@ -131,29 +136,35 @@ export function Timeline({
   const base = { goals, convert, forGoalsIn, netIn, cushion, usual: usualSpend, kept: keptIncome }
   const planned = milestonesOf(base)
   // spending less makes the fund smaller and the monthly surplus larger, so both move
-  const spend = usualSpend !== undefined && ratio !== undefined ? usualSpend * ratio : undefined
-  const tried =
-    spend === undefined || usualSpend === undefined
+  const triedSpend = usualSpend !== undefined && spendRatio !== undefined ? usualSpend * spendRatio : undefined
+  const triedSalary = salaryRatio !== undefined ? salary * salaryRatio : undefined
+  // what the what-ifs add to the monthly surplus
+  const surplusChange =
+    (triedSpend === undefined ? 0 : usualSpend! - triedSpend) + (triedSalary === undefined ? 0 : triedSalary - salary)
+  const triedMilestones =
+    (triedSpend === undefined && triedSalary === undefined) || usualSpend === undefined
       ? undefined
       : (() => {
-          const fund = cushion && { ...cushion, amount: cushion.months * Math.max(0, spend - keptIncome) }
-          const freed = (cushion?.amount ?? 0) - (fund?.amount ?? 0)
-          const add = (value: number | undefined, extra: number, c: Currency) => {
-            const converted = convert(extra, currency, c)
+          const spending = triedSpend ?? usualSpend
+          const triedFund = cushion && { ...cushion, amount: cushion.months * Math.max(0, spending - keptIncome) }
+          const freedFromFund = (cushion?.amount ?? 0) - (triedFund?.amount ?? 0)
+          // value plus an amount in the shown currency, converted to `target`
+          const plus = (value: number | undefined, amount: number, target: Currency) => {
+            const converted = convert(amount, currency, target)
             return value === undefined || converted === undefined ? undefined : value + converted
           }
           return milestonesOf({
             ...base,
-            cushion: fund,
-            usual: spend,
-            forGoalsIn: (c) => add(forGoalsIn(c), freed, c),
-            netIn: (c) => add(netIn(c), usualSpend - spend, c),
+            cushion: triedFund,
+            usual: spending,
+            forGoalsIn: (target) => plus(forGoalsIn(target), freedFromFund, target),
+            netIn: (target) => plus(netIn(target), surplusChange, target),
           })
         })()
-  const milestones = tried ?? planned
-  // the monthly surplus filling the milestones, at the what-if spending while one is tried
-  const net = netIn(currency)
-  const surplus = net === undefined ? undefined : net + (spend === undefined ? 0 : usualSpend! - spend)
+  const milestones = triedMilestones ?? planned
+  // the monthly surplus filling the milestones, at the what-ifs while any is tried
+  const plannedSurplus = netIn(currency)
+  const surplus = plannedSurplus === undefined ? undefined : plannedSurplus + surplusChange
   if (milestones.length === 0) return null
 
   // the first milestone not reached yet, which the surplus is going to now
@@ -171,7 +182,7 @@ export function Timeline({
     if (m.net === undefined) return both(<span className={muted}>Set spending and income</span>)
     if (m.net <= 0) return both(<span className="text-rose-600 dark:text-rose-400">Not reachable</span>)
     const months = m.need / m.net
-    const shift = tried && plannedMonths !== undefined ? months - plannedMonths : undefined
+    const shift = triedMilestones && plannedMonths !== undefined ? months - plannedMonths : undefined
     return (
       <>
         <strong className="text-right text-sm font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
@@ -193,28 +204,24 @@ export function Timeline({
   }
 
   async function use() {
-    if (spend === undefined) return
+    if (triedSpend === undefined) return
     try {
-      await onUseSpending(spend)
-      setRatio(undefined)
+      await onUseSpending(triedSpend)
+      setSpendRatio(undefined)
       setError('')
     } catch (err) {
       setError((err as Error).message)
     }
   }
 
-  // from essential spending, the realistic floor, to half again the usual; steps of about 1% of it, rounded
-  const slider =
+  // from essential spending, the realistic floor, to half again the usual
+  const spendRange =
     usualSpend !== undefined && usualSpend > 0
-      ? (() => {
-          const step = 10 ** Math.max(0, Math.floor(Math.log10(usualSpend)) - 2)
-          const floor = essentialSpend !== undefined && essentialSpend < usualSpend ? essentialSpend : usualSpend / 2
-          return {
-            min: Math.floor(floor / step) * step,
-            max: Math.ceil((usualSpend * 1.5) / step) * step,
-            step,
-          }
-        })()
+      ? sliderRange(
+          essentialSpend !== undefined && essentialSpend < usualSpend ? essentialSpend : usualSpend / 2,
+          usualSpend * 1.5,
+          usualSpend,
+        )
       : undefined
 
   return (
@@ -233,7 +240,7 @@ export function Timeline({
       </div>
       <p className={muted}>
         Your savings and monthly surplus fill these in order,{' '}
-        {tried ? 'at the spending you are trying' : "at today's spending"}.
+        {triedMilestones ? 'at what you are trying below' : "at today's spending and income"}.
       </p>
       {/* one grid for all rows, so labels, dates and months line up in columns */}
       <ol className="mt-4 grid grid-cols-[auto_1fr_auto] gap-x-3 sm:grid-cols-[auto_1fr_auto_auto] sm:gap-x-5">
@@ -281,62 +288,126 @@ export function Timeline({
         })}
       </ol>
 
-      {slider && usualSpend !== undefined && (
-        <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <label htmlFor="what-if-spend" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              What if I spend per month
-            </label>
-            <span className="text-sm tabular-nums">
-              <strong className="text-zinc-900 dark:text-zinc-100">{wholeMoney(spend ?? usualSpend, currency)}</strong>
-              {spend !== undefined && Math.round(spend) !== Math.round(usualSpend) && (
-                <span
-                  className={`ml-2 ${spend < usualSpend ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}
-                >
-                  {spend < usualSpend ? '−' : '+'}
-                  {wholeMoney(Math.abs(spend - usualSpend), currency)} a month
-                </span>
-              )}
-            </span>
-          </div>
-          <input
+      {spendRange && usualSpend !== undefined && (
+        <div className="mt-5 flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <WhatIf
             id="what-if-spend"
-            type="range"
-            min={slider.min}
-            max={slider.max}
-            step={slider.step}
-            value={spend ?? usualSpend}
-            onChange={(e) => setRatio(Number(e.target.value) / usualSpend)}
-            className="mt-2 w-full accent-indigo-600"
+            label="What if I spend per month"
+            value={triedSpend ?? usualSpend}
+            now={usualSpend}
+            {...spendRange}
+            minLabel={essentialSpend !== undefined && essentialSpend < usualSpend ? 'essential ' : ''}
+            lowerIsBetter
+            currency={currency}
+            onChange={(amount) => setSpendRatio(amount / usualSpend)}
           />
-          {/* the ends, and "now" under its place on the track */}
-          <div className={`relative h-4 text-xs tabular-nums ${muted}`}>
-            <span className="absolute left-0">
-              {essentialSpend !== undefined && essentialSpend < usualSpend ? 'essential ' : ''}
-              {wholeMoney(slider.min, currency)}
-            </span>
-            <span
-              className="absolute -translate-x-1/2 whitespace-nowrap"
-              style={{ left: `${((usualSpend - slider.min) / (slider.max - slider.min)) * 100}%` }}
-            >
-              now {wholeMoney(usualSpend, currency)}
-            </span>
-            <span className="absolute right-0">{wholeMoney(slider.max, currency)}</span>
-          </div>
-          {tried && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className={muted}>Not saved: Runway and the cards below still use your spending.</span>
-              <button type="button" onClick={() => setRatio(undefined)} className={linkButton}>
+          {salary > 0 && (
+            <WhatIf
+              id="what-if-salary"
+              label="What if my salary is"
+              value={triedSalary ?? salary}
+              now={salary}
+              {...sliderRange(0, salary * 2, salary)}
+              minLabel="no job "
+              currency={currency}
+              onChange={(amount) => setSalaryRatio(amount / salary)}
+            />
+          )}
+          {triedMilestones && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className={muted}>Not saved: Runway and the cards below still use your spending and income.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSpendRatio(undefined)
+                  setSalaryRatio(undefined)
+                }}
+                className={linkButton}
+              >
                 Reset
               </button>
-              <button type="button" onClick={use} className={linkButton}>
-                Use as my spending
-              </button>
+              {triedSpend !== undefined && (
+                <button type="button" onClick={use} className={linkButton}>
+                  Use as my spending
+                </button>
+              )}
             </div>
           )}
           <ErrorText>{error}</ErrorText>
         </div>
       )}
     </section>
+  )
+}
+
+// a slider's ends and step: about 1% of `around`, rounded to a power of ten, with the ends on whole steps
+function sliderRange(min: number, max: number, around: number) {
+  const step = 10 ** Math.max(0, Math.floor(Math.log10(around)) - 2)
+  return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step, step }
+}
+
+type WhatIfProps = {
+  id: string
+  label: string
+  value: number
+  // today's amount, marked under its place on the track
+  now: number
+  min: number
+  max: number
+  step: number
+  // words before the low end, e.g. "essential "
+  minLabel: string
+  // spending: less is better, so a lower value shows green; salary: more is
+  lowerIsBetter?: boolean
+  currency: Currency
+  onChange: (value: number) => void
+}
+
+// One what-if slider: its value and how far from today's, the track, and its ends with "now" under today's
+function WhatIf({ id, label, value, now, min, max, step, minLabel, lowerIsBetter, currency, onChange }: WhatIfProps) {
+  const isImprovement = lowerIsBetter ? value < now : value > now
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <label htmlFor={id} className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {label}
+        </label>
+        <span className="text-sm tabular-nums">
+          <strong className="text-zinc-900 dark:text-zinc-100">{wholeMoney(value, currency)}</strong>
+          {Math.round(value) !== Math.round(now) && (
+            <span
+              className={`ml-2 ${isImprovement ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}
+            >
+              {value < now ? '−' : '+'}
+              {wholeMoney(Math.abs(value - now), currency)} a month
+            </span>
+          )}
+        </span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-2 w-full accent-indigo-600"
+      />
+      {/* the ends, and "now" under its place on the track */}
+      <div className={`relative h-4 text-xs tabular-nums ${muted}`}>
+        <span className="absolute left-0">
+          {minLabel}
+          {wholeMoney(min, currency)}
+        </span>
+        <span
+          className="absolute -translate-x-1/2 whitespace-nowrap"
+          style={{ left: `${((now - min) / (max - min)) * 100}%` }}
+        >
+          now {wholeMoney(now, currency)}
+        </span>
+        <span className="absolute right-0">{wholeMoney(max, currency)}</span>
+      </div>
+    </div>
   )
 }
