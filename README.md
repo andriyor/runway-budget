@@ -88,7 +88,10 @@ All accounts together, in Runway's currency.
 - a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
   picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
   filter shows only its months (a picked month shows its year);
-- spending by category with a drill-down into subcategories;
+- spending by category with a drill-down into subcategories, and how the total and each category changed
+  from the period before (the month, quarter, year or week before; a week earlier for a day; as many days
+  before for a range; a running period against as many days of the one before), left out when that period
+  starts before the first transaction;
 - spending by merchant;
 - filters by month, quarter, year or ISO week, category and merchant, all clickable from the charts;
   the period picker chooses the kind (Усе, Рік, Квартал, Місяць, Тиждень), steps with ‹ › and lists

@@ -12,7 +12,17 @@ import { Skeleton } from '../../components/Skeleton'
 import { api, useApi } from '../../lib/api'
 import { budgetWith } from '../../lib/budget'
 import { format } from '../../lib/format'
-import { inPeriod, monthKey, periodsOf, rangeLabel, rangeOf } from '../../lib/periods'
+import {
+  dayKey,
+  inPeriod,
+  monthKey,
+  periodBounds,
+  periodLabel,
+  periodsOf,
+  previousOf,
+  rangeLabel,
+  rangeOf,
+} from '../../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
 
@@ -94,6 +104,8 @@ export function TransactionsPage() {
   // only spending needed to live: the chart's median becomes the minimal month
   const [essentialOnly, setEssentialOnly] = useState(false)
   const [notice, setNotice] = useState('')
+  // today's day key, read once: the comparison cuts a running period at it
+  const [today] = useState(() => dayKey(new Date().toISOString()))
   const account = accounts.find((a) => a.id === accountId)
   const offered = withTransactions(accounts)
   const leafById = new Map<string, Leaf>(
@@ -218,6 +230,15 @@ export function TransactionsPage() {
   if (rangeOf(period)) periods.set(period, rangeLabel(period))
   const base = essentialOnly ? list?.filter((t) => t.essential || isKept(t)) : list
   const shown = period ? base?.filter((t) => inPeriod(t, period)) : base
+  // the period before, to compare spending with: the one before of the same kind, as many days of it while
+  // this one is running
+  const previousPeriod = previousOf(period, today)
+  // none when the period before starts before the first transaction, since its total would be partial
+  const firstDay = list?.length ? dayKey(list.at(-1)!.time) : undefined
+  const previous =
+    previousPeriod && base && firstDay && periodBounds(previousPeriod)![0] >= firstDay
+      ? { list: base.filter((t) => inPeriod(t, previousPeriod)), label: periodLabel(previousPeriod, periods) }
+      : undefined
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
@@ -405,6 +426,7 @@ export function TransactionsPage() {
             leafById={leafById}
             selected={category}
             onSelect={pickCategory}
+            previous={previous && { ...previous, list: counted(previous.list) }}
           />
           <MerchantSpending
             list={counted(inCategory!)}

@@ -71,9 +71,10 @@ export function periodsOf(t: Transaction): Array<[string, string]> {
 export const rangeOf = (period: string) =>
   period.startsWith('r:') ? (period.slice(2).split('..') as [string, string]) : undefined
 
-// "3 бер. – 15 квіт. 2026 р."
+// "3 бер. – 15 квіт. 2026 р.", or one day: "3 бер. 2026 р."
 export function rangeLabel(period: string) {
   const [from, to] = rangeOf(period)!.map((d) => new Date(`${d}T00:00:00`))
+  if (from.getTime() === to.getTime()) return fullDay.format(from)
   return from.getFullYear() === to.getFullYear()
     ? `${shortDay.format(from)} – ${fullDay.format(to)}`
     : `${fullDay.format(from)} – ${fullDay.format(to)}`
@@ -93,3 +94,65 @@ export function dayInPeriod(day: string, period: string) {
 
 // whether a transaction falls in a period key, a range included
 export const inPeriod = (t: Transaction, period: string) => dayInPeriod(dayKey(t.time), period)
+
+// a day key as a local date, and a local date as a day key
+const dateOf = (day: string) => new Date(`${day}T00:00:00`)
+const keyOf = (date: Date) => dayKey(date.toISOString())
+const addDays = (day: string, days: number) => {
+  const d = dateOf(day)
+  return keyOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days))
+}
+// the same day of the month `months` away, or that month's last day when it is shorter
+const addMonths = (day: string, months: number) => {
+  const d = dateOf(day)
+  const last = new Date(d.getFullYear(), d.getMonth() + months + 1, 0).getDate()
+  return keyOf(new Date(d.getFullYear(), d.getMonth() + months, Math.min(d.getDate(), last)))
+}
+const daysBetween = (from: string, to: string) => Math.round((dateOf(to).getTime() - dateOf(from).getTime()) / 864e5)
+
+// first and last day of a period key; undefined for all time
+export function periodBounds(period: string): [string, string] | undefined {
+  const range = rangeOf(period)
+  if (range) return range
+  const key = period.slice(2)
+  if (period.startsWith('d:')) return [key, key]
+  if (period.startsWith('m:')) return [`${key}-01`, addDays(addMonths(`${key}-01`, 1), -1)]
+  if (period.startsWith('q:')) {
+    const months = quarterMonths(period)
+    return [`${months[0]}-01`, addDays(addMonths(`${months[2]}-01`, 1), -1)]
+  }
+  if (period.startsWith('y:')) return [`${key}-01-01`, `${key}-12-31`]
+  if (period.startsWith('w:')) {
+    const days = weekDays(period)
+    return [days[0], days[6]]
+  }
+  return undefined
+}
+
+// The period to compare a period with: the one before of the same kind; for a day, the same weekday a week
+// earlier (yesterday mostly shows which weekday it was); for a range, as many days just before it. A period
+// still running is cut at today and compared with as many days of the one before, so mid-month is not set
+// against a whole month. undefined for all time and for a period that has not started.
+export function previousOf(period: string, today: string): string | undefined {
+  const bounds = periodBounds(period)
+  if (!bounds || bounds[0] > today) return undefined
+  const [from, end] = bounds
+  const to = end < today ? end : today
+  const running = to !== end
+  const months = { 'm:': 1, 'q:': 3, 'y:': 12 }[period.slice(0, 2)]
+  if (months) {
+    const before = addMonths(from, -months)
+    if (running) return `r:${before}..${addMonths(to, -months)}`
+    if (months === 1) return `m:${before.slice(0, 7)}`
+    return months === 3 ? quarterOf(before.slice(0, 7)) : `y:${before.slice(0, 4)}`
+  }
+  if (period.startsWith('w:'))
+    return running ? `r:${addDays(from, -7)}..${addDays(to, -7)}` : weekOfDay(addDays(from, -7))
+  if (period.startsWith('d:')) return `r:${addDays(from, -7)}..${addDays(from, -7)}`
+  const days = daysBetween(from, to) + 1
+  return `r:${addDays(from, -days)}..${addDays(from, -1)}`
+}
+
+// a period's label: the one known from its transactions, else its days
+export const periodLabel = (period: string, known: Map<string, string>) =>
+  known.get(period) ?? rangeLabel(`r:${periodBounds(period)!.join('..')}`)

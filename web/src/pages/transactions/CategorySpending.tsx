@@ -10,12 +10,12 @@ type CategorySpendingProps = {
   leafById: Map<string, Leaf>
   selected?: string
   onSelect: (category?: string) => void
+  // the period before, to show how spending changed; none for all time
+  previous?: { list: Transaction[]; label: string }
 }
 
-// Totals per category, and per subcategory for the one that is open. Categories marked not spending
-// (income, own-account moves) stay out; refunds (positive amounts) reduce their category.
-export function CategorySpending({ list, currency, leafById, selected, onSelect }: CategorySpendingProps) {
-  const parents = new Map([...leafById.values()].map((l) => [l.parent.id, l.parent]))
+// spending per top-level category and per subcategory; refunds (positive amounts) reduce their category
+function totals(list: Transaction[], leafById: Map<string, Leaf>) {
   const byParent = new Map<string, number>()
   const byLeaf = new Map<string, number>()
   for (const t of list) {
@@ -24,9 +24,37 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
     byParent.set(parent.id, (byParent.get(parent.id) ?? 0) - t.amount)
     byLeaf.set(t.category, (byLeaf.get(t.category) ?? 0) - t.amount)
   }
+  return { byParent, byLeaf }
+}
+
+// "+12%" amber when spending grew, "−8%" green when it fell; "new" when there was none before
+function Change({ now, before, className = '' }: { now: number; before: number | undefined; className?: string }) {
+  if (before === undefined) return null
+  if (before <= 0)
+    return now > 0 ? <span className={`text-amber-700 dark:text-amber-400 ${className}`}>new</span> : null
+  const change = now / before - 1
+  if (Math.abs(change) < 0.005) return <span className={`${muted} ${className}`}>0%</span>
+  return (
+    <span
+      className={`${change > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} ${className}`}
+    >
+      {change > 0 ? '+' : '−'}
+      {Math.round(Math.abs(change) * 100)}%
+    </span>
+  )
+}
+
+// Totals per category, and per subcategory for the one that is open. Categories marked not spending
+// (income, own-account moves) stay out; refunds (positive amounts) reduce their category. With `previous`,
+// the header and each row say how much that changed from the period before.
+export function CategorySpending({ list, currency, leafById, selected, onSelect, previous }: CategorySpendingProps) {
+  const parents = new Map([...leafById.values()].map((l) => [l.parent.id, l.parent]))
+  const { byParent, byLeaf } = totals(list, leafById)
   const rows = [...byParent].filter(([, sum]) => sum > 0).sort((a, b) => b[1] - a[1])
   const total = rows.reduce((sum, [, x]) => sum + x, 0)
   if (total === 0) return null
+  const before = previous && totals(previous.list, leafById)
+  const totalBefore = before && [...before.byParent.values()].filter((x) => x > 0).reduce((sum, x) => sum + x, 0)
   // the open category: the selected one, or the parent of a selected subcategory
   const open = selected && (leafById.get(selected)?.parent.id ?? selected)
 
@@ -38,6 +66,7 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
     max: number,
     onClick: () => void,
     sub = false,
+    sumBefore?: number,
   ) => (
     <li key={id} className={sub ? 'ml-11' : undefined}>
       <button
@@ -64,6 +93,9 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
             <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
               {format(sum, currency)}
               <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(sum / total)}%</span>
+              {before && (
+                <Change now={sum} before={sumBefore ?? 0} className="ml-1 inline-block w-12 text-right text-xs" />
+              )}
             </span>
           </div>
           <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -83,6 +115,14 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by category</h2>
         <span className={`tabular-nums ${muted}`}>
           {day.format(new Date(list.at(-1)!.time))} – {day.format(new Date(list[0].time))} · {format(total, currency)}
+          {previous && totalBefore !== undefined && (
+            <>
+              {' · '}
+              <Change now={total} before={totalBefore} className="font-medium" /> vs {previous.label}
+              {totalBefore > 0 &&
+                ` (${total >= totalBefore ? '+' : '−'}${format(Math.abs(total - totalBefore), currency)})`}
+            </>
+          )}
         </span>
       </div>
       <ul className="mt-3 flex flex-col gap-3">
@@ -96,9 +136,27 @@ export function CategorySpending({ list, currency, leafById, selected, onSelect 
                   .sort((a, b) => b[1] - a[1])
               : []
           return [
-            row(id, parent.label, parent.emoji, sum, rows[0][1], () => onSelect(selected === id ? undefined : id)),
+            row(
+              id,
+              parent.label,
+              parent.emoji,
+              sum,
+              rows[0][1],
+              () => onSelect(selected === id ? undefined : id),
+              false,
+              before?.byParent.get(id),
+            ),
             ...subs.map(([sc, x]) =>
-              row(sc.id, sc.label, undefined, x, subs[0][1], () => onSelect(selected === sc.id ? id : sc.id), true),
+              row(
+                sc.id,
+                sc.label,
+                undefined,
+                x,
+                subs[0][1],
+                () => onSelect(selected === sc.id ? id : sc.id),
+                true,
+                before?.byLeaf.get(sc.id),
+              ),
             ),
           ]
         })}
