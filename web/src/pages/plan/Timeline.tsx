@@ -165,6 +165,10 @@ export function Timeline({
   // the monthly surplus filling the milestones, at the what-ifs while any is tried
   const plannedSurplus = netIn(currency)
   const surplus = plannedSurplus === undefined ? undefined : plannedSurplus + surplusChange
+  // the surplus as a share of all income, at the what-if salary while one is tried; only while saving, since
+  // a shortfall's share of a small income says little
+  const income = (triedSalary ?? salary) + keptIncome
+  const savingsRate = surplus !== undefined && surplus > 0 && income > 0 ? surplus / income : undefined
   if (milestones.length === 0) return null
 
   // the first milestone not reached yet, which the surplus is going to now
@@ -234,7 +238,10 @@ export function Timeline({
           >
             {surplus > 0 ? '+' : '−'}
             {wholeMoney(Math.abs(surplus), currency)}{' '}
-            <span className="text-sm font-normal">{surplus > 0 ? 'saved' : 'short'} per month</span>
+            <span className="text-sm font-normal">
+              {surplus > 0 ? 'saved' : 'short'} per month
+              {savingsRate !== undefined && ` · ${Math.round(savingsRate * 100)}% of income`}
+            </span>
           </p>
         )}
       </div>
