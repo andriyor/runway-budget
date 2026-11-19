@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { Monitor, Moon, NotebookPen, Sun } from 'lucide-react'
 import { applyTheme, KEY, storedTheme, type Theme } from '../lib/theme'
 
 const options: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'system', label: 'System', icon: Monitor },
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'paper', label: 'Paper', icon: NotebookPen },
 ]
 
 export function ThemeSwitcher() {

@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* dark: follows the `dark` class on <html>, which lib/theme.tsx sets from the switcher or the system */
+/* dark: follows the `dark` class on <html>, which lib/theme.ts sets from the switcher or the system */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -8,6 +8,36 @@
 }
 :root.dark {
   color-scheme: dark;
+}
+
+/* Paper: the warm light Minimal theme of my Obsidian vault. Tailwind's colors are variables, so redefining
+   the grays, white and the indigo accent restyles every page: cream cards on a parchment page, warm grays
+   for text and borders, the vault's green accent and its JetBrains Mono font. */
+:root.paper {
+  --color-white: #fcf5e4;
+  --color-zinc-50: #f1e9d4;
+  --color-zinc-100: #e9e0c9;
+  --color-zinc-200: #e0d6bd;
+  --color-zinc-300: #cfc3a6;
+  --color-zinc-400: #a39a85;
+  --color-zinc-500: #7d7564;
+  --color-zinc-600: #595959;
+  --color-zinc-700: #403c35;
+  --color-zinc-800: #302d28;
+  --color-zinc-900: #262626;
+  --color-zinc-950: #1c1b19;
+  --color-indigo-50: #eaf3e9;
+  --color-indigo-100: #d6e9d6;
+  --color-indigo-200: #b3d7b6;
+  --color-indigo-300: #8cc394;
+  --color-indigo-400: #6aae73;
+  --color-indigo-500: #519d5c;
+  --color-indigo-600: #43864d;
+  --color-indigo-700: #386d40;
+  --color-indigo-800: #2f5735;
+  --color-indigo-900: #27482c;
+  --color-indigo-950: #142817;
+  --font-sans: 'JetBrains Mono NL', 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
 }
 
 body {
