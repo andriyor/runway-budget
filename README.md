@@ -15,6 +15,8 @@ Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, c
 [National Bank of Ukraine](https://bank.gov.ua) rate, that analyses spending from Monobank transactions
 (against the usual, budgets, recurring payments, inflation).
 
+![A calm money tracker: "Am I going to be okay?" before "where did my money go?", with the five ideas](https://github.com/user-attachments/assets/41551f7f-877d-43e0-8f04-e59fa868ac36)
+
 ![Plan: timeline headed by the monthly surplus, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/6a5b6cc8-b4be-42be-9159-2d75c1e83a7d)
 
 <details>
@@ -26,6 +28,7 @@ Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, c
 | ![Transactions: filters, spending per month and by category](https://github.com/user-attachments/assets/18767ff8-ded8-421b-8802-d551abdc2667)                  | ![A category selected: its monthly trend and subcategories](https://github.com/user-attachments/assets/bcef006a-4e60-44b6-8181-796cda77a7a7)                     |
 | ![Spending by merchant and the transaction list](https://github.com/user-attachments/assets/1fed245b-c624-41f4-ac1b-5ca15362515f)                              | ![Essential spending only, with its median](https://github.com/user-attachments/assets/1ea24a71-4ea4-4683-a5e9-bf82a11f5815)                                     |
 | ![Balances on a phone](https://github.com/user-attachments/assets/a9e23388-07f4-4bb6-ac85-7b468a24a42d)                                                        | ![Category rules: merchant rules and single-transaction overrides](https://github.com/user-attachments/assets/81075360-6f54-4402-b14c-41271f77bdf7)              |
+| ![About: the app's idea and the terms of each page](https://github.com/user-attachments/assets/d9e07c57-c397-4d32-bded-636e311c02ef)                           |                                                                                                                                                                  |
 
 </details>
 
@@ -34,7 +37,7 @@ Screenshots use made-up data from the demo seed (see [Demo data](#demo-data)) an
 
 ## Features
 
-Four pages, in the tab bar: **Balances**, **Spending**, **Transactions** and **Plan**.
+Five pages, in the tab bar: **Balances**, **Spending**, **Transactions**, **Plan** and **About**.
 
 ### Balances
 
