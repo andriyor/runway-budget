@@ -111,6 +111,10 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   move, along with the surplus, each with how many months sooner or later than the plan, and "Use as my
   spending" saves it. A "What if my salary is" slider, from no job to twice today's, does the same for the
   incomes that stop without a job, to see what a new job would do to each goal; the emergency fund stays.
+- **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
+  under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
+  that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
+  product or investment recommendations; each can be dismissed.
 - **Planned expenses**: costs you are considering, like rent or an English course, per month and in any
   currency, ongoing or for a number of months. Each shows the runway without income and the monthly surplus
   without it and with it. Turned on, the timeline and every card below count it: an ongoing one as monthly
@@ -281,15 +285,15 @@ Re-syncing a window you already have adds nothing new but fills in each stored t
 
 Run from the repository root:
 
-| Command                              | What                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------- |
-| `pnpm dev`                           | Start API and web in watch mode                                        |
-| `pnpm build`                         | Build both apps                                                        |
-| `pnpm test`                          | Type-check and run API tests (in-memory SQLite); does not touch `dist` |
-| `pnpm lint`                          | Lint the web app with oxlint                                           |
-| `pnpm format`                        | Format every file with Prettier                                        |
-| `pnpm format:check`                  | Check formatting without changing files                                |
-| `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                   |
+| Command                              | What                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                           | Start API and web in watch mode                                                                  |
+| `pnpm build`                         | Build both apps                                                                                  |
+| `pnpm test`                          | Type-check and run API tests (in-memory SQLite), and the web's unit tests; does not touch `dist` |
+| `pnpm lint`                          | Lint the web app with oxlint                                                                     |
+| `pnpm format`                        | Format every file with Prettier                                                                  |
+| `pnpm format:check`                  | Check formatting without changing files                                                          |
+| `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                                             |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
 

@@ -3,6 +3,7 @@ import { Goals } from './Goals'
 import { PlannedExpenses } from './PlannedExpenses'
 import { Runway } from './Runway'
 import { Timeline } from './Timeline'
+import { Tips } from './Tips'
 import { Wishlist } from './Wishlist'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { InfoTip } from '../../components/InfoTip'
@@ -118,6 +119,8 @@ export function Plan() {
         currency={currency}
         onUseSpending={saveSpending}
       />
+
+      <Tips currency={currency} />
 
       <PlannedExpenses
         planned={planned}

@@ -11,6 +11,7 @@ import {
   Flag,
   Gauge,
   Hourglass,
+  Lightbulb,
   List,
   Lock,
   Milestone,
@@ -159,6 +160,12 @@ const sections: { title: string; icon: LucideIcon; tint: string; terms: Term[] }
         icon: Flag,
         term: 'Goals and wishlist',
         text: 'Goals take savings, in order. Wishes take none: each shows how much buying it today would push back the goals, and how long it has been on the list, so a wish can wait before it becomes a goal.',
+      },
+      {
+        id: 'tips',
+        icon: Lightbulb,
+        term: 'Tips',
+        text: 'Fixed rules over your own numbers with well-known guidelines: an emergency fund of 3–6 months, saving 10–20% of income, recurring payments that cost more than usual, and what inflation takes from hryvnia savings. General, not personal financial advice.',
       },
       {
         id: 'planned',
