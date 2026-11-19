@@ -76,7 +76,10 @@ export function Plan() {
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Plan</h1>
         <InfoTip label="About the plan">
           How long your savings last, and when you reach your goals, from your balances and the spending and incomes you
-          set.
+          set.{' '}
+          <a href="#/about?term=runway" className="underline">
+            More…
+          </a>
         </InfoTip>
         <div
           role="group"

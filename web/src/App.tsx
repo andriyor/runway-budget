@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Nav } from './components/Nav'
+import { About } from './pages/About'
 import { Balances } from './pages/balances/Balances'
 import { Plan } from './pages/plan/Plan'
 import { Spending } from './pages/spending/Spending'
@@ -35,6 +36,8 @@ export default function App() {
           <Spending />
         ) : path === '#/plan' ? (
           <Plan />
+        ) : path === '#/about' ? (
+          <About />
         ) : (
           <Balances />
         )}

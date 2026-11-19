@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ChartColumn, List, Target, Wallet } from 'lucide-react'
+import { BookOpen, ChartColumn, List, Target, Wallet } from 'lucide-react'
 
 // Phones: a fixed bottom tab bar with icons, within thumb reach and always visible.
 // From sm up: the pills at the top of the page, with a smaller icon before the label.
@@ -20,6 +20,7 @@ export function Nav({ page }: { page: string }) {
       {link('#/spending', 'Spending', <ChartColumn size={24} />)}
       {link('#/transactions', 'Transactions', <List size={24} />)}
       {link('#/plan', 'Plan', <Target size={24} />)}
+      {link('#/about', 'About', <BookOpen size={24} />)}
     </nav>
   )
 }

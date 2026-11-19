@@ -48,7 +48,10 @@ export function Spending() {
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Spending</h1>
         <InfoTip label="About spending">
           All accounts together, in Runway's currency: Cash flow at each day's NBU rate, the other cards at today's. Net
-          of refunds, without own-account moves and investments.
+          of refunds, without own-account moves and investments.{' '}
+          <a href="#/about?term=net-spending" className="underline">
+            More…
+          </a>
         </InfoTip>
       </header>
 

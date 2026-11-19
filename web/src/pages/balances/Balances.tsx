@@ -73,7 +73,10 @@ export function Balances() {
       <header className="flex items-center gap-2">
         <h1 className="text-2xl font-bold sm:text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">Balances</h1>
         <InfoTip label="About balances">
-          USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.
+          USD, EUR and UAH accounts, converted at the National Bank of Ukraine rate.{' '}
+          <a href="#/about?term=rates" className="underline">
+            More…
+          </a>
         </InfoTip>
       </header>
 

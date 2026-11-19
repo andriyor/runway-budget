@@ -149,7 +149,10 @@ export function Assets({ assets, cash, owned, currency }: AssetsProps) {
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Things I own</h2>
         <InfoTip label="About things you own">
           A car, a flat or anything else worth selling. They count in net worth, not in the totals above or in how long
-          your savings last; the Plan shows how much time selling one would buy.
+          your savings last; the Plan shows how much time selling one would buy.{' '}
+          <a href="#/about?term=owned" className="underline">
+            More…
+          </a>
         </InfoTip>
       </div>
 
