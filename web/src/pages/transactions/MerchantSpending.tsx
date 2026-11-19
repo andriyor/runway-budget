@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MerchantIcon } from '../../components/MerchantIcon'
 import { format, percentOf } from '../../lib/format'
 import { card, linkButton, muted } from '../../lib/styles'
+import { Change } from './Change'
 import type { Currency, Leaf, Transaction } from '../../lib/types'
 
 const TOP = 10
@@ -12,12 +13,12 @@ type MerchantSpendingProps = {
   leafById: Map<string, Leaf>
   selected?: string
   onSelect: (merchant?: string) => void
+  // the period before, to show how spending changed; none for all time
+  previous?: { list: Transaction[]; label: string }
 }
 
-// Spending per merchant, net of refunds, same exclusions as the category summary.
-// A merchant is shown under its latest purchase's description, icon and category emoji.
-export function MerchantSpending({ list, currency, leafById, selected, onSelect }: MerchantSpendingProps) {
-  const [showAll, setShowAll] = useState(false)
+// spending per merchant key, net of refunds, with its purchase count and latest purchase
+function byMerchant(list: Transaction[], leafById: Map<string, Leaf>) {
   const merchants = new Map<string, { total: number; count: number; latest?: Transaction }>()
   // list is newest first, so the first purchase seen is the latest
   for (const t of list) {
@@ -28,9 +29,20 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
     if (!m.latest && t.amount < 0) m.latest = t
     merchants.set(t.merchant, m)
   }
+  return merchants
+}
+
+// Spending per merchant, net of refunds, same exclusions as the category summary.
+// A merchant is shown under its latest purchase's description, icon and category emoji. With `previous`, the
+// header and each row say how much that changed from the period before.
+export function MerchantSpending({ list, currency, leafById, selected, onSelect, previous }: MerchantSpendingProps) {
+  const [showAll, setShowAll] = useState(false)
+  const merchants = byMerchant(list, leafById)
   const rows = [...merchants].filter(([, m]) => m.total > 0 && m.latest).sort((a, b) => b[1].total - a[1].total)
   if (rows.length === 0) return null
   const total = rows.reduce((sum, [, m]) => sum + m.total, 0)
+  const before = previous && byMerchant(previous.list, leafById)
+  const totalBefore = before && [...before.values()].filter((m) => m.total > 0).reduce((sum, m) => sum + m.total, 0)
   // keep the selected merchant visible even when it is outside the top
   const visible = showAll ? rows : rows.filter(([key], i) => i < TOP || key === selected)
 
@@ -40,6 +52,14 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Spending by merchant</h2>
         <span className={`tabular-nums ${muted}`}>
           {rows.length} · {format(total, currency)}
+          {previous && totalBefore !== undefined && (
+            <>
+              {' · '}
+              <Change now={total} before={totalBefore} className="font-medium" /> vs {previous.label}
+              {totalBefore > 0 &&
+                ` (${total >= totalBefore ? '+' : '−'}${format(Math.abs(total - totalBefore), currency)})`}
+            </>
+          )}
         </span>
       </div>
       <ul className="mt-3 flex flex-col gap-2">
@@ -64,6 +84,13 @@ export function MerchantSpending({ list, currency, leafById, selected, onSelect 
                   <span className="shrink-0 font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
                     {format(m.total, currency)}
                     <span className={`ml-2 inline-block w-12 text-right ${muted}`}>{percentOf(m.total / total)}%</span>
+                    {before && (
+                      <Change
+                        now={m.total}
+                        before={before.get(key)?.total ?? 0}
+                        className="ml-1 inline-block w-12 text-right text-xs"
+                      />
+                    )}
                   </span>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">

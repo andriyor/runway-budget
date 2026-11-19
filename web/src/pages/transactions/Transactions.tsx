@@ -434,6 +434,12 @@ export function TransactionsPage() {
             leafById={leafById}
             selected={merchant}
             onSelect={setMerchant}
+            previous={
+              previous && {
+                ...previous,
+                list: counted(category ? previous.list.filter(inSelection) : previous.list),
+              }
+            }
           />
           <section className={card}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm">
