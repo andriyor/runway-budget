@@ -20,33 +20,35 @@ export default function App() {
   // the part before ? picks the page; the query is the page's own state, e.g. #/transactions?account=3
   const path = page.split('?')[0]
 
-  // Balances is wider on desktop for its accounts sidebar
+  // Balances is wider on desktop for its accounts sidebar; the top bar keeps one width, so it does not jump
   return (
-    <main
-      className={`mx-auto flex ${path === '#/' ? 'max-w-7xl' : 'max-w-5xl'} flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10`}
-    >
-      {/* Rules belongs to Transactions, so that tab stays current */}
+    <>
       {/* on phones Nav is the bottom bar, leaving the theme switcher alone at the top right */}
-      <div className="flex items-center justify-end gap-2 sm:justify-between">
+      <header className="mx-auto flex max-w-5xl items-center justify-end gap-2 px-4 pt-6 sm:justify-between sm:pt-10">
+        {/* Rules belongs to Transactions, so that tab stays current */}
         <Nav page={path === '#/rules' ? '#/transactions' : path} />
         <ThemeSwitcher />
-      </div>
-      {/* keyed by page so switching pages clears an error */}
-      <ErrorBoundary key={path}>
-        {path === '#/transactions' ? (
-          <TransactionsPage />
-        ) : path === '#/rules' ? (
-          <Rules />
-        ) : path === '#/spending' ? (
-          <Spending />
-        ) : path === '#/plan' ? (
-          <Plan />
-        ) : path === '#/about' ? (
-          <About />
-        ) : (
-          <Balances />
-        )}
-      </ErrorBoundary>
-    </main>
+      </header>
+      <main
+        className={`mx-auto flex ${path === '#/' ? 'max-w-7xl' : 'max-w-5xl'} flex-col gap-4 px-4 pt-4 pb-24 sm:gap-6 sm:pt-6 sm:pb-10`}
+      >
+        {/* keyed by page so switching pages clears an error */}
+        <ErrorBoundary key={path}>
+          {path === '#/transactions' ? (
+            <TransactionsPage />
+          ) : path === '#/rules' ? (
+            <Rules />
+          ) : path === '#/spending' ? (
+            <Spending />
+          ) : path === '#/plan' ? (
+            <Plan />
+          ) : path === '#/about' ? (
+            <About />
+          ) : (
+            <Balances />
+          )}
+        </ErrorBoundary>
+      </main>
+    </>
   )
 }
