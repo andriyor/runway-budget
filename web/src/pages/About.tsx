@@ -241,9 +241,23 @@ export function About() {
 
   return (
     <>
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-100">About</h1>
-        <p className={`mt-1 ${muted}`}>What the app is for, what its words mean, and how each number is made.</p>
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-100">About</h1>
+          <p className={`mt-1 ${muted}`}>What the app is for, what its words mean, and how each number is made.</p>
+        </div>
+        <a
+          href="https://github.com/andriyor/runway-budget"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-zinc-300 dark:ring-zinc-800 dark:hover:bg-zinc-800"
+        >
+          {/* the GitHub mark; lucide no longer ships brand icons */}
+          <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-current">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+          </svg>
+          Source on GitHub
+        </a>
       </header>
       {/* the same idea as the top of the README */}
       <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-6 ring-1 ring-zinc-200 sm:p-8 dark:from-indigo-950/60 dark:via-zinc-900 dark:to-emerald-950/40 dark:ring-zinc-800">
