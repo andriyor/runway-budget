@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { CategoryPicker } from './CategoryPicker'
+import { BalanceHistory } from '../balances/BalanceHistory'
 import { CategorySpending } from './CategorySpending'
 import { MerchantIcon } from '../../components/MerchantIcon'
 import { RefreshCw } from 'lucide-react'
@@ -373,6 +374,18 @@ export function TransactionsPage() {
       </section>
       {account && shown && list!.length > 0 && (
         <>
+          {/* one account in its own currency, so no conversion; dragging or clicking picks the period */}
+          <BalanceHistory
+            accounts={[account]}
+            transactions={list}
+            convertOn={(amount) => amount}
+            currency={account.currency}
+            period={period}
+            onPick={(p) => {
+              pickCategory(undefined)
+              setPeriod(p)
+            }}
+          />
           <MonthlySpending
             list={counted(base!)}
             essentialOnly={essentialOnly}

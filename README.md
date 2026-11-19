@@ -48,8 +48,7 @@ Five pages, in the tab bar: **Balances**, **Spending**, **Transactions**, **Plan
 - **Balance over time**: the total at the end of every day since the first transaction, each day at its
   own NBU rate, with what exchange rates added to or took from the USD and EUR balances. Only accounts with
   transactions have a history, so the rest are left out, with their count and sum named; "Include them" draws
-  them flat at today's balance. Drag across the chart (or tap two days on a phone) to see a range's change,
-  and "Show transactions" opens Transactions filtered to it.
+  them flat at today's balance.
 - **Things I own**: a car, a flat or anything else worth selling, with its estimated value, the percent a
   quick sale would lose (20% by default) and whether you would sell it at all (not the home you live in).
   They add up to a net worth beside the cash, but stay out of the totals, the runway and the emergency fund.
@@ -84,6 +83,8 @@ All accounts together, in Runway's currency.
 
 ### Transactions
 
+- the account's balance over time, with the picked period shaded and its change; drag across it (or tap
+  two days on a phone) to filter by any range of days, shown as a removable chip in the period picker;
 - a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
   picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
   filter shows only its months (a picked month shows its year);

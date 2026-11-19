@@ -11,9 +11,9 @@ import {
   YAxis,
 } from 'recharts'
 import { format, wholeMoney } from '../../lib/format'
-import { card, linkButton, muted } from '../../lib/styles'
+import { card, muted } from '../../lib/styles'
 import { dailyValues } from '../../lib/history'
-import { dayKey } from '../../lib/periods'
+import { dayInPeriod, dayKey } from '../../lib/periods'
 import { Switch } from '../../components/Switch'
 import type { Account, ConvertOn, Currency, Transaction } from '../../lib/types'
 
@@ -23,19 +23,23 @@ const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 // are undone backwards from today, and each day is valued at its own NBU rate, so currency moves show.
 // Accounts without any transactions have no history, so they are left out unless asked for; then they are
 // drawn flat at today's balance, which can invent past money and exchange-rate gains.
-// Dragging across the chart picks a range, and clicking picks a day (a second click extends it to a range):
-// the header then shows that stretch's change and links to its transactions.
+// With onPick (Transactions), the chart shades the picked period and shows its change; dragging across it
+// picks a range, and clicking picks a day (a second click extends it to a range, the same day again goes
+// back to its month).
 type BalanceHistoryProps = {
   accounts: Account[]
   transactions: Transaction[] | undefined
   convertOn: ConvertOn
   currency: Currency
+  // the picked period key ('' is all time), and how to pick another
+  period?: string
+  onPick?: (period: string) => void
 }
 
-export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
+export function BalanceHistory({ accounts, transactions, convertOn, currency, period, onPick }: BalanceHistoryProps) {
   const [today] = useState(() => new Date())
   const [withUntracked, setWithUntracked] = useState(false)
-  // indexes while dragging; the picked first and last day keys once let go
+  // indexes while dragging
   const [drag, setDrag] = useState<[number, number]>()
   // the same, read by the handlers: a quick click's mouseup can arrive before the mousedown's render
   const dragRef = useRef<[number, number]>(undefined)
@@ -44,7 +48,6 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
     dragRef.current = d
     setDrag(d)
   }
-  const [picked, setPicked] = useState<[string, string]>()
 
   const untracked = accounts.filter((a) => a.transactionCount === 0)
   const shown = withUntracked ? accounts : accounts.filter((a) => a.transactionCount > 0)
@@ -77,21 +80,22 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
     if (!box?.width) return undefined
     return Math.min(last, Math.max(0, Math.round(((e.clientX - box.left) / box.width) * last)))
   }
-  const pick = (a: number, b: number) => setPicked([days[Math.min(a, b)].day, days[Math.max(a, b)].day])
-  const sel = picked && [days.findIndex((d) => d.day === picked[0]), days.findIndex((d) => d.day === picked[1])]
-  const range = sel && sel[0] >= 0 && sel[1] >= 0 ? { from: sel[0], to: sel[1] } : undefined
+  const pick = (a: number, b: number) => {
+    const [from, to] = [days[Math.min(a, b)].day, days[Math.max(a, b)].day]
+    onPick?.(from === to ? `d:${from}` : `r:${from}..${to}`)
+  }
+  // the picked period's first and last day on the chart; none for all time
+  const inside = period ? days.flatMap((d, i) => (dayInPeriod(d.day, period) ? [i] : [])) : []
+  const range = inside.length ? { from: inside[0], to: inside.at(-1)! } : undefined
   // a range's change counts from the end of the day before it
   const rangeChange = range && days[range.to].value - days[Math.max(0, range.from - 1)].value
   const rangeRates = range && days.slice(range.from, range.to + 1).reduce((sum, d) => sum + d.gain, 0)
-  const rangeLink =
-    range &&
-    `#/transactions?period=${range.from === range.to ? `d:${days[range.from].day}` : `r:${days[range.from].day}..${days[range.to].day}`}`
   const shade = drag ?? (range && [range.from, range.to])
 
-  // a press without moving: picks that day, or extends a picked day to a range, or clears it when the same
+  // a press without moving: picks that day, extends a picked day to a range, or goes back to its month
   function clickDay(i: number) {
-    if (range && range.from === range.to) {
-      if (i === range.from) setPicked(undefined)
+    if (period?.startsWith('d:') && range) {
+      if (i === range.from) onPick?.(`m:${days[i].day.slice(0, 7)}`)
       else pick(range.from, i)
     } else pick(i, i)
   }
@@ -113,12 +117,6 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
               {Math.round(rangeRates!) !== 0 &&
                 ` · ${rangeRates! >= 0 ? '+' : '−'}${format(Math.abs(rangeRates!), currency)} from exchange rates`}
             </span>
-            <a href={rangeLink} className={linkButton}>
-              Show transactions →
-            </a>
-            <button type="button" onClick={() => setPicked(undefined)} className={linkButton}>
-              Clear
-            </button>
           </span>
         ) : (
           <span className={`tabular-nums ${muted}`}>
@@ -157,9 +155,9 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
           <AreaChart
             data={points}
             margin={{ top: 10, right: 0, bottom: 0, left: 0 }}
-            className="cursor-crosshair"
+            className={onPick ? 'cursor-crosshair' : undefined}
             onMouseDown={(s, e) => {
-              const i = at(s, e)
+              const i = onPick && at(s, e)
               if (i !== undefined) setDragging([i, i])
             }}
             onMouseMove={(s, e) => {
@@ -240,11 +238,7 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      {!range && (
-        <p className={`mt-1 text-xs ${muted}`}>
-          Drag across the chart to pick a range, or click a day, to see its transactions.
-        </p>
-      )}
+      {onPick && <p className={`mt-1 text-xs ${muted}`}>Drag across the chart to pick a range, or click a day.</p>}
     </section>
   )
 }

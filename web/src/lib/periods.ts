@@ -79,10 +79,17 @@ export function rangeLabel(period: string) {
     : `${fullDay.format(from)} – ${fullDay.format(to)}`
 }
 
-// whether a transaction falls in a period key, a range included
-export function inPeriod(t: Transaction, period: string) {
+// whether a local day key ("2026-03-03") falls in a period key, a range included; '' is all time
+export function dayInPeriod(day: string, period: string) {
   const range = rangeOf(period)
-  if (!range) return periodsOf(t).some(([key]) => key === period)
-  const day = dayKey(t.time)
-  return day >= range[0] && day <= range[1]
+  if (range) return day >= range[0] && day <= range[1]
+  if (period === '') return true
+  if (period.startsWith('d:')) return day === period.slice(2)
+  if (period.startsWith('m:') || period.startsWith('y:')) return day.startsWith(period.slice(2))
+  if (period.startsWith('q:')) return quarterOf(day.slice(0, 7)) === period
+  if (period.startsWith('w:')) return weekOfDay(day) === period
+  return false
 }
+
+// whether a transaction falls in a period key, a range included
+export const inPeriod = (t: Transaction, period: string) => dayInPeriod(dayKey(t.time), period)
