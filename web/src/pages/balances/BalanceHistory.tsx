@@ -93,7 +93,7 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency, pe
   const shade = drag ?? (range && [range.from, range.to])
 
   // a press without moving: picks that day, extends a picked day to a range, or goes back to its month
-  function clickDay(i: number) {
+  const clickDay = (i: number) => {
     if (period?.startsWith('d:') && range) {
       if (i === range.from) onPick?.(`m:${days[i].day.slice(0, 7)}`)
       else pick(range.from, i)
