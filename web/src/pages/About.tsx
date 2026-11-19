@@ -144,8 +144,38 @@ export function About() {
     <>
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-100">About</h1>
-        <p className={`mt-1 ${muted}`}>What the words in the app mean, and how each number is made.</p>
+        <p className={`mt-1 ${muted}`}>What the app is for, what its words mean, and how each number is made.</p>
       </header>
+      {/* the same idea as the top of the README */}
+      <section className={card}>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">The idea</h2>
+        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+          A calm money tracker: it answers “am I going to be okay?” before “where did my money go?”. Made with anxious
+          and ADHD brains in mind, though it is a tool, not treatment.
+        </p>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
+          {[
+            [
+              'One reassuring number',
+              'how many months your savings last without income, and when you reach each goal.',
+            ],
+            ['No manual entry', 'Monobank transactions sync on their own and sort themselves into categories.'],
+            [
+              'A cooling-off list for impulse buys',
+              'the wishlist shows how long a wish has waited and which goal buying it would push back, instead of saying no.',
+            ],
+            [
+              '“What if” without commitment',
+              'try a lower spending, a new rent or a course, or selling the car, and see the plan move before deciding anything.',
+            ],
+            ['Nothing forgotten', 'recurring payments and subscriptions are found from your transactions.'],
+          ].map(([title, text]) => (
+            <li key={title}>
+              <strong className="font-medium text-zinc-900 dark:text-zinc-100">{title}</strong>: {text}
+            </li>
+          ))}
+        </ul>
+      </section>
       {sections.map((s) => (
         <section key={s.title} className={card}>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{s.title}</h2>
