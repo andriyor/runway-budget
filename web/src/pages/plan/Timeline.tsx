@@ -151,6 +151,9 @@ export function Timeline({
           })
         })()
   const milestones = tried ?? planned
+  // the monthly surplus filling the milestones, at the what-if spending while one is tried
+  const net = netIn(currency)
+  const surplus = net === undefined ? undefined : net + (spend === undefined ? 0 : usualSpend! - spend)
   if (milestones.length === 0) return null
 
   // the first milestone not reached yet, which the surplus is going to now
@@ -216,7 +219,18 @@ export function Timeline({
 
   return (
     <section className={card}>
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Timeline</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Timeline</h2>
+        {surplus !== undefined && (
+          <p
+            className={`text-lg font-semibold tabular-nums ${surplus > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+          >
+            {surplus > 0 ? '+' : '−'}
+            {wholeMoney(Math.abs(surplus), currency)}{' '}
+            <span className="text-sm font-normal">{surplus > 0 ? 'saved' : 'short'} per month</span>
+          </p>
+        )}
+      </div>
       <p className={muted}>
         Your savings and monthly surplus fill these in order,{' '}
         {tried ? 'at the spending you are trying' : "at today's spending"}.
@@ -226,7 +240,10 @@ export function Timeline({
         {milestones.map((m, i) => {
           const done = m.need !== undefined && m.need <= 0
           return (
-            <li key={m.key} className="relative col-span-3 grid grid-cols-subgrid sm:col-span-4 items-baseline pb-4 last:pb-0">
+            <li
+              key={m.key}
+              className="relative col-span-3 grid grid-cols-subgrid sm:col-span-4 items-baseline pb-4 last:pb-0"
+            >
               {/* the line to the next milestone */}
               {i < milestones.length - 1 && (
                 <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-0.5 bg-zinc-200 dark:bg-zinc-800" />
