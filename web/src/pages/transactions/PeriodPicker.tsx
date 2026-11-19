@@ -1,12 +1,13 @@
 import { Select } from '@base-ui/react/select'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { periodsOf } from '../../lib/periods'
 import { inputBox } from '../../lib/styles'
 import type { Transaction } from '../../lib/types'
 
-// period kinds by key prefix; '' is all time. A day ('d:') is picked from the week chart, not here.
+// period kinds by key prefix; '' is all time. A day ('d:') is picked from the week chart, and a range ('r:')
+// on Balance over time, not here.
 const KINDS = [
   { prefix: '', label: 'Усе' },
   { prefix: 'y:', label: 'Рік' },
@@ -30,8 +31,8 @@ type PeriodPickerProps = {
 // periods only, newest first, instead of one list of every month, quarter, year and week.
 export function PeriodPicker({ period, periods, reference, onChange }: PeriodPickerProps) {
   const kind = kindOf(period)
-  // a picked day steps and lists like its week
-  const listKind = kind === 'd:' ? 'w:' : kind
+  // a picked day steps and lists like its week; a range has nothing to step through
+  const listKind = kind === 'd:' ? 'w:' : kind === 'r:' ? '' : kind
   const options = [...periods]
     .filter(([key]) => key.startsWith(listKind) && listKind !== '')
     .sort(([a], [b]) => b.localeCompare(a))
@@ -74,6 +75,20 @@ export function PeriodPicker({ period, periods, reference, onChange }: PeriodPic
           </Toggle>
         ))}
       </ToggleGroup>
+
+      {kind === 'r:' && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 py-1 pr-1 pl-3 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900">
+          {periods.get(period)}
+          <button
+            type="button"
+            onClick={() => pickKind('m:')}
+            aria-label="Clear the range"
+            className="grid size-6 place-items-center rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900"
+          >
+            <X strokeWidth={2} />
+          </button>
+        </span>
+      )}
 
       {/* min-w-56 wraps the stepper under the kinds on a phone instead of squeezing the select to nothing */}
       {listKind !== '' && (

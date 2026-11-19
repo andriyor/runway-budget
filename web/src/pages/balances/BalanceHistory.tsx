@@ -1,7 +1,17 @@
-import { useState } from 'react'
-import { Area, AreaChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useRef, useState } from 'react'
+import {
+  Area,
+  AreaChart,
+  ReferenceArea,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { format, wholeMoney } from '../../lib/format'
-import { card, muted } from '../../lib/styles'
+import { card, linkButton, muted } from '../../lib/styles'
 import { dailyValues } from '../../lib/history'
 import { dayKey } from '../../lib/periods'
 import { Switch } from '../../components/Switch'
@@ -13,6 +23,8 @@ const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 // are undone backwards from today, and each day is valued at its own NBU rate, so currency moves show.
 // Accounts without any transactions have no history, so they are left out unless asked for; then they are
 // drawn flat at today's balance, which can invent past money and exchange-rate gains.
+// Dragging across the chart picks a range, and clicking picks a day (a second click extends it to a range):
+// the header then shows that stretch's change and links to its transactions.
 type BalanceHistoryProps = {
   accounts: Account[]
   transactions: Transaction[] | undefined
@@ -23,6 +35,16 @@ type BalanceHistoryProps = {
 export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
   const [today] = useState(() => new Date())
   const [withUntracked, setWithUntracked] = useState(false)
+  // indexes while dragging; the picked first and last day keys once let go
+  const [drag, setDrag] = useState<[number, number]>()
+  // the same, read by the handlers: a quick click's mouseup can arrive before the mousedown's render
+  const dragRef = useRef<[number, number]>(undefined)
+  const chartBox = useRef<HTMLDivElement>(null)
+  const setDragging = (d: [number, number] | undefined) => {
+    dragRef.current = d
+    setDrag(d)
+  }
+  const [picked, setPicked] = useState<[string, string]>()
 
   const untracked = accounts.filter((a) => a.transactionCount === 0)
   const shown = withUntracked ? accounts : accounts.filter((a) => a.transactionCount > 0)
@@ -48,21 +70,69 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
   const change = total - points[0].value
   const last = points.length - 1
 
+  // the day under the pointer, from its x: the plot spans the whole width (no side margins). Recharts' own
+  // active index lags a frame behind the pointer, so a quick click or a tap would miss
+  const at = (_: unknown, e: React.MouseEvent) => {
+    const box = chartBox.current?.getBoundingClientRect()
+    if (!box?.width) return undefined
+    return Math.min(last, Math.max(0, Math.round(((e.clientX - box.left) / box.width) * last)))
+  }
+  const pick = (a: number, b: number) => setPicked([days[Math.min(a, b)].day, days[Math.max(a, b)].day])
+  const sel = picked && [days.findIndex((d) => d.day === picked[0]), days.findIndex((d) => d.day === picked[1])]
+  const range = sel && sel[0] >= 0 && sel[1] >= 0 ? { from: sel[0], to: sel[1] } : undefined
+  // a range's change counts from the end of the day before it
+  const rangeChange = range && days[range.to].value - days[Math.max(0, range.from - 1)].value
+  const rangeRates = range && days.slice(range.from, range.to + 1).reduce((sum, d) => sum + d.gain, 0)
+  const rangeLink =
+    range &&
+    `#/transactions?period=${range.from === range.to ? `d:${days[range.from].day}` : `r:${days[range.from].day}..${days[range.to].day}`}`
+  const shade = drag ?? (range && [range.from, range.to])
+
+  // a press without moving: picks that day, or extends a picked day to a range, or clears it when the same
+  function clickDay(i: number) {
+    if (range && range.from === range.to) {
+      if (i === range.from) setPicked(undefined)
+      else pick(range.from, i)
+    } else pick(i, i)
+  }
+
   return (
     <section className={`${card} viz`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Balance over time</h2>
-        <span className={`tabular-nums ${muted}`}>
-          {change >= 0 ? '+' : '−'}
-          {format(Math.abs(change), currency)} since {dayLabel.format(points[0].day)}
-          {Math.round(fromRates) !== 0 && (
-            <span title="What exchange rate moves added to or took from your USD and EUR balances">
-              {' '}
-              · {fromRates >= 0 ? '+' : '−'}
-              {format(Math.abs(fromRates), currency)} from exchange rates
+        {range && rangeChange !== undefined ? (
+          <span className={`flex flex-wrap items-baseline gap-x-3 tabular-nums ${muted}`}>
+            <span>
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {rangeChange >= 0 ? '+' : '−'}
+                {format(Math.abs(rangeChange), currency)}
+              </span>{' '}
+              {range.from === range.to
+                ? `on ${dayLabel.format(points[range.from].day)}`
+                : `from ${dayLabel.format(points[range.from].day)} to ${dayLabel.format(points[range.to].day)}`}
+              {Math.round(rangeRates!) !== 0 &&
+                ` · ${rangeRates! >= 0 ? '+' : '−'}${format(Math.abs(rangeRates!), currency)} from exchange rates`}
             </span>
-          )}
-        </span>
+            <a href={rangeLink} className={linkButton}>
+              Show transactions →
+            </a>
+            <button type="button" onClick={() => setPicked(undefined)} className={linkButton}>
+              Clear
+            </button>
+          </span>
+        ) : (
+          <span className={`tabular-nums ${muted}`}>
+            {change >= 0 ? '+' : '−'}
+            {format(Math.abs(change), currency)} since {dayLabel.format(points[0].day)}
+            {Math.round(fromRates) !== 0 && (
+              <span title="What exchange rate moves added to or took from your USD and EUR balances">
+                {' '}
+                · {fromRates >= 0 ? '+' : '−'}
+                {format(Math.abs(fromRates), currency)} from exchange rates
+              </span>
+            )}
+          </span>
+        )}
       </div>
       {untracked.length > 0 && (
         <div className={`mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${muted}`}>
@@ -78,12 +148,35 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
       )}
 
       <div
+        ref={chartBox}
         className="mt-3 h-48"
         onMouseDown={(e) => e.preventDefault()}
         aria-label={`Balance from ${format(points[0].value, currency)} on ${dayLabel.format(points[0].day)} to ${format(total, currency)} today. Arrow keys step through days.`}
       >
         <ResponsiveContainer>
-          <AreaChart data={points} margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
+          <AreaChart
+            data={points}
+            margin={{ top: 10, right: 0, bottom: 0, left: 0 }}
+            className="cursor-crosshair"
+            onMouseDown={(s, e) => {
+              const i = at(s, e)
+              if (i !== undefined) setDragging([i, i])
+            }}
+            onMouseMove={(s, e) => {
+              const i = at(s, e)
+              const d = dragRef.current
+              if (d && i !== undefined && i !== d[1]) setDragging([d[0], i])
+            }}
+            onMouseUp={() => {
+              const d = dragRef.current
+              if (d) {
+                if (d[0] !== d[1]) pick(d[0], d[1])
+                else clickDay(d[0])
+              }
+              setDragging(undefined)
+            }}
+            onMouseLeave={() => setDragging(undefined)}
+          >
             <XAxis
               dataKey="i"
               type="number"
@@ -120,6 +213,18 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
                 )
               }}
             />
+            {shade &&
+              (shade[0] === shade[1] ? (
+                <ReferenceLine x={shade[0]} stroke="var(--series-1)" strokeOpacity={0.6} />
+              ) : (
+                <ReferenceArea
+                  x1={Math.min(...shade)}
+                  x2={Math.max(...shade)}
+                  fill="var(--series-1)"
+                  fillOpacity={0.15}
+                  strokeOpacity={0}
+                />
+              ))}
             <Area
               dataKey="value"
               type="linear"
@@ -135,6 +240,11 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {!range && (
+        <p className={`mt-1 text-xs ${muted}`}>
+          Drag across the chart to pick a range, or click a day, to see its transactions.
+        </p>
+      )}
     </section>
   )
 }

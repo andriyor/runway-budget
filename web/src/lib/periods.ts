@@ -17,6 +17,7 @@ const monthName = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numer
 
 const shortDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' })
 
+const fullDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 const longDay = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
 
 // ISO week key of a local date: "w:2026-45"
@@ -64,4 +65,24 @@ export function periodsOf(t: Transaction): Array<[string, string]> {
     [weekKey(date), `Тиждень ${week} · ${shortDay.format(monday)} – ${shortDay.format(sunday)} ${year}`],
     [`d:${dayKey(t.time)}`, longDay.format(date)],
   ]
+}
+
+// a picked range, both days included: "r:2026-03-03..2026-04-15" → ["2026-03-03", "2026-04-15"]
+export const rangeOf = (period: string) =>
+  period.startsWith('r:') ? (period.slice(2).split('..') as [string, string]) : undefined
+
+// "3 бер. – 15 квіт. 2026 р."
+export function rangeLabel(period: string) {
+  const [from, to] = rangeOf(period)!.map((d) => new Date(`${d}T00:00:00`))
+  return from.getFullYear() === to.getFullYear()
+    ? `${shortDay.format(from)} – ${fullDay.format(to)}`
+    : `${fullDay.format(from)} – ${fullDay.format(to)}`
+}
+
+// whether a transaction falls in a period key, a range included
+export function inPeriod(t: Transaction, period: string) {
+  const range = rangeOf(period)
+  if (!range) return periodsOf(t).some(([key]) => key === period)
+  const day = dayKey(t.time)
+  return day >= range[0] && day <= range[1]
 }

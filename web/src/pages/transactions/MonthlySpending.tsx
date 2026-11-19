@@ -15,7 +15,7 @@ import {
 } from 'recharts'
 import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
-import { dayKey, monthKey, quarterLabel, quarterMonths, weekDays, weekOfDay } from '../../lib/periods'
+import { dayKey, monthKey, quarterLabel, quarterMonths, rangeOf, weekDays, weekOfDay } from '../../lib/periods'
 import { median, quantile } from '../../lib/stats'
 import { card, linkButton, muted } from '../../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
@@ -78,8 +78,10 @@ const inQuarter = (quarter: string, month: string) => quarterMonths(quarter).inc
 
 // the chart follows the period filter: a year or quarter shows its months, a month shows its year
 // (so picking a bar keeps the bars around it), a week or day shows the week's 7 days; all time
-// shows every month
+// shows every month; a range shows the months it touches
 function inScope(period: string, month: string) {
+  const range = rangeOf(period)
+  if (range) return month >= range[0].slice(0, 7) && month <= range[1].slice(0, 7)
   if (period.startsWith('y:')) return month.startsWith(period.slice(2))
   if (period.startsWith('q:')) return inQuarter(period, month)
   if (period.startsWith('m:')) return month.startsWith(period.slice(2, 6))

@@ -11,7 +11,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { api, useApi } from '../../lib/api'
 import { budgetWith } from '../../lib/budget'
 import { format } from '../../lib/format'
-import { monthKey, periodsOf } from '../../lib/periods'
+import { inPeriod, monthKey, periodsOf, rangeLabel, rangeOf } from '../../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
 
@@ -53,7 +53,7 @@ const openingPeriod = (list: Transaction[], linked: URLSearchParams) =>
       : ''
 
 export function TransactionsPage() {
-  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11; dropped on picking another account
+  // filters from a link, e.g. #/transactions?account=3&category=food&period=m:2026-11 (or r:2026-03-03..2026-04-15); dropped on picking another account
   const [link, setLink] = useState(linkParams)
   const accountsQuery = useApi<Account[]>('/accounts')
   const categoriesQuery = useApi<Category[]>('/categories')
@@ -213,8 +213,10 @@ export function TransactionsPage() {
 
   const periods = new Map<string, string>()
   for (const t of list ?? []) for (const [key, label] of periodsOf(t)) periods.set(key, label)
+  // a range picked on Balance over time
+  if (rangeOf(period)) periods.set(period, rangeLabel(period))
   const base = essentialOnly ? list?.filter((t) => t.essential || isKept(t)) : list
-  const shown = period ? base?.filter((t) => periodsOf(t).some(([key]) => key === period)) : base
+  const shown = period ? base?.filter((t) => inPeriod(t, period)) : base
   const inCategory = category ? shown?.filter(inSelection) : shown
   const listed = merchant ? inCategory?.filter((t) => t.merchant === merchant) : inCategory
   const merchantName = merchant && list?.find((t) => t.merchant === merchant && t.amount < 0)?.description
