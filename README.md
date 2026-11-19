@@ -15,7 +15,7 @@ Under the hood it is a personal balance tracker for USD, EUR and UAH accounts, c
 [National Bank of Ukraine](https://bank.gov.ua) rate, that analyses spending from Monobank transactions
 (against the usual, budgets, recurring payments, inflation).
 
-![Plan: timeline, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/57eb14d4-fd70-4e9e-8cb5-d2191422db0e)
+![Plan: timeline headed by the monthly surplus, planned expenses, runway, emergency fund, goals and wishlist](https://github.com/user-attachments/assets/6a5b6cc8-b4be-42be-9159-2d75c1e83a7d)
 
 <details>
 <summary>More screenshots</summary>
