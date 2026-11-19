@@ -11,6 +11,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Runway Budget</title>
+    <!-- the saved theme before the first paint, so a dark page does not flash light; see src/lib/theme.ts -->
+    <script>
+      try {
+        var t = localStorage.getItem('theme')
+        if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

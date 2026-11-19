@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Nav } from './components/Nav'
+import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { About } from './pages/About'
 import { Balances } from './pages/balances/Balances'
 import { Plan } from './pages/plan/Plan'
@@ -25,7 +26,11 @@ export default function App() {
       className={`mx-auto flex ${path === '#/' ? 'max-w-7xl' : 'max-w-5xl'} flex-col gap-4 px-4 pt-6 pb-24 sm:gap-6 sm:py-10`}
     >
       {/* Rules belongs to Transactions, so that tab stays current */}
-      <Nav page={path === '#/rules' ? '#/transactions' : path} />
+      {/* on phones Nav is the bottom bar, leaving the theme switcher alone at the top right */}
+      <div className="flex items-center justify-end gap-2 sm:justify-between">
+        <Nav page={path === '#/rules' ? '#/transactions' : path} />
+        <ThemeSwitcher />
+      </div>
       {/* keyed by page so switching pages clears an error */}
       <ErrorBoundary key={path}>
         {path === '#/transactions' ? (

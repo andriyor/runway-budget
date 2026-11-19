@@ -1,7 +1,13 @@
 @import 'tailwindcss';
 
+/* dark: follows the `dark` class on <html>, which lib/theme.tsx sets from the switcher or the system */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
 }
 
 body {
@@ -21,15 +27,13 @@ body {
   --series-7: #6250d6;
   --series-rest: #a1a1aa;
 }
-@media (prefers-color-scheme: dark) {
-  .viz {
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-rest: #71717a;
-  }
+.dark .viz {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-rest: #71717a;
 }
