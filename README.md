@@ -99,9 +99,10 @@ Shown in USD, EUR or UAH: a switcher in the header converts every calculated fig
 the browser. Goal and wish amounts keep their own currency, with the converted value beside them.
 
 - **Timeline**: the emergency fund, then each goal in the order savings fill them, with the date each is
-  reached at today's spending, what is already saved and what is left. A "What if I spend per month" slider,
+  reached at today's spending, what is already saved and what is left. The monthly surplus heads it. A "What if I spend per month" slider,
   from essential spending to 1.5× the usual, re-plans it without saving: the fund's size and every date
-  move, each with how many months sooner or later than the plan, and "Use as my spending" saves it.
+  move, along with the surplus, each with how many months sooner or later than the plan, and "Use as my
+  spending" saves it.
 - **Planned expenses**: costs you are considering, like rent or an English course, per month and in any
   currency, ongoing or for a number of months. Each shows the runway without income and the monthly surplus
   without it and with it. Turned on, the timeline and every card below count it: an ongoing one as monthly
@@ -110,7 +111,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   its own currency, marked as stopping if you lose your job, like a salary, or continuing without one, like
   rent or a pension), an optional essential-spending budget, an optional untouchable reserve and how many
   months the emergency fund should cover. Beside them, how many months your savings last with and without
-  income, and the most you can spend per month to last the fund's months. Each estimate also shows how long
+  income, and the most you can spend per month to last the fund's months. When income covers spending, the
+  card with income leads with the monthly surplus, its yearly total and its share of income. Each estimate also shows how long
   it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
   Under the estimate without income, how many more months selling each thing you own would add.
 - **Emergency fund**: how many months of essential and of usual spending your available savings cover,
@@ -136,6 +138,11 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   moves between your own accounts or investments so they do not count as spending.
   The **Rules** page (linked from Transactions) lists every merchant and single-transaction override to
   change or reset.
+- **About**: what the app is for, and every term on its pages (runway, surplus, emergency fund, usual
+  spending, recurring payments, category rules, cancelled purchases, …) with how each number is made.
+  The ⓘ tips on each page link to their term.
+- **Themes**: System, Light, Dark and Paper, a warm cream theme with a green accent and a monospace font,
+  switched in the top bar and remembered in the browser.
 - **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. The
   «Усі витрати | Необхідні» switch shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
   monthly spending, the essential one as essential spending.
