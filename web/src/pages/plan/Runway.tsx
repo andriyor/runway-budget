@@ -42,9 +42,12 @@ function Estimate({ label, total, spend, income, inflation, currency }: Estimate
     return (
       <div className="rounded-xl bg-emerald-50 p-3 sm:p-4 dark:bg-emerald-950/40">
         <p className={muted}>{label}</p>
-        <p className="mt-1 text-xl font-semibold text-emerald-700 sm:text-2xl dark:text-emerald-400">No end</p>
-        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">
-          +{format(-burn, currency)} saved per month
+        <p className="mt-1 text-xl font-semibold text-emerald-700 tabular-nums sm:text-2xl dark:text-emerald-400">
+          +{format(-burn, currency)} <span className="text-base font-normal">saved per month</span>
+        </p>
+        <p className="mt-1 text-sm text-emerald-700 tabular-nums dark:text-emerald-400">
+          ≈ {format(-burn * 12, currency)} a year
+          {income > 0 && ` · ${Math.round((-burn / income) * 100)}% of income`}
         </p>
         {withInflation}
       </div>
