@@ -3,13 +3,16 @@ import { Area, AreaChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tool
 import { format, wholeMoney } from '../../lib/format'
 import { card, muted } from '../../lib/styles'
 import { dailyValues } from '../../lib/history'
+import { dayKey } from '../../lib/periods'
+import { Switch } from '../../components/Switch'
 import type { Account, ConvertOn, Currency, Transaction } from '../../lib/types'
 
 const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 
 // Total balance at the end of each day (see dailyValues): bank-synced transactions and manual ± adjustments
 // are undone backwards from today, and each day is valued at its own NBU rate, so currency moves show.
-// Accounts without any transactions stay flat in their own currency.
+// Accounts without any transactions have no history, so they are left out unless asked for; then they are
+// drawn flat at today's balance, which can invent past money and exchange-rate gains.
 type BalanceHistoryProps = {
   accounts: Account[]
   transactions: Transaction[] | undefined
@@ -19,8 +22,16 @@ type BalanceHistoryProps = {
 
 export function BalanceHistory({ accounts, transactions, convertOn, currency }: BalanceHistoryProps) {
   const [today] = useState(() => new Date())
+  const [withUntracked, setWithUntracked] = useState(false)
 
-  const days = transactions?.length ? dailyValues(accounts, transactions, convertOn, currency, today) : undefined
+  const untracked = accounts.filter((a) => a.transactionCount === 0)
+  const shown = withUntracked ? accounts : accounts.filter((a) => a.transactionCount > 0)
+  const todayKey = dayKey(today.toISOString())
+  const untrackedTotal = untracked.reduce(
+    (sum, a) => sum + (convertOn(a.balance, a.currency, currency, todayKey) ?? 0),
+    0,
+  )
+  const days = transactions?.length ? dailyValues(shown, transactions, convertOn, currency, today) : undefined
   if (!days || days.length < 2) return null
   const points = days.map((d, i) => ({ i, day: new Date(`${d.day}T00:00:00`), value: d.value }))
   const total = points.at(-1)!.value
@@ -53,6 +64,18 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency }: 
           )}
         </span>
       </div>
+      {untracked.length > 0 && (
+        <div className={`mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${muted}`}>
+          <span>
+            {withUntracked
+              ? `${untracked.length} ${untracked.length === 1 ? 'account' : 'accounts'} without history drawn flat at today's balance`
+              : `${untracked.length} ${untracked.length === 1 ? 'account' : 'accounts'} without history left out, ≈ ${wholeMoney(untrackedTotal, currency)}`}
+          </span>
+          <Switch checked={withUntracked} onChange={setWithUntracked} title={untracked.map((a) => a.name).join(', ')}>
+            Include them
+          </Switch>
+        </div>
+      )}
 
       <div
         className="mt-3 h-48"
