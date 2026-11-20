@@ -147,7 +147,7 @@ const sections: { title: string; icon: LucideIcon; tint: string; terms: Term[] }
         id: 'emergency-fund',
         icon: ShieldCheck,
         term: 'Emergency fund',
-        text: 'Savings kept for a set number of months without a job: months × (usual spending − continuing income). It is filled before any goal.',
+        text: 'Savings kept for a set number of months without a job: months × (essential spending − continuing income), or usual spending when essential is not set. It is filled before any goal.',
       },
       {
         id: 'timeline',

@@ -32,7 +32,8 @@ type EmergencyFundProps = {
 }
 
 // How many months without income the available savings cover, against a target of `months` (6 by default)
-// and the 3-month minimum: at essential spending, and at the usual spending that Goals keep aside.
+// and the 3-month minimum: at essential spending, which Goals keep aside (usual when essential is not set), and at
+// the usual spending.
 // Incomes that keep coming lower what a month takes from savings.
 export function EmergencyFund({
   available,
@@ -68,7 +69,7 @@ export function EmergencyFund({
       <p className={`mt-1 ${muted}`}>
         {months === null
           ? 'The usual 6 months; set “Emergency fund” in Runway to change it.'
-          : 'Savings for the usual spending are kept aside before goals.'}
+          : `Savings for the ${essential !== undefined ? 'essential' : 'usual'} spending are kept aside before goals.`}
         {essential === undefined && ' Set “Essential spending per month” in Runway to see essentials alone.'}
       </p>
 

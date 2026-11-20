@@ -44,14 +44,20 @@ type Milestone = {
   currency: Currency
 }
 
-// "12 months × 73 075 грн (80 075 грн spending − 7 000 грн income that continues without a job)"
-function cushionDetail({ months, amount, currency }: Cushion, usual: number | undefined, kept: number) {
-  if (usual === undefined) return undefined
-  const spending = `${wholeMoney(usual, currency)} spending`
+// "12 months × 73 075 грн (80 075 грн essential spending − 7 000 грн income that continues without a job)"
+function cushionDetail(
+  { months, amount, currency }: Cushion,
+  usual: number | undefined,
+  essential: number | undefined,
+  kept: number,
+) {
+  const spend = essential ?? usual
+  if (spend === undefined) return undefined
+  const spending = `${wholeMoney(spend, currency)} ${essential !== undefined ? 'essential ' : ''}spending`
   if (kept <= 0) return `${months} months × ${spending}`
   const income = `${wholeMoney(kept, currency)} income that continues without a job`
   if (amount === 0) return `${months} months × ${spending}, all covered by ${income}`
-  return `${months} months × ${wholeMoney(usual - kept, currency)} (${spending} − ${income})`
+  return `${months} months × ${wholeMoney(spend - kept, currency)} (${spending} − ${income})`
 }
 
 type Plan = {
@@ -61,11 +67,12 @@ type Plan = {
   netIn: (c: Currency) => number | undefined
   cushion: Cushion | undefined
   usual: number | undefined
+  essential: number | undefined
   kept: number
 }
 
 // the cushion, then each goal in the order savings fill them
-function milestonesOf({ goals, convert, forGoalsIn, netIn, cushion, usual, kept }: Plan): Milestone[] {
+function milestonesOf({ goals, convert, forGoalsIn, netIn, cushion, usual, essential, kept }: Plan): Milestone[] {
   const progress = goalProgress(goals, convert, forGoalsIn)
   return [
     ...(cushion
@@ -73,9 +80,9 @@ function milestonesOf({ goals, convert, forGoalsIn, netIn, cushion, usual, kept 
           {
             key: 'cushion',
             label: `Emergency fund · ${cushion.months} months`,
-            // what savings must hold: the usual spending for the months, less the incomes that keep coming
+            // what savings must hold: the essential (else usual) spending for the months, less the incomes that keep coming
             amount: cushion.amount,
-            detail: cushionDetail(cushion, usual, kept),
+            detail: cushionDetail(cushion, usual, essential, kept),
             left: Math.max(0, cushion.amount - Math.max(0, cushion.available)),
             need: (() => {
               const f = forGoalsIn(cushion.currency)
@@ -133,7 +140,16 @@ export function Timeline({
   }
   const goals = (useApi<Goal[]>('/goals').data ?? []).filter((g) => !g.wish)
 
-  const base = { goals, convert, forGoalsIn, netIn, cushion, usual: usualSpend, kept: keptIncome }
+  const base = {
+    goals,
+    convert,
+    forGoalsIn,
+    netIn,
+    cushion,
+    usual: usualSpend,
+    essential: essentialSpend,
+    kept: keptIncome,
+  }
   const planned = milestonesOf(base)
   // spending less makes the fund smaller and the monthly surplus larger, so both move
   const triedSpend = usualSpend !== undefined && spendRatio !== undefined ? usualSpend * spendRatio : undefined
@@ -146,7 +162,11 @@ export function Timeline({
       ? undefined
       : (() => {
           const spending = triedSpend ?? usualSpend
-          const triedFund = cushion && { ...cushion, amount: cushion.months * Math.max(0, spending - keptIncome) }
+          // the fund follows the tried spending only when it is not set by essential spending
+          const triedFund =
+            cushion && essentialSpend === undefined
+              ? { ...cushion, amount: cushion.months * Math.max(0, spending - keptIncome) }
+              : cushion
           const freedFromFund = (cushion?.amount ?? 0) - (triedFund?.amount ?? 0)
           // value plus an amount in the shown currency, converted to `target`
           const plus = (value: number | undefined, amount: number, target: Currency) => {

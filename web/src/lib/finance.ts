@@ -142,9 +142,10 @@ export function useFinance({ withTransactions = false, withInflation = false } =
     const total = totalIn(c)
     return total === undefined ? undefined : total - reserveIn(c) - plannedCostIn(c)
   }
-  // months without income, covering what the incomes that keep coming do not
+  // months without income at essential spending (usual when it isn't set), since big purchases stop after a job
+  // loss, covering what the incomes that keep coming do not
   const cushionIn = (c: Currency) =>
-    budget?.targetMonths ? budget.targetMonths * Math.max(0, spendIn(c)! - keptIncomeIn(c)) : 0
+    budget?.targetMonths ? budget.targetMonths * Math.max(0, (minimalIn(c) ?? spendIn(c)!) - keptIncomeIn(c)) : 0
   const forGoalsIn = (c: Currency) => {
     const available = availableIn(c)
     return available === undefined ? undefined : available - cushionIn(c)

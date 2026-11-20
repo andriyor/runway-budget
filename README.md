@@ -111,8 +111,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
 
 - **Timeline**: the emergency fund, then each goal in the order savings fill them, with the date each is
   reached at today's spending, what is already saved and what is left. The monthly surplus heads it. A "What if I spend per month" slider,
-  from essential spending to 1.5× the usual, re-plans it without saving: the fund's size and every date
-  move, along with the surplus, each with how many months sooner or later than the plan, and "Use as my
+  from essential spending to 1.5× the usual, re-plans it without saving: every date
+  moves (and the fund's size, when essential spending is not set), along with the surplus, each with how many months sooner or later than the plan, and "Use as my
   spending" saves it. A "What if my salary is" slider, from no job to twice today's, does the same for the
   incomes that stop without a job, to see what a new job would do to each goal; the emergency fund stays.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
@@ -131,7 +131,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   card with income leads with the monthly surplus, its yearly total and its share of income. Each estimate also shows how long
   it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
   Under the estimate without income, how many more months selling each thing you own would add.
-- **Emergency fund**: how many months of essential and of usual spending your available savings cover,
+- **Emergency fund**: how many months of essential and of usual spending your available savings cover
+  (goals keep the essential one aside, since big purchases stop after a job loss),
   against the months set in Runway (6 if not set) and the 3-month minimum: red below 3, amber below the
   target, green once funded. Income that continues without a job lowers what a month takes from savings.
 - **Goals**: target amounts in priority order. Savings fill the emergency fund first, then goals from the
@@ -372,7 +373,8 @@ integer minor units (cents/kopiykas).
 - **Savings rate** = (income − spending) ÷ income, summed over the shown months rather than a median
   of monthly rates, so one month of tiny income cannot skew it. Moves between your own accounts and
   investments count as neither income nor spending.
-- **Emergency fund** = months to cover × (usual spending − income that continues without a job).
+- **Emergency fund** = months to cover × (essential spending − income that continues without a job), with
+  usual spending when essential is not set.
 - **Goal ETA** = (emergency fund + the targets of this goal and every goal above it − available savings)
   ÷ monthly surplus. Savings and the surplus fill the fund first, then goals in order.
 - **Wish delay** = how much further each goal ends up once the price leaves savings, ÷ monthly surplus.
