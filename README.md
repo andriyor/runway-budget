@@ -115,10 +115,6 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   moves (and the fund's size, when essential spending is not set), along with the surplus, each with how many months sooner or later than the plan, and "Use as my
   spending" saves it. A "What if my salary is" slider, from no job to twice today's, does the same for the
   incomes that stop without a job, to see what a new job would do to each goal; the emergency fund stays.
-- **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
-  under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
-  that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
-  product or investment recommendations; each can be dismissed.
 - **Planned expenses**: costs you are considering, like rent or an English course, per month and in any
   currency, ongoing or for a number of months. Each shows the runway without income and the monthly surplus
   without it and with it. Turned on, the timeline and every card below count it: an ongoing one as monthly
@@ -143,6 +139,10 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
 - **Wishlist**: purchases you are tempted by but have not committed to. They take no savings; each shows how
   far buying it today pushes back each goal, how many months of surplus it costs and how long it has been on
   the list, and can be turned into a goal.
+- **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
+  under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
+  that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
+  product or investment recommendations; each can be dismissed.
 
 ### Everywhere
 

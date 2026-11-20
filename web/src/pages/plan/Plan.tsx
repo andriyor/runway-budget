@@ -120,8 +120,6 @@ export function Plan() {
         onUseSpending={saveSpending}
       />
 
-      <Tips currency={currency} />
-
       <PlannedExpenses
         planned={planned}
         convert={convert}
@@ -174,6 +172,8 @@ export function Plan() {
       />
 
       <Wishlist forGoalsIn={forGoalsIn} convert={convert} netIn={netIn} currency={currency} />
+
+      <Tips currency={currency} />
     </>
   )
 }
