@@ -130,7 +130,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   income, and the most you can spend per month to last the fund's months. When income covers spending, the
   card with income leads with the monthly surplus, its yearly total and its share of income. Each estimate also shows how long
   it lasts with spending growing by the last 12 months' inflation and incomes staying flat.
-  Under the estimate without income, how many more months selling each thing you own would add.
+  Under the essentials-only estimate, how many more months selling each thing you own would add at essential
+  spending (usual spending when essential is not set).
 - **Emergency fund**: how many months of essential and of usual spending your available savings cover
   (goals keep the essential one aside, since big purchases stop after a job loss),
   against the months set in Runway (6 if not set) and the 3-month minimum: red below 3, amber below the

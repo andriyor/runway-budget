@@ -317,6 +317,8 @@ export function Runway({
   const kept = saved ? keptIncomeIn(c) : 0
   const minimalInSpendCurrency = saved ? minimalIn(c) : undefined
   const spend = spendIn(c)
+  // what a month without income takes from savings after selling things: essentials only, else usual spending
+  const saleBurn = (minimalInSpendCurrency ?? spend ?? 0) - kept
 
   const fieldLabel = 'flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300'
   const optional = <span className="font-normal text-zinc-400">· optional</span>
@@ -519,31 +521,6 @@ export function Runway({
               inflation={inflation}
               currency={c}
             />
-            {/* a last resort, never in the estimates: how much longer the money lasts after selling */}
-            {spend - kept > 0 && sales.length > 0 && (
-              <ul className={`flex flex-col gap-0.5 tabular-nums ${muted}`}>
-                {sales.map((s, n) => (
-                  <li key={n}>
-                    Selling {s.name} (≈ {format(s.amount, c)}):{' '}
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      +{(s.amount / (spend - kept)).toFixed(1)} months
-                    </span>
-                  </li>
-                ))}
-                {sales.length > 1 &&
-                  (() => {
-                    const all = sales.reduce((sum, s) => sum + s.amount, 0)
-                    return (
-                      <li className="mt-0.5 border-t border-zinc-200 pt-1 dark:border-zinc-800">
-                        Selling everything (≈ {format(all, c)}):{' '}
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                          +{(all / (spend - kept)).toFixed(1)} months
-                        </span>
-                      </li>
-                    )
-                  })()}
-              </ul>
-            )}
             {minimalInSpendCurrency !== undefined && (
               <>
                 <Estimate
@@ -560,6 +537,32 @@ export function Runway({
                   </p>
                 )}
               </>
+            )}
+            {/* a last resort, never in the estimates: how much longer the money lasts after selling, at essential
+                spending (usual when it is not set), since after a job loss only essentials are left */}
+            {saleBurn > 0 && sales.length > 0 && (
+              <ul className={`flex flex-col gap-0.5 tabular-nums ${muted}`}>
+                {sales.map((s, n) => (
+                  <li key={n}>
+                    Selling {s.name} (≈ {format(s.amount, c)}):{' '}
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      +{(s.amount / saleBurn).toFixed(1)} months
+                    </span>
+                  </li>
+                ))}
+                {sales.length > 1 &&
+                  (() => {
+                    const all = sales.reduce((sum, s) => sum + s.amount, 0)
+                    return (
+                      <li className="mt-0.5 border-t border-zinc-200 pt-1 dark:border-zinc-800">
+                        Selling everything (≈ {format(all, c)}):{' '}
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                          +{(all / saleBurn).toFixed(1)} months
+                        </span>
+                      </li>
+                    )
+                  })()}
+              </ul>
             )}
             {saved.targetMonths !== null && (
               <SpendLimit
