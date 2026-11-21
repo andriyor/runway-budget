@@ -6,10 +6,10 @@ import { Skeleton } from '../../components/Skeleton'
 import { CalendarDays, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
-import { format, withConverted } from '../../lib/format'
-import { cumulativeTargets, delayMonths, monthsUntil, wishFit } from '../../lib/goals'
+import { format, wholeMoney, withConverted } from '../../lib/format'
+import { cumulativeTargets, delayMonths, spreadWishes } from '../../lib/goals'
 import { monthKey, monthLabel } from '../../lib/periods'
-import { card, muted } from '../../lib/styles'
+import { card, linkButton, muted } from '../../lib/styles'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
 type WishlistProps = {
@@ -22,13 +22,13 @@ type WishlistProps = {
   currency: Currency
 }
 
-// Purchases you want but have not committed to: they get no savings, and each shows what buying it today would
-// delay, so the cost is weighed in goal time rather than money
+// Smaller purchases you want, bought from the monthly surplus ahead of goals: each shows what buying it delays, so
+// the cost is weighed in goal time, and a month picked for each spreads them so no month takes more than it saves
 export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps) {
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   const goals = all.filter((g) => !g.wish)
-  // planned ones first, by month, so each is paid after the ones planned before it; sort keeps the list order
+  // planned ones first, by month; sort keeps the list order within a month and among the unplanned
   const wishes = all
     .filter((g) => g.wish)
     .sort((a, b) => (a.plannedFor ?? '9999').localeCompare(b.plannedFor ?? '9999'))
@@ -74,7 +74,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     if (rows.some((r) => r === undefined)) return undefined
     const hit = rows.map((r) => r!).filter((r) => r.further > 0.005)
     if (hit.length === 0)
-      return <span className="font-medium text-emerald-600 dark:text-emerald-400">Buying it now delays no goal</span>
+      return (
+        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+          {wish.plannedFor ? 'Buying it' : 'Buying it now'} delays no goal
+        </span>
+      )
     // goals pushed back by the same amount share one phrase: "Car and House by 5.4 months"
     const groups = new Map<string, string[]>()
     for (const { goal, further, net } of hit) {
@@ -90,7 +94,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     const every = groups.size === 1 && hit.length === goals.length && goals.length > 1
     return (
       <span className="text-amber-700 tabular-nums dark:text-amber-400">
-        Buying it now pushes back{' '}
+        {wish.plannedFor ? 'Buying it' : 'Buying it now'} pushes back{' '}
         {every
           ? `every goal by ${[...groups.keys()][0]}`
           : [...groups].map(([by, names], i) => (
@@ -103,37 +107,52 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     )
   }
 
-  // whether a planned wish fits in its month: goals come first, then the wishes planned before it; undefined
-  // while rates or balances load
-  function fit(wish: Goal, index: number) {
-    const c = wish.currency
-    const saved = forGoalsIn(c)
-    const ahead = [...goals, ...wishes.slice(0, index)].map((g) => convert(g.target, g.currency, c))
-    if (saved === undefined || ahead.some((v) => v === undefined)) return undefined
-    const reserved = ahead.reduce<number>((sum, v) => sum + v!, 0)
-    const net = netIn(c) ?? 0
-    const { left, earliest } = wishFit(reserved, saved, net, wish.target, monthsUntil(wish.plannedFor!, new Date(now)))
-    const month = monthLabel(wish.plannedFor!)
-    const amount = (v: number) => withConverted(v, c, currency, convert)
-    if (left >= 0)
+  // what each month's planned wishes add up to, in the plan's currency; undefined while rates load
+  const monthTotals = new Map<string, number | undefined>()
+  for (const w of wishes) {
+    if (!w.plannedFor) continue
+    const price = convert(w.target, w.currency, currency)
+    const sum = monthTotals.has(w.plannedFor) ? monthTotals.get(w.plannedFor) : 0
+    monthTotals.set(w.plannedFor, sum === undefined || price === undefined ? undefined : sum + price)
+  }
+  const surplus = netIn(currency)
+
+  // a planned wish's month against the monthly surplus; undefined while it loads or without a surplus
+  function monthFit(month: string) {
+    const total = monthTotals.get(month)
+    if (total === undefined || surplus === undefined || surplus <= 0) return undefined
+    const name = monthLabel(month)
+    if (total <= surplus)
       return (
-        <span className="font-medium text-emerald-600 tabular-nums dark:text-emerald-400">
-          Fits in {month} after your goals, with {amount(left)} to spare
+        <span className="text-emerald-600 dark:text-emerald-400">
+          {name}: {wholeMoney(total, currency)} of your {wholeMoney(surplus, currency)} monthly surplus
         </span>
       )
-    const first = new Date(now)
-    first.setMonth(first.getMonth() + earliest, 1)
     return (
-      <span className="text-amber-700 tabular-nums dark:text-amber-400">
-        Short by {amount(-left)} in {month} once your goals are covered ·{' '}
-        {earliest === Infinity
-          ? 'it does not fit while your savings stop growing'
-          : earliest === 0
-            ? 'it fits now'
-            : `the first month it fits is ${monthLabel(monthKey(first.toISOString()))}`}
+      <span className="text-amber-700 dark:text-amber-400">
+        {name}: {wholeMoney(total, currency)}, {wholeMoney(total - surplus, currency)} over your monthly surplus
       </span>
     )
   }
+
+  // gives every unplanned wish a month, so each month's wishes stay within the surplus
+  const unplanned = wishes.filter((w) => !w.plannedFor)
+  const prices = unplanned.map((w) => convert(w.target, w.currency, currency))
+  const taken = [...monthTotals].every(([, v]) => v !== undefined) ? (monthTotals as Map<string, number>) : undefined
+  const canSpread =
+    unplanned.length > 0 && surplus !== undefined && surplus > 0 && taken && prices.every((p) => p !== undefined)
+  const spread = () =>
+    act(async () => {
+      const months = spreadWishes(prices as number[], taken!, surplus!, monthKey(new Date(now).toISOString()))
+      await Promise.all(
+        unplanned.map((w, i) =>
+          api(`/goals/${w.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, plannedFor: months[i] }),
+          }),
+        ),
+      )
+    })
 
   function cost(wish: Goal) {
     const net = netIn(wish.currency)
@@ -147,12 +166,12 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     <section className={card}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
       <p className={muted}>
-        Things you want but have not committed to. They take no savings; each shows what buying it today would cost your
-        goals, or, with a month picked, whether it fits then once your goals are covered.
+        Smaller things you want, bought from your monthly surplus before goals. Each shows what buying it costs your
+        goals; pick a month for each, or spread them out, so no month takes more than you save.
       </p>
 
       <ul className="mt-4 flex flex-col gap-5">
-        {wishes.map((w, index) => {
+        {wishes.map((w) => {
           if (editing === w.id) {
             return (
               <li key={w.id}>
@@ -166,7 +185,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
               </li>
             )
           }
-          const effect = w.plannedFor ? fit(w, index) : impact(w)
+          const effect = impact(w)
           return (
             <li key={w.id}>
               <div className="flex items-center gap-2">
@@ -217,7 +236,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
                 {cost(w) && <span>· {cost(w)}</span>}
                 {w.plannedFor && (
                   <span className="flex items-center gap-1">
-                    · <CalendarDays /> {monthLabel(w.plannedFor)}
+                    · <CalendarDays /> {monthFit(w.plannedFor) ?? monthLabel(w.plannedFor)}
                   </span>
                 )}
               </p>
@@ -227,6 +246,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
       </ul>
       {wishes.length === 0 && (
         <p className={`py-6 text-center ${muted}`}>No wishes yet. Add something you are tempted to buy.</p>
+      )}
+      {canSpread && (
+        <button type="button" onClick={spread} className={`mt-3 ${linkButton}`}>
+          Spread out the wishes without a month
+        </button>
       )}
       <ErrorText>{error}</ErrorText>
 

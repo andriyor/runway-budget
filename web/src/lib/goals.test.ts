@@ -1,19 +1,22 @@
 // Run: node --test web/src/lib/goals.test.ts (Node 24 strips the types)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { monthsUntil, wishFit } from './goals.ts'
+import { addMonths, spreadWishes } from './goals.ts'
 
-test('monthsUntil counts calendar months and clamps past ones to now', () => {
-  const now = new Date(2026, 10, 21) // November 2026
-  assert.equal(monthsUntil('2026-11', now), 0)
-  assert.equal(monthsUntil('2027-03', now), 4)
-  assert.equal(monthsUntil('2026-01', now), 0)
+test('addMonths crosses years', () => {
+  assert.equal(addMonths('2026-11', 0), '2026-11')
+  assert.equal(addMonths('2026-11', 3), '2027-02')
+  assert.equal(addMonths('2026-12', 13), '2028-01')
 })
 
-test('wishFit pays wishes only from what is above the goals', () => {
-  // 1000 saved, goals take 800, 100 a month: a 500 wish needs 300 more, so 3 months
-  assert.deepEqual(wishFit(800, 1000, 100, 500, 4), { left: 100, earliest: 3 })
-  assert.deepEqual(wishFit(800, 1000, 100, 500, 1), { left: -200, earliest: 3 })
-  assert.deepEqual(wishFit(0, 1000, 0, 500, 2), { left: 500, earliest: 0 })
-  assert.deepEqual(wishFit(800, 1000, 0, 500, 2), { left: -300, earliest: Infinity })
+test('spreadWishes fills each month up to the budget, in order', () => {
+  // 100 a month; November already has 70 planned
+  const taken = new Map([['2026-11', 70]])
+  assert.deepEqual(spreadWishes([30, 50, 60, 20, 250], taken, 100, '2026-11'), [
+    '2026-11', // 70 + 30 = 100
+    '2026-12',
+    '2027-01', // 50 + 60 would pass 100
+    '2026-12', // a later cheap one still fills an earlier month
+    '2027-02', // dearer than the budget: a month of its own
+  ])
 })

@@ -29,17 +29,25 @@ export function goalProgress(goals: Goal[], convert: Convert, forGoalsIn: (c: Cu
 export const delayMonths = (cumulative: number, saved: number, price: number, net: number) =>
   (Math.max(0, cumulative - saved + price) - Math.max(0, cumulative - saved)) / net
 
-// months from the current month to `month` ("2027-03"); 0 for this month or one already past
-export const monthsUntil = (month: string, now: Date) =>
-  Math.max(0, Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 - (now.getFullYear() * 12 + now.getMonth()))
+// "2026-12" plus 2 → "2027-02"
+export const addMonths = (month: string, n: number) => {
+  const total = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + n
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
+}
 
-// Goals come first, so a planned wish is paid from what savings hold above every goal and the planned wishes
-// before it. `reserved` is that total, all in the wish's currency. left: what remains at its month after buying
-// it, negative when short; earliest: months from now when it is first affordable, Infinity when never.
-export function wishFit(reserved: number, saved: number, net: number, price: number, months: number) {
-  const need = reserved + price - saved
-  return {
-    left: net * months - need,
-    earliest: need <= 0 ? 0 : net > 0 ? Math.ceil(need / net) : Infinity,
-  }
+// Months for unplanned wishes, in their order: each goes to the first month from `from` whose wishes, with it,
+// stay within `budget` a month; one dearer than the budget gets a month of its own. Prices are in one currency;
+// `taken` is what each month already has planned.
+export function spreadWishes(prices: number[], taken: Map<string, number>, budget: number, from: string) {
+  const totals = new Map(taken)
+  return prices.map((price) => {
+    let month = from
+    for (let m = 0; ; m++) {
+      month = addMonths(from, m)
+      const total = totals.get(month) ?? 0
+      if (total + price <= budget || total === 0) break
+    }
+    totals.set(month, (totals.get(month) ?? 0) + price)
+    return month
+  })
 }
