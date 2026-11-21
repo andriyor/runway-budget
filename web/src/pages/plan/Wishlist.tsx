@@ -86,10 +86,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       }),
     )
 
-  // what buying `wish` today does to each goal; undefined while rates or balances load
-  function impact(wish: Goal) {
+  // what spending `target` today does to each goal, said after `lead` ("Buying it"); undefined while rates or
+  // balances load
+  function impact(target: number, from: Currency, lead: string) {
     const rows = goals.map((g, i) => {
-      const price = convert(wish.target, wish.currency, g.currency)
+      const price = convert(target, from, g.currency)
       const forGoals = forGoalsIn(g.currency)
       if (price === undefined || forGoals === undefined || cumulative[i] === undefined) return undefined
       // how much further from reached the goal ends up, in its currency
@@ -99,11 +100,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     if (rows.some((r) => r === undefined)) return undefined
     const hit = rows.map((r) => r!).filter((r) => r.further > 0.005)
     if (hit.length === 0)
-      return (
-        <span className="font-medium text-emerald-600 dark:text-emerald-400">
-          {wish.plannedFor ? 'Buying it' : 'Buying it now'} delays no goal
-        </span>
-      )
+      return <span className="font-medium text-emerald-600 dark:text-emerald-400">{lead} delays no goal</span>
     // goals pushed back by the same amount share one phrase: "Car and House by 5.4 months"
     const groups = new Map<string, string[]>()
     for (const { goal, further, net } of hit) {
@@ -119,7 +116,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     const every = groups.size === 1 && hit.length === goals.length && goals.length > 1
     return (
       <span className="text-amber-700 tabular-nums dark:text-amber-400">
-        {wish.plannedFor ? 'Buying it' : 'Buying it now'} pushes back{' '}
+        {lead} pushes back{' '}
         {every
           ? `every goal by ${[...groups.keys()][0]}`
           : [...groups].map(([by, names], i) => (
@@ -187,6 +184,10 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
 
   const days = (w: Goal) => Math.floor((now - Date.parse(w.addedAt)) / 864e5)
 
+  // every wish together, in the plan's currency; undefined while rates load
+  const allPrices = wishes.map((w) => convert(w.target, w.currency, currency))
+  const total = allPrices.some((p) => p === undefined) ? undefined : (allPrices as number[]).reduce((s, p) => s + p, 0)
+
   return (
     <section className={card}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
@@ -210,7 +211,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
               </li>
             )
           }
-          const effect = impact(w)
+          const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
           const bought = purchaseOf(w)
           return (
             <li key={w.id}>
@@ -289,6 +290,15 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
           )
         })}
       </ul>
+      {wishes.length > 1 && total !== undefined && (
+        <p className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
+          <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
+            Total {format(total, currency)}
+          </span>
+          {' · '}
+          {impact(total, currency, 'Buying them all') ?? <Skeleton />}
+        </p>
+      )}
       {wishes.length === 0 && (
         <p className={`py-6 text-center ${muted}`}>No wishes yet. Add something you are tempted to buy.</p>
       )}

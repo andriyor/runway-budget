@@ -143,7 +143,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   first month whose wishes still fit in the monthly surplus, and each month shows its total against the surplus.
   Give a wish a spending category and it watches for the purchase: spending in that category after it was added,
   within 20% of its price, shows as "Looks bought" with **Bought it** to remove the wish or **Not it** to look
-  only at later transactions.
+  only at later transactions. Below the list, the total of all wishes and how far buying them all pushes back
+  each goal.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
   under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
   that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
