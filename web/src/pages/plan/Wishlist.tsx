@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { GoalForm, NameList, type GoalValues } from './Goals'
+import { GoalForm, moveButton, NameList, type GoalValues } from './Goals'
 import { ConfirmButton } from '../../components/ConfirmButton'
 import { ErrorText } from '../../components/ErrorText'
 import { Skeleton } from '../../components/Skeleton'
-import { CalendarDays, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
-import { api, useApi } from '../../lib/api'
+import { api, setCached, useApi } from '../../lib/api'
 import { format, wholeMoney, withConverted } from '../../lib/format'
 import { cumulativeTargets, delayMonths, findPurchase, spreadWishes } from '../../lib/goals'
 import { parentsById } from '../../lib/categories'
@@ -64,6 +64,38 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
         body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false, plannedFor: null }),
       }),
     )
+  // moves a wish one place in the shown list. Within its month (or among the unplanned) it swaps with the
+  // neighbour; at the edge of its month it joins the next month over, as its last wish going up or its first going
+  // down, since the list is sorted by month. Goals keep their places in the shared order
+  async function move(index: number, by: -1 | 1) {
+    const wish = wishes[index]
+    const next = wishes[index + by]
+    const list = all.filter((g) => g !== wish)
+    let moved = wish
+    if (next.plannedFor === wish.plannedFor) {
+      list.splice(all.indexOf(next), 0, wish)
+    } else {
+      moved = { ...wish, plannedFor: next.plannedFor }
+      list.splice(list.indexOf(next) + (by < 0 ? 1 : 0), 0, moved)
+    }
+    setCached('/goals', list)
+    try {
+      if (moved !== wish)
+        await api(`/goals/${wish.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: wish.name,
+            target: wish.target,
+            currency: wish.currency,
+            plannedFor: moved.plannedFor,
+          }),
+        })
+      await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: list.map((g) => g.id) }) })
+    } catch (err) {
+      setCached('/goals', all)
+      setError(`Reorder: ${(err as Error).message}`)
+    }
+  }
   const remove = (w: Goal) => act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
 
   // the transaction that looks like each wish's purchase
@@ -193,11 +225,12 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
       <p className={muted}>
         Smaller things you want, bought from your monthly surplus before goals. Each shows what buying it costs your
-        goals; pick a month for each, or spread them out, so no month takes more than you save.
+        goals; pick a month for each, or spread them out, so no month takes more than you save. The arrows reorder them
+        and move a wish into the next month over; the top wish without a month is spread first.
       </p>
 
       <ul className="mt-4 flex flex-col gap-5">
-        {wishes.map((w) => {
+        {wishes.map((w, i) => {
           if (editing === w.id) {
             return (
               <li key={w.id}>
@@ -216,6 +249,26 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
           return (
             <li key={w.id}>
               <div className="flex items-center gap-2">
+                <div className="-ml-2 flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move wish ${w.name} up`}
+                    className={moveButton}
+                  >
+                    <ChevronUp strokeWidth={2} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(i, 1)}
+                    disabled={i === wishes.length - 1}
+                    aria-label={`Move wish ${w.name} down`}
+                    className={moveButton}
+                  >
+                    <ChevronDown strokeWidth={2} />
+                  </button>
+                </div>
                 <CurrencyIcon currency={w.currency} />
                 <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
                   <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
