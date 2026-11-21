@@ -300,6 +300,7 @@ Run from the repository root:
 | `pnpm format`                        | Format every file with Prettier                                                                  |
 | `pnpm format:check`                  | Check formatting without changing files                                                          |
 | `pnpm --filter api demo:seed <file>` | Create a demo database (see [Demo data](#demo-data))                                             |
+| `pnpm --filter api db:diagram`       | Redraw the schema diagram in [Database](#database)                                               |
 
 To work on one app: `pnpm --filter api dev` or `pnpm --filter web dev`.
 
@@ -326,6 +327,94 @@ pnpm --filter api db:generate
 
 Migrations in `api/drizzle/` are applied automatically when the API starts. Money is stored in
 integer minor units (cents/kopiykas).
+
+The diagram below is generated from the schema with
+[drizzle-mermaid-generator](https://github.com/panudetjt/drizzle-mermaid-generator); refresh it after a schema change
+with `pnpm --filter api db:diagram`.
+
+<!-- schema-diagram:start -->
+
+```mermaid
+erDiagram
+
+    accounts {
+        integer id PK "not null, increment"
+        text name "not null"
+        text currency "not null"
+        text kind "not null, default: 'bank'"
+        integer balance_cents "not null"
+        integer position "not null, default: 0"
+        text mono_account_id UK
+        integer updated_at "not null"
+    }
+    assets {
+        integer id PK "not null, increment"
+        text name "not null"
+        integer value_cents "not null"
+        text currency "not null"
+        integer discount "not null, default: 20"
+        integer sellable "not null, default: 1"
+    }
+    budget {
+        integer id PK "not null"
+        integer monthly_spend_cents "not null"
+        text currency "not null"
+        text incomes "not null, default: `[]`"
+        integer reserve_cents
+        text reserve_currency
+        integer minimal_spend_cents
+        text minimal_spend_currency
+        integer target_months
+    }
+    category_budgets {
+        text category PK "not null"
+        integer amount_cents "not null"
+        text currency "not null"
+    }
+    goals {
+        integer id PK "not null, increment"
+        text name "not null"
+        integer target_cents "not null"
+        text currency "not null"
+        integer position "not null, default: 0"
+        integer wish "not null, default: 0"
+        text planned_for
+        integer added_at "not null, default: `0`"
+    }
+    merchant_categories {
+        text merchant PK "not null"
+        text category "not null"
+    }
+    merchant_essentials {
+        text merchant PK "not null"
+        integer essential "not null"
+    }
+    planned_expenses {
+        integer id PK "not null, increment"
+        text name "not null"
+        integer amount_cents "not null"
+        text currency "not null"
+        integer months
+        integer active "not null, default: 0"
+    }
+    transactions {
+        integer id PK "not null, increment"
+        integer account_id FK "not null"
+        text external_id UK "not null"
+        integer time "not null"
+        text description "not null"
+        integer mcc "not null"
+        integer amount_cents "not null"
+        integer operation_amount
+        integer operation_currency
+        text category
+        text note
+        integer essential
+    }
+accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
+```
+
+<!-- schema-diagram:end -->
 
 ## API
 

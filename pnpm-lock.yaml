@@ -57,6 +57,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
+      drizzle-mermaid-generator:
+        specifier: ^0.0.5
+        version: 0.0.5(drizzle-orm@0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3))
       fastify-tsconfig:
         specifier: ^3.0.0
         version: 3.0.0
@@ -1617,6 +1620,12 @@ packages:
   drizzle-kit@0.31.11:
     resolution: {integrity: sha512-YCYqxTLIB2OCqf6w9/Vef13baBVbwQIPcbT4Y56AfO6B9ajZhDhD8Jkveg/hJvT/iuMloKD/IYYkyMMNhr7Kqg==}
     hasBin: true
+
+  drizzle-mermaid-generator@0.0.5:
+    resolution: {integrity: sha512-XfazUQsCESAxhppJ8RD7ukeoYS7nCM+KvqG8gbnvDDKzEx/pXnSA8Jp4KuvBr3HMpw11RWIAdCKNkXQ4XAv8EA==}
+    hasBin: true
+    peerDependencies:
+      drizzle-orm: '>=0.45.1'
 
   drizzle-orm@0.45.4:
     resolution: {integrity: sha512-NiM1YZpJ2UxyeE67DpDDZ+Tsw4YLX3trSlkNT7Tm9eKoUNb1LvaAaQzXgYQsWs+AQ9TUmmwMmBOCXuqqxUWKKQ==}
@@ -3663,6 +3672,11 @@ snapshots:
       '@esbuild-kit/esm-loader': 2.6.5
       esbuild: 0.25.12
       tsx: 4.23.15
+
+  drizzle-mermaid-generator@0.0.5(drizzle-orm@0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)):
+    dependencies:
+      drizzle-orm: 0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
+      jiti: 2.7.0
 
   drizzle-orm@0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3):
     optionalDependencies:
