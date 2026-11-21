@@ -6,7 +6,7 @@ description: Fill notes on Brain (brain.com.ua) transactions in Runway Budget wi
 # Notes for Brain transactions
 
 Like `rozetka-notes` (read it, and `runway-api`: show the matches and get a yes before writing). Notes read
-`Brain №<order>: <items>`; only transactions without a note are touched. Work in the session scratchpad `$D`.
+`<items> №<order>`; only transactions without a note are touched. Work in the session scratchpad `$D`.
 
 ## 1. Brain transactions without a note
 
@@ -33,8 +33,13 @@ const out = [...document.querySelectorAll('*')]
     let c = e
     while (c.parentElement && !/₴/.test(c.textContent)) c = c.parentElement
     const t = c.textContent.replace(/\s+/g, ' ')
-    return [e.textContent.trim(), (t.match(/від (\d\d\.\d\d\.\d{4})/) || [])[1], (t.match(/([\d ]+)₴/) || [])[1].trim(),
-      (t.match(/₴\s*(\S+)/) || [])[1], [...new Set([...c.querySelectorAll('img')].map((i) => i.alt).filter(Boolean))].join(' ; ')].join(' | ')
+    return [
+      e.textContent.trim(),
+      (t.match(/від (\d\d\.\d\d\.\d{4})/) || [])[1],
+      (t.match(/([\d ]+)₴/) || [])[1].trim(),
+      (t.match(/₴\s*(\S+)/) || [])[1],
+      [...new Set([...c.querySelectorAll('img')].map((i) => i.alt).filter(Boolean))].join(' ; '),
+    ].join(' | ')
   })
 const pre = document.createElement('pre')
 pre.textContent = out.join('\n')

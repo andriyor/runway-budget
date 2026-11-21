@@ -1,6 +1,6 @@
 # Matches Rozetka orders to Runway Budget transactions and writes the notes to add.
 # usage: python3 match-orders.py <orders.txt> <transactions.jsonl> <notes.json> [store]
-#   store: Rozetka (default) or Prom, the note prefix; transactions whose description contains it are matched
+#   store: Rozetka (default) or Prom; transactions whose description contains it are matched
 #   orders.txt: one order per line, "num | 23 вересня 2026 | 278 | CANCELLED or empty | item ; item"
 #   (the date may also be 23.09.26, as Prom shows it)
 #   transactions.jsonl: one GET /api/accounts/:id/transactions response per line
@@ -28,8 +28,11 @@ for line in open(orders_file):
         mm = months[mm]
     # drop trailing product codes in parentheses, e.g. "(UGR-10368)", and Rozetka's "Додатковий продаж" line
     names = [re.sub(r'\s*\([^()]*\d[^()]*\)\s*$', '', i).strip() for i in items.split(' ; ') if i and i != 'Додатковий продаж']
+    # the items with the order number last, "Кабель Ugreen №906808643"; the transaction already names the store
+    items = '; '.join(names)
+    note = items[:1000 - len(f' №{num}')] + f' №{num}'
     orders.append(dict(num=num, day=date(int(yy), mm, int(dd)), total=float(total or 0),
-                       cancelled=bool(cancelled), note=(f'{store} №{num}: ' + '; '.join(names))[:1000]))
+                       cancelled=bool(cancelled), items=items, note=note))
 
 kyiv = ZoneInfo('Europe/Kyiv')
 txs = [t for l in open(tx_file) if l.strip() for t in json.loads(l)
@@ -57,7 +60,7 @@ matches.sort(key=lambda m: m[1]['day'])
 for kind, t, o, gap in matches:
     extra = f" +{gap}d" if gap else ''
     print(f"{kind:5} {t['id']:>5} {t['day']} {t['amount']:>10} ← №{o['num']} {o['total']:g}{extra}"
-          f"{' CANCELLED' if o['cancelled'] else ''}  {o['note'][len(store) + len(' №') + len(o['num']) + 2:][:60]}")
+          f"{' CANCELLED' if o['cancelled'] else ''}  {o['items'][:60]}")
 print('\nunmatched transactions (no note yet):')
 for t in sorted(txs, key=lambda t: t['day']):
     if t['id'] not in used:

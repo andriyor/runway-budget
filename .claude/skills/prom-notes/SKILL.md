@@ -6,7 +6,7 @@ description: Fill notes on Prom.ua transactions in Runway Budget with what was o
 # Notes for Prom transactions
 
 The same procedure as the `rozetka-notes` skill: read it and follow its steps 1, 3 and 4, with `prom` in place of
-`Rozetka`. Only step 2, reading the orders, differs. Notes read `Prom №<order>: <item>`, and only transactions
+`Rozetka`. Only step 2, reading the orders, differs. Notes read `<item> №<order>`, and only transactions
 without a note are touched.
 
 ## 1. Prom transactions without a note
@@ -21,7 +21,8 @@ to `/cabinet/user/orders/<num>`; the item names are the alt texts of its product
 and the total follows «До оплати … :». On one page, run:
 
 ```js
-const out = [], seen = new Set()
+const out = [],
+  seen = new Set()
 for (const a of document.querySelectorAll('a[href*="/cabinet/user/orders/"]')) {
   const num = a.href.match(/orders\/(\d+)/)[1]
   if (seen.has(num)) continue
@@ -30,10 +31,15 @@ for (const a of document.querySelectorAll('a[href*="/cabinet/user/orders/"]')) {
   let c = a
   while (c.parentElement && c.parentElement.textContent.match(/№\s*\d{6,}/g)?.length === 1) c = c.parentElement
   const tc = c.textContent.replace(/\s+/g, ' ')
-  out.push([num, (tc.match(/(\d\d\.\d\d\.\d\d)/) || [])[1],
-    ((tc.match(/До оплати[^:]*:\s*([\d .,]+)₴/) || [])[1] || '').replace(/\s/g, ''),
-    /Повернення|Скасовано/.test(tc) ? 'CANCELLED' : '',
-    [...new Set([...c.querySelectorAll('img')].map((i) => i.alt).filter(Boolean))].join(' ; ')].join(' | '))
+  out.push(
+    [
+      num,
+      (tc.match(/(\d\d\.\d\d\.\d\d)/) || [])[1],
+      ((tc.match(/До оплати[^:]*:\s*([\d .,]+)₴/) || [])[1] || '').replace(/\s/g, ''),
+      /Повернення|Скасовано/.test(tc) ? 'CANCELLED' : '',
+      [...new Set([...c.querySelectorAll('img')].map((i) => i.alt).filter(Boolean))].join(' ; '),
+    ].join(' | '),
+  )
 }
 const pre = document.createElement('pre')
 pre.textContent = out.join('\n')

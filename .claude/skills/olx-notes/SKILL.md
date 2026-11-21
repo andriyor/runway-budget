@@ -13,10 +13,10 @@ and needs its own note. Work in the session scratchpad `$D`.
 
 Fetch every account's transactions into `$D/local-tx.jsonl` as in `rozetka-notes` step 1. OLX rows look like:
 
-| Description                   | What it is                                                                       |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| `OLX`, negative               | a purchase (or a paid listing)                                                   |
-| `Від: OLX_DOSTAVKA UAPAY`, +  | a refund of a purchase, or the payout for something the user sold                |
+| Description                     | What it is                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `OLX`, negative                 | a purchase (or a paid listing)                                                    |
+| `Від: OLX_DOSTAVKA UAPAY`, +    | a refund of a purchase, or the payout for something the user sold                 |
 | `Від: #traceable #traceable`, + | a sender Monobank hides; some OLX refunds come this way, same amount, within days |
 
 A sale can also be paid by the buyer directly, as a transfer named after a person, a day after the order.
@@ -33,12 +33,21 @@ On the first page, define a reader and keep its output in `window.__o`, then cli
 
 ```js
 window.__grab = () =>
-  document.body.innerText.split('Відхилені')[1].split('Мобільні додатки')[0].split('Відкрити')
-    .map((s) => s.trim().split(/\n+/)).filter((a) => a.length > 3)
+  document.body.innerText
+    .split('Відхилені')[1]
+    .split('Мобільні додатки')[0]
+    .split('Відкрити')
+    .map((s) => s.trim().split(/\n+/))
+    .filter((a) => a.length > 3)
     .map((a) => {
       const t = a.join(' ')
-      return [(t.match(/замовлення: (\d+)/) || [])[1], (t.match(/(\d\d\.\d\d\.\d{4}, \d\d:\d\d)/) || [])[1],
-        a[1], a[2] + ' ' + (a[3].startsWith('(') ? a[3] : ''), a[0]].join(' | ')
+      return [
+        (t.match(/замовлення: (\d+)/) || [])[1],
+        (t.match(/(\d\d\.\d\d\.\d{4}, \d\d:\d\d)/) || [])[1],
+        a[1],
+        a[2] + ' ' + (a[3].startsWith('(') ? a[3] : ''),
+        a[0],
+      ].join(' | ')
     })
 window.__o = __grab()
 ```
@@ -60,10 +69,13 @@ Match by hand; there are few. Transaction times are UTC, so an order at 18:16 Ky
 
 Notes, in Ukrainian like the order titles:
 
-- purchase: `OLX №<order>: <item>`
-- refunded purchase: `OLX №<order>: <item> (<відхилено продавцем | відхилено мною | замовлення прострочено>, гроші повернули)`
-- refund: `OLX №<order>: повернення за <item>`
-- sale: `OLX №<order>: продаж: <item>`
+- purchase: `<item> №<order>`
+- refunded purchase: `<item> (<відхилено продавцем | відхилено мною | замовлення прострочено>, гроші повернули) №<order>`
+- refund: `повернення за <item> №<order>`
+- sale: `продаж: <item> №<order>`
+
+Where the transaction's description does not say OLX (a `#traceable` refund, a sale paid by a person), start the
+note with `OLX: `, e.g. `OLX: повернення за <item> №<order>`.
 
 Show the list and anything unmatched, and ask before writing.
 

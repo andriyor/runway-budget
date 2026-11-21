@@ -6,8 +6,9 @@ description: Fill notes on Rozetka transactions in Runway Budget with what was o
 # Notes for Rozetka transactions
 
 Reads the order history at `rozetka.com.ua/ua/cabinet/orders/` through the Chrome extension (the user is signed in
-there), matches orders to Rozetka transactions, and writes `Rozetka №<order>: <items>` as each one's note. Only
-transactions without a note are touched, so rerunning it picks up new orders and never overwrites.
+there), matches orders to Rozetka transactions, and writes `<items> №<order>` as each one's note; the transaction
+already says Rozetka. Only transactions without a note are touched, so rerunning it picks up new orders and never
+overwrites.
 
 Read the `runway-api` skill first: notes are writes to the user's real data, so show the matches and get a yes
 before writing. Work in the session scratchpad `$D`.
