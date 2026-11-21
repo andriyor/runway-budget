@@ -171,21 +171,52 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
   }
   const surplus = netIn(currency)
 
-  // a planned wish's month against the monthly surplus; undefined while it loads or without a surplus
-  function monthFit(month: string) {
-    const total = monthTotals.get(month)
-    if (total === undefined || surplus === undefined || surplus <= 0) return undefined
-    const name = monthLabel(month)
-    if (total <= surplus)
-      return (
-        <span className="text-emerald-600 dark:text-emerald-400">
-          {name}: {wholeMoney(total, currency)} of your {wholeMoney(surplus, currency)} monthly surplus
-        </span>
-      )
+  // a group's heading: its month and what its wishes add up to, a planned month also against the monthly surplus
+  function groupHeader(month: string | null, items: Goal[]) {
+    const prices = items.map((w) => convert(w.target, w.currency, currency))
+    const sum = prices.some((p) => p === undefined) ? undefined : (prices as number[]).reduce((s, p) => s + p, 0)
+    const fit = month && sum !== undefined && surplus !== undefined && surplus > 0 ? sum / surplus : undefined
+    const over = fit !== undefined && fit > 1
     return (
-      <span className="text-amber-700 dark:text-amber-400">
-        {name}: {wholeMoney(total, currency)}, {wholeMoney(total - surplus, currency)} over your monthly surplus
-      </span>
+      <>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
+            <CalendarDays />
+            <span className="first-letter:uppercase">{month ? monthLabel(month) : 'No month yet'}</span>
+          </h3>
+          {sum !== undefined && (
+            <span
+              className={`text-sm tabular-nums ${fit === undefined ? muted : over ? 'font-medium text-amber-700 dark:text-amber-400' : 'font-medium text-emerald-600 dark:text-emerald-400'}`}
+            >
+              {wholeMoney(sum, currency)}
+              {fit !== undefined && ` / ${wholeMoney(surplus!, currency)}`}
+            </span>
+          )}
+        </div>
+        {fit !== undefined && (
+          <>
+            <div
+              role="progressbar"
+              aria-label={`${monthLabel(month!)} against the monthly surplus`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(Math.min(fit, 1) * 100)}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+            >
+              <div
+                className={`h-full rounded-full ${over ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(fit, 1) * 100}%` }}
+              />
+            </div>
+            <p className={`mt-1 text-xs tabular-nums ${muted}`}>
+              {over
+                ? `${wholeMoney(sum! - surplus!, currency)} over your monthly surplus`
+                : `${wholeMoney(surplus! - sum!, currency)} of your monthly surplus left`}
+            </p>
+          </>
+        )}
+        {!month && <p className={`mt-1 text-xs ${muted}`}>Spread out gives each a month, the top one first</p>}
+      </>
     )
   }
 
@@ -214,6 +245,14 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     return `${(wish.target / net).toFixed(1)} months of your surplus`
   }
 
+  // runs of wishes in the same month, in the shown order, each with the index of its first wish
+  const groups: Array<{ month: string | null; start: number; items: Goal[] }> = []
+  wishes.forEach((w, i) => {
+    const last = groups.at(-1)
+    if (last && last.month === w.plannedFor) last.items.push(w)
+    else groups.push({ month: w.plannedFor, start: i, items: [w] })
+  })
+
   const days = (w: Goal) => Math.floor((now - Date.parse(w.addedAt)) / 864e5)
 
   // every wish together, in the plan's currency; undefined while rates load
@@ -225,124 +264,127 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
       <p className={muted}>
         Smaller things you want, bought from your monthly surplus before goals. Each shows what buying it costs your
-        goals; pick a month for each, or spread them out, so no month takes more than you save. The arrows reorder them
-        and move a wish into the next month over; the top wish without a month is spread first.
+        goals; pick a month for each, or spread them out, and the arrows reorder them or move one into the next month.
       </p>
 
-      <ul className="mt-4 flex flex-col gap-5">
-        {wishes.map((w, i) => {
-          if (editing === w.id) {
-            return (
-              <li key={w.id}>
-                <GoalForm
-                  wish
-                  initial={w}
-                  submitLabel="Save"
-                  onSave={(values) => update(w, values)}
-                  onCancel={() => setEditing(undefined)}
-                />
-              </li>
-            )
-          }
-          const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
-          const bought = purchaseOf(w)
-          return (
-            <li key={w.id}>
-              <div className="flex items-center gap-2">
-                <div className="-ml-2 flex flex-col">
-                  <button
-                    type="button"
-                    onClick={() => move(i, -1)}
-                    disabled={i === 0}
-                    aria-label={`Move wish ${w.name} up`}
-                    className={moveButton}
-                  >
-                    <ChevronUp strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(i, 1)}
-                    disabled={i === wishes.length - 1}
-                    aria-label={`Move wish ${w.name} down`}
-                    className={moveButton}
-                  >
-                    <ChevronDown strokeWidth={2} />
-                  </button>
-                </div>
-                <CurrencyIcon currency={w.currency} />
-                <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                  <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
-                    {w.name}
-                  </span>
-                  <span className={`block shrink-0 tabular-nums ${muted}`}>
-                    {withConverted(w.target, w.currency, currency, convert)}
-                  </span>
-                </div>
-                <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => commit(w)}
-                    aria-label={`Save for ${w.name}`}
-                    title="Save for it: make it a goal"
-                    className={iconButton}
-                  >
-                    <Target />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(w.id)}
-                    aria-label={`Edit wish ${w.name}`}
-                    className={iconButton}
-                  >
-                    <Pencil />
-                  </button>
-                  <ConfirmButton
-                    label={`Remove wish ${w.name}`}
-                    className={`${iconButton} hover:text-rose-600`}
-                    title={`Remove “${w.name}” from the wishlist?`}
-                    confirmLabel="Remove"
-                    onConfirm={() => remove(w)}
-                  >
-                    <Trash2 />
-                  </ConfirmButton>
-                </div>
-              </div>
-              {bought && (
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm tabular-nums">
-                  <span className="text-zinc-900 dark:text-zinc-100">
-                    Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')} for{' '}
-                    {format(-bought.amount, currencyOf.get(bought.accountId)!)}
-                  </span>
-                  <button type="button" onClick={() => remove(w)} className={linkButton}>
-                    Bought it
-                  </button>
-                  <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
-                    Not it
-                  </button>
-                </p>
-              )}
-              <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
-              <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
-                <Hourglass />
-                <span>
-                  {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
-                </span>
-                {cost(w) && <span>· {cost(w)}</span>}
-                {w.category && parentOf.get(w.category) && (
-                  <span>
-                    · {parentOf.get(w.category)!.emoji} {parentOf.get(w.category)!.label}
-                  </span>
-                )}
-                {w.plannedFor && (
-                  <span className="flex items-center gap-1">
-                    · <CalendarDays /> {monthFit(w.plannedFor) ?? monthLabel(w.plannedFor)}
-                  </span>
-                )}
-              </p>
-            </li>
-          )
-        })}
-      </ul>
+      {groups.map(({ month, start, items }) => (
+        <div
+          key={month ?? 'none'}
+          className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
+        >
+          {groupHeader(month, items)}
+          <ul className="mt-4 flex flex-col gap-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+            {items.map((w, j) => {
+              const i = start + j
+              if (editing === w.id) {
+                return (
+                  <li key={w.id}>
+                    <GoalForm
+                      wish
+                      initial={w}
+                      submitLabel="Save"
+                      onSave={(values) => update(w, values)}
+                      onCancel={() => setEditing(undefined)}
+                    />
+                  </li>
+                )
+              }
+              const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
+              const bought = purchaseOf(w)
+              return (
+                <li key={w.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="-ml-2 flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() => move(i, -1)}
+                        disabled={i === 0}
+                        aria-label={`Move wish ${w.name} up`}
+                        className={moveButton}
+                      >
+                        <ChevronUp strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(i, 1)}
+                        disabled={i === wishes.length - 1}
+                        aria-label={`Move wish ${w.name} down`}
+                        className={moveButton}
+                      >
+                        <ChevronDown strokeWidth={2} />
+                      </button>
+                    </div>
+                    <CurrencyIcon currency={w.currency} />
+                    <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
+                      <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
+                        {w.name}
+                      </span>
+                      <span className={`block shrink-0 tabular-nums ${muted}`}>
+                        {withConverted(w.target, w.currency, currency, convert)}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                      <button
+                        type="button"
+                        onClick={() => commit(w)}
+                        aria-label={`Save for ${w.name}`}
+                        title="Save for it: make it a goal"
+                        className={iconButton}
+                      >
+                        <Target />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(w.id)}
+                        aria-label={`Edit wish ${w.name}`}
+                        className={iconButton}
+                      >
+                        <Pencil />
+                      </button>
+                      <ConfirmButton
+                        label={`Remove wish ${w.name}`}
+                        className={`${iconButton} hover:text-rose-600`}
+                        title={`Remove “${w.name}” from the wishlist?`}
+                        confirmLabel="Remove"
+                        onConfirm={() => remove(w)}
+                      >
+                        <Trash2 />
+                      </ConfirmButton>
+                    </div>
+                  </div>
+                  {bought && (
+                    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm tabular-nums">
+                      <span className="text-zinc-900 dark:text-zinc-100">
+                        Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')} for{' '}
+                        {format(-bought.amount, currencyOf.get(bought.accountId)!)}
+                      </span>
+                      <button type="button" onClick={() => remove(w)} className={linkButton}>
+                        Bought it
+                      </button>
+                      <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
+                        Not it
+                      </button>
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
+                  <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
+                    <Hourglass />
+                    <span>
+                      {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
+                    </span>
+                    {cost(w) && <span>· {cost(w)}</span>}
+                    {w.category && parentOf.get(w.category) && (
+                      <span>
+                        · {parentOf.get(w.category)!.emoji} {parentOf.get(w.category)!.label}
+                      </span>
+                    )}
+                  </p>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
       {wishes.length > 1 && total !== undefined && (
         <p className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
           <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
