@@ -21,7 +21,16 @@ test('create, list and delete goals', async (t) => {
   const { id } = created.json()
 
   assert.deepEqual(withoutAddedAt((await app.inject({ url: '/api/goals' })).json()), [
-    { id, name: 'Car', target: 15000.5, currency: 'USD', wish: false, plannedFor: null },
+    {
+      id,
+      name: 'Car',
+      target: 15000.5,
+      currency: 'USD',
+      wish: false,
+      plannedFor: null,
+      category: null,
+      matchAfter: null,
+    },
   ])
 
   assert.equal((await app.inject({ method: 'DELETE', url: `/api/goals/${id}` })).statusCode, 204)
@@ -49,10 +58,28 @@ test('edit a goal', async (t) => {
   })
   assert.equal(edited.statusCode, 200)
   assert.deepEqual(withoutAddedAt([edited.json()]), [
-    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false, plannedFor: null },
+    {
+      id,
+      name: 'Used car',
+      target: 9000.25,
+      currency: 'EUR',
+      wish: false,
+      plannedFor: null,
+      category: null,
+      matchAfter: null,
+    },
   ])
   assert.deepEqual(withoutAddedAt((await app.inject({ url: '/api/goals' })).json()), [
-    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false, plannedFor: null },
+    {
+      id,
+      name: 'Used car',
+      target: 9000.25,
+      currency: 'EUR',
+      wish: false,
+      plannedFor: null,
+      category: null,
+      matchAfter: null,
+    },
   ])
 
   const invalid = await app.inject({
@@ -132,4 +159,27 @@ test('a wish keeps its planned month until it is changed or cleared', async (t) 
   assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD' })).json().plannedFor, '2027-03')
   assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD', plannedFor: null })).json().plannedFor, null)
   assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD', plannedFor: '2027-13' })).statusCode, 400)
+})
+
+test('a wish keeps its category and the time its purchase was looked for up to', async (t) => {
+  const app = await build(t)
+  const { id } = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/goals',
+      payload: { name: 'Lamp', target: 40, currency: 'USD', wish: true, category: 'home' },
+    })
+  ).json()
+  const put = (payload: object) =>
+    app.inject({
+      method: 'PUT',
+      url: `/api/goals/${id}`,
+      payload: { name: 'Lamp', target: 40, currency: 'USD', ...payload },
+    })
+
+  const checked = await put({ matchAfter: '2026-11-20T10:00:00.000Z' })
+  assert.equal(checked.json().category, 'home')
+  assert.equal(checked.json().matchAfter, '2026-11-20T10:00:00.000Z')
+  assert.equal((await put({ category: null })).json().category, null)
+  assert.equal((await put({ category: 'income' })).statusCode, 400)
 })

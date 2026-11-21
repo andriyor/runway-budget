@@ -109,7 +109,8 @@ export type Budget = {
 export type Income = { name: string; amount: number; currency: Currency; keeps: boolean }
 
 // wish: a wished-for purchase, which savings do not fill; addedAt is an ISO timestamp
-// plannedFor: the month a wish is to be bought in, "2027-03", or null
+// plannedFor: the month a wish is to be bought in, "2027-03", or null. category: a wish's top-level spending
+// category, to spot its purchase; matchAfter: transactions up to this time are not its purchase
 export type Goal = {
   id: number
   name: string
@@ -117,6 +118,8 @@ export type Goal = {
   currency: Currency
   wish: boolean
   plannedFor: string | null
+  category: string | null
+  matchAfter: string | null
   addedAt: string
 }
 

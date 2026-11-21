@@ -11,7 +11,7 @@ import { format, withConverted } from '../../lib/format'
 import { card, muted, inputBox, button } from '../../lib/styles'
 import { goalProgress } from '../../lib/goals'
 import { monthsToSave } from '../../lib/inflation'
-import type { Convert, Currency, Goal } from '../../lib/types'
+import type { Category, Convert, Currency, Goal } from '../../lib/types'
 
 type Cushion = { months: number; amount: number; available: number; currency: Currency }
 
@@ -263,7 +263,14 @@ export function NameList({ names }: { names: string[] }) {
 const moveButton =
   'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
-export type GoalValues = { name: string; target: number; currency: Currency; wish?: boolean; plannedFor?: string | null }
+export type GoalValues = {
+  name: string
+  target: number
+  currency: Currency
+  wish?: boolean
+  plannedFor?: string | null
+  category?: string | null
+}
 
 type GoalFormProps = {
   // the goal being edited; without it the form adds one and clears itself after
@@ -282,6 +289,9 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
   const [currency, setCurrency] = useState<Currency>(initial?.currency ?? 'USD')
   // a wish's month to buy it in, "2027-03"; '' for none
   const [month, setMonth] = useState(initial?.plannedFor ?? '')
+  // a wish's top-level spending category, to spot its purchase; '' for none
+  const [category, setCategory] = useState(initial?.category ?? '')
+  const categories = (useApi<Category[]>('/categories').data ?? []).filter((c) => c.spending)
   const [error, setError] = useState('')
 
   async function submit(e: FormEvent) {
@@ -292,13 +302,14 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
         target: Number(target),
         currency,
         ...(!initial && wish && { wish }),
-        ...(wish && { plannedFor: month || null }),
+        ...(wish && { plannedFor: month || null, category: category || null }),
       })
       setError('')
       if (!initial) {
         setName('')
         setTarget('')
         setMonth('')
+        setCategory('')
       }
     } catch (err) {
       setError((err as Error).message)
@@ -329,6 +340,22 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
             onCurrency={setCurrency}
           />
         </div>
+        {wish && (
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            aria-label="Category"
+            title="Category it would be bought in, to spot the purchase (optional)"
+            className={`px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+          >
+            <option value="">No category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.emoji} {c.label}
+              </option>
+            ))}
+          </select>
+        )}
         {wish && (
           <input
             type="month"

@@ -2,17 +2,30 @@ import { type FastifyPluginAsync } from 'fastify'
 import type { Goal } from '@runway-budget/shared'
 import { eq, sql } from 'drizzle-orm'
 import { goals, currencies, type Currency } from '../../db/schema'
+import { categoryTree } from '../../categories'
 
 type GoalRow = typeof goals.$inferSelect
 
-const toDto = ({ targetCents, position: _position, addedAt, ...rest }: GoalRow): Goal => ({
+const toDto = ({ targetCents, position: _position, addedAt, matchAfter, ...rest }: GoalRow): Goal => ({
   ...rest,
   target: targetCents / 100,
   addedAt: addedAt.toISOString(),
+  matchAfter: matchAfter?.toISOString() ?? null,
 })
 
-// wish defaults to false when adding and stays as it is when editing; so does plannedFor, which null clears
-type GoalBody = { name: string; target: number; currency: Currency; wish?: boolean; plannedFor?: string | null }
+const spendingCategories = categoryTree.filter((c) => c.spending).map((c) => c.id)
+
+// wish defaults to false when adding and stays as it is when editing; so do plannedFor, category and matchAfter,
+// which null clears
+type GoalBody = {
+  name: string
+  target: number
+  currency: Currency
+  wish?: boolean
+  plannedFor?: string | null
+  category?: string | null
+  matchAfter?: string | null
+}
 const body = {
   type: 'object',
   required: ['name', 'target', 'currency'],
@@ -23,14 +36,18 @@ const body = {
     currency: { type: 'string', enum: currencies },
     wish: { type: 'boolean' },
     plannedFor: { type: ['string', 'null'], pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$' },
+    category: { type: ['string', 'null'], enum: [...spendingCategories, null] },
+    matchAfter: { type: ['string', 'null'], format: 'date-time' },
   },
 }
 const params = { type: 'object', properties: { id: { type: 'integer' } } }
-const toRow = ({ name, target, currency, wish, plannedFor }: GoalBody) => ({
+const toRow = ({ name, target, currency, wish, plannedFor, category, matchAfter }: GoalBody) => ({
   name,
   currency,
   wish,
   plannedFor,
+  category,
+  matchAfter: matchAfter === undefined ? undefined : matchAfter === null ? null : new Date(matchAfter),
   targetCents: Math.round(target * 100),
 })
 
@@ -76,7 +93,7 @@ const goalsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // replaces a goal's name, target and currency, and its wish flag and planned month when given
+  // replaces a goal's name, target and currency, and its wish flag, planned month, category and matchAfter when given
   fastify.put<{ Params: { id: number }; Body: GoalBody }>(
     '/:id',
     { schema: { params, body } },

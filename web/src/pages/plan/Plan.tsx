@@ -32,7 +32,10 @@ export function Plan() {
     spendIn,
     plannedSpendIn,
     planned,
-  } = useFinance({ withInflation: true })
+    transactions,
+    accounts,
+    categories,
+  } = useFinance({ withInflation: true, withTransactions: true })
   // spending in the estimates grows by the last 12 months' inflation
   const inflation = cpi && annualRate(cpi)
 
@@ -171,7 +174,15 @@ export function Plan() {
         currency={currency}
       />
 
-      <Wishlist forGoalsIn={forGoalsIn} convert={convert} netIn={netIn} currency={currency} />
+      <Wishlist
+        forGoalsIn={forGoalsIn}
+        convert={convert}
+        netIn={netIn}
+        currency={currency}
+        transactions={transactions}
+        accounts={accounts}
+        categories={categories}
+      />
 
       <Tips currency={currency} />
     </>

@@ -7,10 +7,11 @@ import { CalendarDays, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
 import { format, wholeMoney, withConverted } from '../../lib/format'
-import { cumulativeTargets, delayMonths, spreadWishes } from '../../lib/goals'
+import { cumulativeTargets, delayMonths, findPurchase, spreadWishes } from '../../lib/goals'
+import { parentsById } from '../../lib/categories'
 import { monthKey, monthLabel } from '../../lib/periods'
 import { card, linkButton, muted } from '../../lib/styles'
-import type { Convert, Currency, Goal } from '../../lib/types'
+import type { Account, Category, Convert, Currency, Goal, Transaction } from '../../lib/types'
 
 type WishlistProps = {
   // available savings minus the months-without-income cushion
@@ -20,11 +21,15 @@ type WishlistProps = {
   netIn: (c: Currency) => number | undefined
   // the currency the plan is shown in; prices keep their own, with this beside them
   currency: Currency
+  // to spot a wish's purchase; transactions are undefined while they load
+  transactions: Transaction[] | undefined
+  accounts: Account[]
+  categories: Category[]
 }
 
 // Smaller purchases you want, bought from the monthly surplus ahead of goals: each shows what buying it delays, so
 // the cost is weighed in goal time, and a month picked for each spreads them so no month takes more than it saves
-export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps) {
+export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, accounts, categories }: WishlistProps) {
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   const goals = all.filter((g) => !g.wish)
@@ -60,6 +65,26 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
       }),
     )
   const remove = (w: Goal) => act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
+
+  // the transaction that looks like each wish's purchase
+  const parentOf = parentsById(categories)
+  const currencyOf = new Map(accounts.map((a) => [a.id, a.currency]))
+  const purchaseOf = (w: Goal) =>
+    transactions &&
+    findPurchase(
+      w,
+      transactions,
+      (c) => parentOf.get(c)?.id,
+      (t) => convert(-t.amount, currencyOf.get(t.accountId)!, w.currency),
+    )
+  // "not it": that transaction and every earlier one are left out from now on
+  const notIt = (w: Goal, t: Transaction) =>
+    act(() =>
+      api(`/goals/${w.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, matchAfter: t.time }),
+      }),
+    )
 
   // what buying `wish` today does to each goal; undefined while rates or balances load
   function impact(wish: Goal) {
@@ -186,6 +211,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
             )
           }
           const effect = impact(w)
+          const bought = purchaseOf(w)
           return (
             <li key={w.id}>
               <div className="flex items-center gap-2">
@@ -227,6 +253,20 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
                   </ConfirmButton>
                 </div>
               </div>
+              {bought && (
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm tabular-nums">
+                  <span className="text-zinc-900 dark:text-zinc-100">
+                    Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')} for{' '}
+                    {format(-bought.amount, currencyOf.get(bought.accountId)!)}
+                  </span>
+                  <button type="button" onClick={() => remove(w)} className={linkButton}>
+                    Bought it
+                  </button>
+                  <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
+                    Not it
+                  </button>
+                </p>
+              )}
               <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
               <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
                 <Hourglass />
@@ -234,6 +274,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
                   {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
                 </span>
                 {cost(w) && <span>· {cost(w)}</span>}
+                {w.category && parentOf.get(w.category) && (
+                  <span>
+                    · {parentOf.get(w.category)!.emoji} {parentOf.get(w.category)!.label}
+                  </span>
+                )}
                 {w.plannedFor && (
                   <span className="flex items-center gap-1">
                     · <CalendarDays /> {monthFit(w.plannedFor) ?? monthLabel(w.plannedFor)}

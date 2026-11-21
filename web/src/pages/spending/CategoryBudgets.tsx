@@ -7,7 +7,7 @@ import { api, useApi } from '../../lib/api'
 import { format, wholeMoney } from '../../lib/format'
 import { monthKey } from '../../lib/periods'
 import { card, muted, inputBox, button } from '../../lib/styles'
-import type { Account, Category, CategoryBudget, Convert, Currency, Transaction } from '../../lib/types'
+import type { Account, Category, CategoryBudget, Convert, Currency, Goal, Transaction } from '../../lib/types'
 import { parentsById } from '../../lib/categories'
 
 type CategoryBudgetsProps = {
@@ -19,10 +19,11 @@ type CategoryBudgetsProps = {
 }
 
 // This month's spending per top-level category against its monthly cap, all accounts, net of refunds,
-// cancelled pairs left out, at today's rate. The tick on each bar is an even pace: the cap × the share of
+// cancelled pairs left out, at today's rate, with the wishes planned for this month in it beside. The tick on each bar is an even pace: the cap × the share of
 // the month gone. Amber once ahead of that pace, red once over the cap.
 export function CategoryBudgets({ transactions, accounts, categories, convert, currency }: CategoryBudgetsProps) {
   const query = useApi<CategoryBudget[]>('/category-budgets')
+  const goals = useApi<Goal[]>('/goals').data ?? []
   const budgets = query.data ?? []
   const [category, setCategory] = useState('')
   const [amount, setAmount] = useState('')
@@ -76,13 +77,21 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
     if (t.cancelled || !parent || monthKey(t.time) !== current) continue
     spent.set(parent, (spent.get(parent) ?? 0) - (convert(t.amount, currencyOf.get(t.accountId)!, currency) ?? 0))
   }
+  // a wish leaves the list once bought, so these are still to come
+  const planned = new Map<string, number>()
+  for (const w of goals) {
+    if (!w.wish || !w.category || w.plannedFor !== current) continue
+    planned.set(w.category, (planned.get(w.category) ?? 0) + (convert(w.target, w.currency, currency) ?? 0))
+  }
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const gone = now.getDate() / daysInMonth
   const rows = spending
     .flatMap((c) => {
       const budget = budgets.find((b) => b.category === c.id)
       const cap = budget && convert(budget.amount, budget.currency, currency)
-      return budget && cap !== undefined ? [{ category: c, budget, cap, spent: Math.max(0, spent.get(c.id) ?? 0) }] : []
+      return budget && cap !== undefined
+        ? [{ category: c, budget, cap, spent: Math.max(0, spent.get(c.id) ?? 0), wishes: planned.get(c.id) ?? 0 }]
+        : []
     })
     .sort((a, b) => b.spent / b.cap - a.spent / a.cap)
   const totalCap = rows.reduce((s, r) => s + r.cap, 0)
@@ -101,7 +110,7 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
       </div>
 
       <ul className="mt-3 flex flex-col gap-4">
-        {rows.map(({ category: c, budget, cap, spent: used }) => {
+        {rows.map(({ category: c, budget, cap, spent: used, wishes }) => {
           const share = used / cap
           const tone = share > 1 ? 'rose' : share > gone ? 'amber' : 'emerald'
           const bar = { rose: 'bg-rose-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }[tone]
@@ -153,6 +162,8 @@ export function CategoryBudgets({ transactions, accounts, categories, convert, c
                 {share > 1
                   ? `${wholeMoney(used - cap, currency)} over`
                   : `${wholeMoney(cap - used, currency)} left${share > gone ? ` · ahead of pace by ${wholeMoney(used - cap * gone, currency)}` : ''}`}
+                {wishes > 0 &&
+                  ` · ${wholeMoney(wishes, currency)} planned for wishes${used + wishes > cap ? `, ${wholeMoney(used + wishes - cap, currency)} over with them` : ''}`}
               </p>
             </li>
           )
