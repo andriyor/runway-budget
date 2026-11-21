@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { GoalForm, moveButton, NameList, type GoalValues } from './Goals'
+import { GoalForm, NameList, type GoalValues } from './Goals'
 import { ConfirmButton } from '../../components/ConfirmButton'
 import { ErrorText } from '../../components/ErrorText'
 import { Skeleton } from '../../components/Skeleton'
-import { CalendarDays, ChevronDown, ChevronUp, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
+import { CalendarDays, GripVertical, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
+import { DragDropProvider, useDroppable } from '@dnd-kit/react'
+import { useSortable } from '@dnd-kit/react/sortable'
+import { move } from '@dnd-kit/helpers'
+import { CollisionPriority } from '@dnd-kit/abstract'
+import type { ReactNode } from 'react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, setCached, useApi } from '../../lib/api'
 import { format, wholeMoney, withConverted } from '../../lib/format'
@@ -64,31 +69,22 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
         body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false, plannedFor: null }),
       }),
     )
-  // moves a wish one place in the shown list. Within its month (or among the unplanned) it swaps with the
-  // neighbour; at the edge of its month it joins the next month over, as its last wish going up or its first going
-  // down, since the list is sorted by month. Goals keep their places in the shared order
-  async function move(index: number, by: -1 | 1) {
-    const wish = wishes[index]
-    const next = wishes[index + by]
+  // puts a dragged wish at `index` among the wishes of `month` (null: no month yet), taking that month. Goals keep
+  // their places in the shared order
+  async function drop(wish: Goal, month: string | null, index: number) {
+    const target = wishes.filter((w) => w !== wish && w.plannedFor === month)
+    const before = wishes.filter((w) => w.plannedFor === month).indexOf(wish)
+    if (target.length === 0 || (month === wish.plannedFor && index === before)) return
+    const moved = month === wish.plannedFor ? wish : { ...wish, plannedFor: month }
     const list = all.filter((g) => g !== wish)
-    let moved = wish
-    if (next.plannedFor === wish.plannedFor) {
-      list.splice(all.indexOf(next), 0, wish)
-    } else {
-      moved = { ...wish, plannedFor: next.plannedFor }
-      list.splice(list.indexOf(next) + (by < 0 ? 1 : 0), 0, moved)
-    }
+    const at = index < target.length ? list.indexOf(target[index]) : list.indexOf(target.at(-1)!) + 1
+    list.splice(at, 0, moved)
     setCached('/goals', list)
     try {
       if (moved !== wish)
         await api(`/goals/${wish.id}`, {
           method: 'PUT',
-          body: JSON.stringify({
-            name: wish.name,
-            target: wish.target,
-            currency: wish.currency,
-            plannedFor: moved.plannedFor,
-          }),
+          body: JSON.stringify({ name: wish.name, target: wish.target, currency: wish.currency, plannedFor: month }),
         })
       await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: list.map((g) => g.id) }) })
     } catch (err) {
@@ -245,13 +241,16 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     return `${(wish.target / net).toFixed(1)} months of your surplus`
   }
 
-  // runs of wishes in the same month, in the shown order, each with the index of its first wish
-  const groups: Array<{ month: string | null; start: number; items: Goal[] }> = []
-  wishes.forEach((w, i) => {
-    const last = groups.at(-1)
-    if (last && last.month === w.plannedFor) last.items.push(w)
-    else groups.push({ month: w.plannedFor, start: i, items: [w] })
-  })
+  // wish ids by month (noMonth for none), months in the shown order; while a drag runs, where it has put them so far
+  const saved: Record<string, number[]> = {}
+  for (const w of wishes) (saved[w.plannedFor ?? noMonth] ??= []).push(w.id)
+  const [dragged, setDragged] = useState<Record<string, number[]>>()
+  const byId = new Map(wishes.map((w) => [w.id, w]))
+  const groups = Object.entries(dragged ?? saved).map(([key, ids]) => ({
+    key,
+    month: key === noMonth ? null : key,
+    items: ids.map((id) => byId.get(id)!).filter(Boolean),
+  }))
 
   const days = (w: Goal) => Math.floor((now - Date.parse(w.addedAt)) / 864e5)
 
@@ -264,127 +263,135 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
       <p className={muted}>
         Smaller things you want, bought from your monthly surplus before goals. Each shows what buying it costs your
-        goals; pick a month for each, or spread them out, and the arrows reorder them or move one into the next month.
+        goals; pick a month for each, or spread them out, and drag one by its handle to reorder it or move it to another
+        month.
       </p>
 
-      {groups.map(({ month, start, items }) => (
-        <div
-          key={month ?? 'none'}
-          className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
-        >
-          {groupHeader(month, items)}
-          <ul className="mt-4 flex flex-col gap-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-            {items.map((w, j) => {
-              const i = start + j
-              if (editing === w.id) {
+      <DragDropProvider
+        onDragStart={() => setDragged(saved)}
+        onDragOver={(event) => setDragged((g) => g && move(g, event))}
+        onDragEnd={(event) => {
+          const { source } = event.operation
+          const wish = source && byId.get(Number(source.id))
+          const at = dragged && wish && Object.entries(dragged).find(([, ids]) => ids.includes(wish.id))
+          setDragged(undefined)
+          if (event.canceled || !wish || !at) return
+          drop(wish, at[0] === noMonth ? null : at[0], at[1].indexOf(wish.id))
+        }}
+      >
+        {groups.map(({ key, month, items }) => (
+          <WishGroup key={key} id={key}>
+            {groupHeader(month, items)}
+            <ul className="mt-4 flex flex-col gap-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              {items.map((w, i) => {
+                const group = key
+                if (editing === w.id) {
+                  return (
+                    <SortableWish key={w.id} id={w.id} index={i} group={group} disabled>
+                      {() => (
+                        <GoalForm
+                          wish
+                          initial={w}
+                          submitLabel="Save"
+                          onSave={(values) => update(w, values)}
+                          onCancel={() => setEditing(undefined)}
+                        />
+                      )}
+                    </SortableWish>
+                  )
+                }
+                const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
+                const bought = purchaseOf(w)
                 return (
-                  <li key={w.id}>
-                    <GoalForm
-                      wish
-                      initial={w}
-                      submitLabel="Save"
-                      onSave={(values) => update(w, values)}
-                      onCancel={() => setEditing(undefined)}
-                    />
-                  </li>
-                )
-              }
-              const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
-              const bought = purchaseOf(w)
-              return (
-                <li key={w.id}>
-                  <div className="flex items-center gap-2">
-                    <div className="-ml-2 flex flex-col">
-                      <button
-                        type="button"
-                        onClick={() => move(i, -1)}
-                        disabled={i === 0}
-                        aria-label={`Move wish ${w.name} up`}
-                        className={moveButton}
-                      >
-                        <ChevronUp strokeWidth={2} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => move(i, 1)}
-                        disabled={i === wishes.length - 1}
-                        aria-label={`Move wish ${w.name} down`}
-                        className={moveButton}
-                      >
-                        <ChevronDown strokeWidth={2} />
-                      </button>
-                    </div>
-                    <CurrencyIcon currency={w.currency} />
-                    <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                      <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
-                        {w.name}
-                      </span>
-                      <span className={`block shrink-0 tabular-nums ${muted}`}>
-                        {withConverted(w.target, w.currency, currency, convert)}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                      <button
-                        type="button"
-                        onClick={() => commit(w)}
-                        aria-label={`Save for ${w.name}`}
-                        title="Save for it: make it a goal"
-                        className={iconButton}
-                      >
-                        <Target />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditing(w.id)}
-                        aria-label={`Edit wish ${w.name}`}
-                        className={iconButton}
-                      >
-                        <Pencil />
-                      </button>
-                      <ConfirmButton
-                        label={`Remove wish ${w.name}`}
-                        className={`${iconButton} hover:text-rose-600`}
-                        title={`Remove “${w.name}” from the wishlist?`}
-                        confirmLabel="Remove"
-                        onConfirm={() => remove(w)}
-                      >
-                        <Trash2 />
-                      </ConfirmButton>
-                    </div>
-                  </div>
-                  {bought && (
-                    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm tabular-nums">
-                      <span className="text-zinc-900 dark:text-zinc-100">
-                        Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')} for{' '}
-                        {format(-bought.amount, currencyOf.get(bought.accountId)!)}
-                      </span>
-                      <button type="button" onClick={() => remove(w)} className={linkButton}>
-                        Bought it
-                      </button>
-                      <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
-                        Not it
-                      </button>
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
-                  <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
-                    <Hourglass />
-                    <span>
-                      {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
-                    </span>
-                    {cost(w) && <span>· {cost(w)}</span>}
-                    {w.category && parentOf.get(w.category) && (
-                      <span>
-                        · {parentOf.get(w.category)!.emoji} {parentOf.get(w.category)!.label}
-                      </span>
+                  <SortableWish key={w.id} id={w.id} index={i} group={group}>
+                    {(handle) => (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            ref={handle}
+                            aria-label={`Drag wish ${w.name}`}
+                            title="Drag to reorder or to another month"
+                            className="-ml-1.5 cursor-grab touch-none rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                          >
+                            <GripVertical strokeWidth={2} />
+                          </button>
+                          <CurrencyIcon currency={w.currency} />
+                          <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
+                            <span className="block break-words font-medium text-zinc-900 sm:truncate dark:text-zinc-100">
+                              {w.name}
+                            </span>
+                            <span className={`block shrink-0 tabular-nums ${muted}`}>
+                              {withConverted(w.target, w.currency, currency, convert)}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                            <button
+                              type="button"
+                              onClick={() => commit(w)}
+                              aria-label={`Save for ${w.name}`}
+                              title="Save for it: make it a goal"
+                              className={iconButton}
+                            >
+                              <Target />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditing(w.id)}
+                              aria-label={`Edit wish ${w.name}`}
+                              className={iconButton}
+                            >
+                              <Pencil />
+                            </button>
+                            <ConfirmButton
+                              label={`Remove wish ${w.name}`}
+                              className={`${iconButton} hover:text-rose-600`}
+                              title={`Remove “${w.name}” from the wishlist?`}
+                              confirmLabel="Remove"
+                              onConfirm={() => remove(w)}
+                            >
+                              <Trash2 />
+                            </ConfirmButton>
+                          </div>
+                        </div>
+                        {bought && (
+                          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm tabular-nums">
+                            <span className="text-zinc-900 dark:text-zinc-100">
+                              Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')}{' '}
+                              for {format(-bought.amount, currencyOf.get(bought.accountId)!)}
+                            </span>
+                            <button type="button" onClick={() => remove(w)} className={linkButton}>
+                              Bought it
+                            </button>
+                            <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
+                              Not it
+                            </button>
+                          </p>
+                        )}
+                        <p className="mt-1.5 text-sm">{effect ?? <Skeleton />}</p>
+                        <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
+                          <Hourglass />
+                          <span>
+                            {days(w) === 0
+                              ? 'Added today'
+                              : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
+                          </span>
+                          {cost(w) && <span>· {cost(w)}</span>}
+                          {w.category && parentOf.get(w.category) && (
+                            <span>
+                              · {parentOf.get(w.category)!.emoji} {parentOf.get(w.category)!.label}
+                            </span>
+                          )}
+                        </p>
+                      </>
                     )}
-                  </p>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      ))}
+                  </SortableWish>
+                )
+              })}
+            </ul>
+          </WishGroup>
+        ))}
+      </DragDropProvider>
       {wishes.length > 1 && total !== undefined && (
         <p className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
           <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
@@ -408,6 +415,44 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
         <GoalForm wish submitLabel="Add wish" onSave={add} />
       </div>
     </section>
+  )
+}
+
+// the sortable group of wishes without a month
+const noMonth = 'none'
+
+// a wish row that can be dragged by the handle it hands its children, within its month or into another
+function SortableWish({
+  id,
+  index,
+  group,
+  disabled,
+  children,
+}: {
+  id: number
+  index: number
+  group: string
+  disabled?: boolean
+  children: (handle: (element: Element | null) => void) => ReactNode
+}) {
+  const { ref, handleRef, isDragging } = useSortable({ id, index, group, type: 'wish', accept: 'wish', disabled })
+  return (
+    <li ref={ref} className={isDragging ? 'opacity-50' : undefined}>
+      {children(handleRef)}
+    </li>
+  )
+}
+
+// a month's card; a drop target too, so a wish can go back into a month a drag has emptied
+function WishGroup({ id, children }: { id: string; children: ReactNode }) {
+  const { ref } = useDroppable({ id, type: 'month', accept: 'wish', collisionPriority: CollisionPriority.Low })
+  return (
+    <div
+      ref={ref}
+      className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
+    >
+      {children}
+    </div>
   )
 }
 

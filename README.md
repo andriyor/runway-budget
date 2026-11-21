@@ -140,9 +140,9 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
 - **Wishlist**: smaller purchases you are tempted by, bought from the monthly surplus before goals. Each shows how
   far buying it pushes back each goal, how many months of surplus it costs and how long it has been on the list,
   and can be turned into a goal. Pick a month for a wish, or spread out the ones without a month: each goes to the
-  first month whose wishes still fit in the monthly surplus, in the order the arrows set, and each month shows its
-  total against the surplus. The arrows reorder wishes and, at the edge of a month, move a wish into the next
-  month over. Give a wish a spending category and it watches for the purchase: spending in that category after it was added,
+  first month whose wishes still fit in the monthly surplus, top one first, and each month shows its
+  total against the surplus. Wishes sit in a card per month with its total against the surplus; drag one by
+  its handle to reorder it or move it to another month. Give a wish a spending category and it watches for the purchase: spending in that category after it was added,
   within 20% of its price, shows as "Looks bought" with **Bought it** to remove the wish or **Not it** to look
   only at later transactions. Below the list, the total of all wishes and how far buying them all pushes back
   each goal.
