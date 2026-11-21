@@ -6,7 +6,7 @@ anxious and ADHD brains in mind, though it is a tool, not treatment.
 - **One reassuring number**: how many months your savings last without income, and when you reach each goal.
 - **No manual entry**: Monobank transactions sync on their own twice a day and sort themselves into categories.
 - **A cooling-off list for impulse buys**: the wishlist shows how long a wish has waited and which goal buying
-  it would push back, instead of saying no.
+  it would push back, instead of saying no, and spreads wishes over months so none takes more than you save.
 - **"What if" without commitment**: try a lower spending, a new rent or a course, or selling the car, and see the
   plan move before deciding anything.
 - **Nothing forgotten**: recurring payments and subscriptions are found from your transactions.
@@ -136,9 +136,10 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   top, so on a goal's date you can buy it and still keep the fund. Each shows its progress and the date at
   your monthly surplus (income minus spending), and when, with spending growing by inflation and income
   flat, or that spending catches up first. A goal not started yet says what it waits for.
-- **Wishlist**: purchases you are tempted by but have not committed to. They take no savings; each shows how
-  far buying it today pushes back each goal, how many months of surplus it costs and how long it has been on
-  the list, and can be turned into a goal.
+- **Wishlist**: smaller purchases you are tempted by, bought from the monthly surplus before goals. Each shows how
+  far buying it pushes back each goal, how many months of surplus it costs and how long it has been on the list,
+  and can be turned into a goal. Pick a month for a wish, or spread out the ones without a month: each goes to the
+  first month whose wishes still fit in the monthly surplus, and each month shows its total against the surplus.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
   under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
   that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
@@ -438,10 +439,10 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 | `GET`    | `/category-budgets`                                    | Monthly caps per category                                                                                                                                                                                                                 |
 | `PUT`    | `/category-budgets/:category`                          | Set or replace a top-level spending category's cap `{ amount, currency }`                                                                                                                                                                 |
 | `DELETE` | `/category-budgets/:category`                          | Remove a cap                                                                                                                                                                                                                              |
-| `GET`    | `/goals`                                               | List goals and wishes in priority order, each with `wish` and `addedAt`                                                                                                                                                                   |
-| `POST`   | `/goals`                                               | Create a goal, or a wish with `wish: true`, last in order `{ name, target, currency, wish? }`                                                                                                                                             |
+| `GET`    | `/goals`                                               | List goals and wishes in priority order, each with `wish`, `plannedFor` and `addedAt`                                                                                                                                                     |
+| `POST`   | `/goals`                                               | Create a goal, or a wish with `wish: true`, last in order `{ name, target, currency, wish?, plannedFor? }`                                                                                                                                |
 | `PUT`    | `/goals/order`                                         | Reorder: `{ ids }` with every goal and wish id in order                                                                                                                                                                                   |
-| `PUT`    | `/goals/:id`                                           | Replace a goal's `{ name, target, currency, wish? }`; `wish` is kept when left out, `false` makes a wish a goal                                                                                                                           |
+| `PUT`    | `/goals/:id`                                           | Replace a goal's `{ name, target, currency, wish?, plannedFor? }`; `wish` and `plannedFor` (a month, `"2027-03"`) are kept when left out, `wish: false` makes a wish a goal and `plannedFor: null` clears the month                       |
 | `DELETE` | `/goals/:id`                                           | Delete a goal or wish                                                                                                                                                                                                                     |
 | `GET`    | `/rates`                                               | NBU rates as UAH per unit, cached for an hour                                                                                                                                                                                             |
 | `GET`    | `/rates/history?from=YYYY-MM-DD`                       | NBU rates for every day from `from` to today, cached for 12 hours                                                                                                                                                                         |
@@ -468,6 +469,7 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 - **Goal ETA** = (emergency fund + the targets of this goal and every goal above it − available savings)
   ÷ monthly surplus. Savings and the surplus fill the fund first, then goals in order.
 - **Wish delay** = how much further each goal ends up once the price leaves savings, ÷ monthly surplus.
+- **Wish month** fits when the prices of the wishes planned for it add up to no more than the monthly surplus.
 
 Estimates assume flat spending and income, and ignore interest and inflation.
 
