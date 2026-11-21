@@ -73,6 +73,8 @@ export const goals = sqliteTable('goals', {
   position: integer('position').notNull().default(0),
   // a wished-for purchase: kept on the list but given no savings, so the plan shows what buying it would delay
   wish: integer('wish', { mode: 'boolean' }).notNull().default(false),
+  // a wish's month to buy it in, "2027-03"; null when not planned
+  plannedFor: text('planned_for'),
   // when the goal or wish was added; the default only fills rows from before the column, inserts set it
   addedAt: integer('added_at', { mode: 'timestamp' })
     .notNull()

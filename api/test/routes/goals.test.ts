@@ -21,7 +21,7 @@ test('create, list and delete goals', async (t) => {
   const { id } = created.json()
 
   assert.deepEqual(withoutAddedAt((await app.inject({ url: '/api/goals' })).json()), [
-    { id, name: 'Car', target: 15000.5, currency: 'USD', wish: false },
+    { id, name: 'Car', target: 15000.5, currency: 'USD', wish: false, plannedFor: null },
   ])
 
   assert.equal((await app.inject({ method: 'DELETE', url: `/api/goals/${id}` })).statusCode, 204)
@@ -49,10 +49,10 @@ test('edit a goal', async (t) => {
   })
   assert.equal(edited.statusCode, 200)
   assert.deepEqual(withoutAddedAt([edited.json()]), [
-    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false },
+    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false, plannedFor: null },
   ])
   assert.deepEqual(withoutAddedAt((await app.inject({ url: '/api/goals' })).json()), [
-    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false },
+    { id, name: 'Used car', target: 9000.25, currency: 'EUR', wish: false, plannedFor: null },
   ])
 
   const invalid = await app.inject({
@@ -112,8 +112,24 @@ test('a wish stays a wish when edited, and can become a goal', async (t) => {
   const promoted = await app.inject({
     method: 'PUT',
     url: `/api/goals/${id}`,
-    payload: { name: 'Office chair', target: 700, currency: 'USD', wish: false },
+    payload: { name: 'Office chair', target: 700, currency: 'USD', wish: false, plannedFor: null },
   })
   assert.equal(promoted.json().wish, false)
   assert.equal(promoted.json().addedAt, created.json().addedAt)
+})
+
+test('a wish keeps its planned month until it is changed or cleared', async (t) => {
+  const app = await build(t)
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/goals',
+    payload: { name: 'Camera', target: 900, currency: 'USD', wish: true, plannedFor: '2027-03' },
+  })
+  assert.equal(created.json().plannedFor, '2027-03')
+  const { id } = created.json()
+  const put = (payload: object) => app.inject({ method: 'PUT', url: `/api/goals/${id}`, payload })
+
+  assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD' })).json().plannedFor, '2027-03')
+  assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD', plannedFor: null })).json().plannedFor, null)
+  assert.equal((await put({ name: 'Camera', target: 950, currency: 'USD', plannedFor: '2027-13' })).statusCode, 400)
 })

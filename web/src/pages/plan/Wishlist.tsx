@@ -3,11 +3,12 @@ import { GoalForm, NameList, type GoalValues } from './Goals'
 import { ConfirmButton } from '../../components/ConfirmButton'
 import { ErrorText } from '../../components/ErrorText'
 import { Skeleton } from '../../components/Skeleton'
-import { Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
+import { CalendarDays, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { CurrencyIcon } from '../../components/icons'
 import { api, useApi } from '../../lib/api'
 import { format, withConverted } from '../../lib/format'
-import { cumulativeTargets, delayMonths } from '../../lib/goals'
+import { cumulativeTargets, delayMonths, monthsUntil, wishFit } from '../../lib/goals'
+import { monthKey, monthLabel } from '../../lib/periods'
 import { card, muted } from '../../lib/styles'
 import type { Convert, Currency, Goal } from '../../lib/types'
 
@@ -27,7 +28,10 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   const goals = all.filter((g) => !g.wish)
-  const wishes = all.filter((g) => g.wish)
+  // planned ones first, by month, so each is paid after the ones planned before it; sort keeps the list order
+  const wishes = all
+    .filter((g) => g.wish)
+    .sort((a, b) => (a.plannedFor ?? '9999').localeCompare(b.plannedFor ?? '9999'))
   const cumulative = cumulativeTargets(goals, convert)
   const [now] = useState(Date.now)
   const [editing, setEditing] = useState<number>()
@@ -52,7 +56,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     act(() =>
       api(`/goals/${w.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false }),
+        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false, plannedFor: null }),
       }),
     )
   const remove = (w: Goal) => act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
@@ -99,6 +103,38 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
     )
   }
 
+  // whether a planned wish fits in its month: goals come first, then the wishes planned before it; undefined
+  // while rates or balances load
+  function fit(wish: Goal, index: number) {
+    const c = wish.currency
+    const saved = forGoalsIn(c)
+    const ahead = [...goals, ...wishes.slice(0, index)].map((g) => convert(g.target, g.currency, c))
+    if (saved === undefined || ahead.some((v) => v === undefined)) return undefined
+    const reserved = ahead.reduce<number>((sum, v) => sum + v!, 0)
+    const net = netIn(c) ?? 0
+    const { left, earliest } = wishFit(reserved, saved, net, wish.target, monthsUntil(wish.plannedFor!, new Date(now)))
+    const month = monthLabel(wish.plannedFor!)
+    const amount = (v: number) => withConverted(v, c, currency, convert)
+    if (left >= 0)
+      return (
+        <span className="font-medium text-emerald-600 tabular-nums dark:text-emerald-400">
+          Fits in {month} after your goals, with {amount(left)} to spare
+        </span>
+      )
+    const first = new Date(now)
+    first.setMonth(first.getMonth() + earliest, 1)
+    return (
+      <span className="text-amber-700 tabular-nums dark:text-amber-400">
+        Short by {amount(-left)} in {month} once your goals are covered ·{' '}
+        {earliest === Infinity
+          ? 'it does not fit while your savings stop growing'
+          : earliest === 0
+            ? 'it fits now'
+            : `the first month it fits is ${monthLabel(monthKey(first.toISOString()))}`}
+      </span>
+    )
+  }
+
   function cost(wish: Goal) {
     const net = netIn(wish.currency)
     if (net === undefined || net <= 0) return undefined
@@ -112,11 +148,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Wishlist</h2>
       <p className={muted}>
         Things you want but have not committed to. They take no savings; each shows what buying it today would cost your
-        goals.
+        goals, or, with a month picked, whether it fits then once your goals are covered.
       </p>
 
       <ul className="mt-4 flex flex-col gap-5">
-        {wishes.map((w) => {
+        {wishes.map((w, index) => {
           if (editing === w.id) {
             return (
               <li key={w.id}>
@@ -130,7 +166,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
               </li>
             )
           }
-          const effect = impact(w)
+          const effect = w.plannedFor ? fit(w, index) : impact(w)
           return (
             <li key={w.id}>
               <div className="flex items-center gap-2">
@@ -179,6 +215,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency }: WishlistProps
                   {days(w) === 0 ? 'Added today' : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
                 </span>
                 {cost(w) && <span>· {cost(w)}</span>}
+                {w.plannedFor && (
+                  <span className="flex items-center gap-1">
+                    · <CalendarDays /> {monthLabel(w.plannedFor)}
+                  </span>
+                )}
               </p>
             </li>
           )

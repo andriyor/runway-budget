@@ -11,8 +11,8 @@ const toDto = ({ targetCents, position: _position, addedAt, ...rest }: GoalRow):
   addedAt: addedAt.toISOString(),
 })
 
-// wish defaults to false when adding and stays as it is when editing
-type GoalBody = { name: string; target: number; currency: Currency; wish?: boolean }
+// wish defaults to false when adding and stays as it is when editing; so does plannedFor, which null clears
+type GoalBody = { name: string; target: number; currency: Currency; wish?: boolean; plannedFor?: string | null }
 const body = {
   type: 'object',
   required: ['name', 'target', 'currency'],
@@ -22,13 +22,15 @@ const body = {
     target: { type: 'number', exclusiveMinimum: 0 },
     currency: { type: 'string', enum: currencies },
     wish: { type: 'boolean' },
+    plannedFor: { type: ['string', 'null'], pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$' },
   },
 }
 const params = { type: 'object', properties: { id: { type: 'integer' } } }
-const toRow = ({ name, target, currency, wish }: GoalBody) => ({
+const toRow = ({ name, target, currency, wish, plannedFor }: GoalBody) => ({
   name,
   currency,
   wish,
+  plannedFor,
   targetCents: Math.round(target * 100),
 })
 
@@ -74,7 +76,7 @@ const goalsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // replaces a goal's name, target and currency, and its wish flag when given
+  // replaces a goal's name, target and currency, and its wish flag and planned month when given
   fastify.put<{ Params: { id: number }; Body: GoalBody }>(
     '/:id',
     { schema: { params, body } },

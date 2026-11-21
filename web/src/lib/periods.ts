@@ -20,6 +20,9 @@ const shortDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 const fullDay = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 const longDay = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
 
+// "2027-03" → "березень 2027 р."
+export const monthLabel = (month: string) => monthName.format(new Date(`${month}-01T00:00:00`))
+
 // ISO week key of a local date: "w:2026-45"
 const weekKey = (date: Date) => {
   const { year, week } = isoWeek(date)

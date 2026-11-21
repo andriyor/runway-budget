@@ -263,7 +263,7 @@ export function NameList({ names }: { names: string[] }) {
 const moveButton =
   'rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
 
-export type GoalValues = { name: string; target: number; currency: Currency; wish?: boolean }
+export type GoalValues = { name: string; target: number; currency: Currency; wish?: boolean; plannedFor?: string | null }
 
 type GoalFormProps = {
   // the goal being edited; without it the form adds one and clears itself after
@@ -280,16 +280,25 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
   const [name, setName] = useState(initial?.name ?? '')
   const [target, setTarget] = useState(initial ? String(initial.target) : '')
   const [currency, setCurrency] = useState<Currency>(initial?.currency ?? 'USD')
+  // a wish's month to buy it in, "2027-03"; '' for none
+  const [month, setMonth] = useState(initial?.plannedFor ?? '')
   const [error, setError] = useState('')
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     try {
-      await onSave({ name, target: Number(target), currency, ...(!initial && wish && { wish }) })
+      await onSave({
+        name,
+        target: Number(target),
+        currency,
+        ...(!initial && wish && { wish }),
+        ...(wish && { plannedFor: month || null }),
+      })
       setError('')
       if (!initial) {
         setName('')
         setTarget('')
+        setMonth('')
       }
     } catch (err) {
       setError((err as Error).message)
@@ -320,6 +329,16 @@ export function GoalForm({ initial, submitLabel, onSave, onCancel, wish }: GoalF
             onCurrency={setCurrency}
           />
         </div>
+        {wish && (
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            aria-label="Month to buy it in"
+            title="Month to buy it in (optional)"
+            className={`px-3 py-2 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
+          />
+        )}
         <button type="submit" className={button}>
           {submitLabel}
         </button>

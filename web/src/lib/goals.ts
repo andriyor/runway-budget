@@ -28,3 +28,18 @@ export function goalProgress(goals: Goal[], convert: Convert, forGoalsIn: (c: Cu
 // the cushion is not covered.
 export const delayMonths = (cumulative: number, saved: number, price: number, net: number) =>
   (Math.max(0, cumulative - saved + price) - Math.max(0, cumulative - saved)) / net
+
+// months from the current month to `month` ("2027-03"); 0 for this month or one already past
+export const monthsUntil = (month: string, now: Date) =>
+  Math.max(0, Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 - (now.getFullYear() * 12 + now.getMonth()))
+
+// Goals come first, so a planned wish is paid from what savings hold above every goal and the planned wishes
+// before it. `reserved` is that total, all in the wish's currency. left: what remains at its month after buying
+// it, negative when short; earliest: months from now when it is first affordable, Infinity when never.
+export function wishFit(reserved: number, saved: number, net: number, price: number, months: number) {
+  const need = reserved + price - saved
+  return {
+    left: net * months - need,
+    earliest: need <= 0 ? 0 : net > 0 ? Math.ceil(need / net) : Infinity,
+  }
+}

@@ -109,7 +109,16 @@ export type Budget = {
 export type Income = { name: string; amount: number; currency: Currency; keeps: boolean }
 
 // wish: a wished-for purchase, which savings do not fill; addedAt is an ISO timestamp
-export type Goal = { id: number; name: string; target: number; currency: Currency; wish: boolean; addedAt: string }
+// plannedFor: the month a wish is to be bought in, "2027-03", or null
+export type Goal = {
+  id: number
+  name: string
+  target: number
+  currency: Currency
+  wish: boolean
+  plannedFor: string | null
+  addedAt: string
+}
 
 // something owned that could be sold, like a car or a flat; value is an estimate, discount the percent
 // lost in a quick sale, and sellable false for things kept whatever happens, like the home you live in

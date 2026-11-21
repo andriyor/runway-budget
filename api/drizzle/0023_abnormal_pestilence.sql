@@ -1,0 +1,1 @@
+ALTER TABLE `goals` ADD `planned_for` text;
