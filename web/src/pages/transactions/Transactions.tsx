@@ -558,6 +558,15 @@ export function TransactionsPage() {
                     </li>
                   )}
                   <li className={`flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''}`}>
+                    {/* by date the day header carries the date, so the time leads the row */}
+                    {byDate && (
+                      <time
+                        dateTime={t.time}
+                        className="w-10 shrink-0 text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+                      >
+                        {timeOnly.format(new Date(t.time))}
+                      </time>
+                    )}
                     <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
@@ -715,7 +724,7 @@ export function TransactionsPage() {
                         )}
                         {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
                         <span className="truncate" title={t.mccDescription ?? undefined}>
-                          · {(byDate ? timeOnly : dateTime).format(new Date(t.time))} · MCC {t.mcc}
+                          · {!byDate && `${dateTime.format(new Date(t.time))} · `}MCC {t.mcc}
                         </span>
                       </p>
                     </div>
