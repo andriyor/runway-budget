@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ArrowUpDown, Scale, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowUpDown, TrendingDown, TrendingUp } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -273,9 +273,16 @@ export function MonthlySpending({
           <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat
               icon={
-                <span className="text-indigo-600 dark:text-indigo-400">
-                  <Scale />
-                </span>
+                // a piece of the chart's median line, so this tile is its legend
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  aria-hidden
+                  className="text-indigo-500 dark:text-indigo-400"
+                >
+                  <line x1="1" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="2" strokeDasharray="4 2" />
+                </svg>
               }
               label="Медіана за місяць"
               value={format(typical, currency)}
@@ -394,10 +401,13 @@ export function MonthlySpending({
             {/* the usual range: the middle half of the complete months */}
             {spread && spread.high > 0 && <ReferenceArea y1={spread.low} y2={spread.high} fillOpacity={0.1} />}
             {typical !== undefined && typical > 0 && (
+              // indigo and above the bars; its value is in the «Медіана за місяць» tile, whose icon is its legend
               <ReferenceLine
                 y={typical}
-                strokeDasharray="4 4"
-                label={{ value: `медіана ${wholeMoney(typical, currency)}`, position: 'insideTopRight', fontSize: 11 }}
+                stroke="var(--color-indigo-500)"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                zIndex={500}
               />
             )}
             <Tooltip
