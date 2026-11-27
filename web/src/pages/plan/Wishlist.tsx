@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GoalForm, NameList, type GoalValues } from './Goals'
 import { ConfirmButton } from '../../components/ConfirmButton'
 import { ErrorText } from '../../components/ErrorText'
+import { InfoTip } from '../../components/InfoTip'
 import { Skeleton } from '../../components/Skeleton'
 import { CalendarDays, Check, GripVertical, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { DragDropProvider, useDroppable } from '@dnd-kit/react'
@@ -26,6 +27,8 @@ type WishlistProps = {
   netIn: (c: Currency) => number | undefined
   // all incomes per month; undefined when there are none
   incomeIn: (c: Currency) => number | undefined
+  // income as needs, wants and savings in percent, for the 50/30/20 note; undefined without income
+  split?: IncomeSplit
   // the currency the plan is shown in; prices keep their own, with this beside them
   currency: Currency
   // to spot a wish's purchase; transactions are undefined while they load
@@ -41,6 +44,7 @@ export function Wishlist({
   convert,
   netIn,
   incomeIn,
+  split,
   currency,
   transactions,
   accounts,
@@ -238,7 +242,7 @@ export function Wishlist({
         goals; pick a month for each, or spread them out, and drag one by its handle to reorder it or move it to another
         month.
       </p>
-      <SaveShare share={saveShare} saved={savedFirst} left={surplus} currency={currency} />
+      <SaveShare share={saveShare} saved={savedFirst} left={surplus} split={split} currency={currency} />
 
       <DragDropProvider
         onDragStart={() => setDragged(saved)}
@@ -491,12 +495,14 @@ function SaveShare({
   share,
   saved,
   left,
+  split,
   currency,
 }: {
   share: number | null
   // that share of income a month, and the surplus left for wishes after it; left is undefined while loading
   saved: number
   left: number | undefined
+  split: IncomeSplit | undefined
   currency: Currency
 }) {
   const [draft, setDraft] = useState<string>()
@@ -514,33 +520,111 @@ function SaveShare({
       setError((err as Error).message)
     }
   }
+  // income as bar segments, in percent: needs and wants (or all spending without essential spending), then the
+  // surplus split into what is saved first and what is left for wishes
+  const savings = Math.max(0, split?.savings ?? 0)
+  const first = Math.min(share ?? 0, savings)
+  const segments = split
+    ? [
+        ...(split.needs !== undefined
+          ? [
+              { label: 'needs', value: split.needs, color: 'bg-zinc-400 dark:bg-zinc-500' },
+              { label: 'wants', value: split.wants!, color: 'bg-indigo-400 dark:bg-indigo-500' },
+            ]
+          : [{ label: 'spending', value: 100 - savings, color: 'bg-zinc-400 dark:bg-zinc-500' }]),
+        { label: 'saved first', value: first, color: 'bg-emerald-500' },
+        { label: 'left for wishes', value: savings - first, color: 'bg-amber-400' },
+      ].filter((g) => g.value > 0.5)
+    : []
+  const whole = segments.reduce((sum, g) => sum + g.value, 0)
+
   return (
-    <div className={`mt-3 text-sm ${muted}`}>
-      <label className="inline-flex flex-wrap items-center gap-2">
-        Save
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={100}
-          placeholder="0"
-          value={shown}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          className={`w-16 px-2 py-1 text-right text-zinc-900 tabular-nums dark:text-zinc-100 ${inputBox}`}
-        />
-        % of income first
+    <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <label className="inline-flex items-center gap-2 font-medium text-zinc-900 dark:text-zinc-100">
+          Save
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            placeholder="0"
+            value={shown}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            className={`w-16 px-2 py-1 text-right tabular-nums ${inputBox}`}
+          />
+          % of income first
+        </label>
         {share !== null && left !== undefined && (
-          <span className="tabular-nums">
-            ≈ {wholeMoney(saved, currency)} a month; wishes get the {wholeMoney(left, currency)} left of the surplus
+          <span className={`tabular-nums ${muted}`}>
+            <span className="font-medium text-emerald-700 dark:text-emerald-400">≈ {wholeMoney(saved, currency)}</span>{' '}
+            a month · wishes get{' '}
+            <span className="font-medium text-amber-700 dark:text-amber-400">{wholeMoney(left, currency)}</span>
           </span>
         )}
-      </label>
+      </div>
+
+      {segments.length > 0 && (
+        <>
+          {/* the plan's income as one bar; the ticks are where 50/30/20 puts its splits */}
+          <div className="relative mt-3">
+            <div
+              role="img"
+              aria-label={`Income: ${segments.map((g) => `${Math.round(g.value)}% ${g.label}`).join(', ')}`}
+              className="flex h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+            >
+              {segments.map((g) => (
+                <div key={g.label} className={g.color} style={{ width: `${(g.value / whole) * 100}%` }} />
+              ))}
+            </div>
+            {[50, 80].map((at) => (
+              <span
+                key={at}
+                aria-hidden
+                className="absolute -top-1 -bottom-1 w-px bg-zinc-900/40 dark:bg-white/50"
+                style={{ left: `${at}%` }}
+              />
+            ))}
+          </div>
+          <p className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums ${muted}`}>
+            {segments.map((g) => (
+              <span key={g.label} className="inline-flex items-center gap-1.5">
+                <span aria-hidden className={`size-2 rounded-full ${g.color}`} />
+                {g.label} {Math.round(g.value)}%
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden className="h-3 w-px bg-zinc-900/40 dark:bg-white/50" />
+              50/30/20 rule
+              <InfoTip label="About the 50/30/20 rule">
+                A rule of thumb for splitting income: 50% for needs (rent, utilities, groceries, transport, medicine),
+                30% for wants (cafes, shopping, travel, wishes) and 20% saved first. A starting point, not a law: where
+                essentials are dear, needs often run above half.
+              </InfoTip>
+            </span>
+          </p>
+        </>
+      )}
+
+      {/* general rules of thumb, the same 10–20% the Tips use, and where this plan stands; not advice */}
+      <p className={`mt-2 text-xs ${muted}`}>
+        Many guidelines suggest saving at least 10% of income, 20% by the rule.
+        {split &&
+          (savings > 0
+            ? ` Your plan saves ${Math.round(savings)}% today, so saving more than that leaves nothing for wishes.`
+            : ' Your plan spends all its income today, so nothing is left to save or for wishes.')}
+        {split && split.needs === undefined && ' Set essential spending in Runway to split needs from wants.'}
+      </p>
       <ErrorText>{error}</ErrorText>
     </div>
   )
 }
+
+// the plan's income as percent needs (essential spending), wants (the rest of spending) and savings (the surplus);
+// needs and wants are undefined without essential spending
+type IncomeSplit = { needs: number | undefined; wants: number | undefined; savings: number }
 
 const boughtDate = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 

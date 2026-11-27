@@ -42,6 +42,20 @@ export function Plan() {
   // the currency the plan is shown in: picked here and remembered, else the spending's
   const [picked, setPicked] = useState<Currency | undefined>(readPicked)
   const currency = picked ?? budget?.currency ?? 'UAH'
+
+  // the plan's income as needs, wants and savings, in percent, to set against the 50/30/20 rule; needs and wants
+  // need essential spending, savings is the surplus; undefined without income or while loading
+  const income = incomeIn(currency)
+  const spend = spendIn(currency)
+  const essential = minimalIn(currency)
+  const incomeSplit =
+    income && income > 0 && spend !== undefined
+      ? {
+          needs: essential === undefined ? undefined : (essential / income) * 100,
+          wants: essential === undefined ? undefined : ((spend - essential) / income) * 100,
+          savings: ((income - spend) / income) * 100,
+        }
+      : undefined
   function pick(c: Currency) {
     setPicked(c)
     try {
@@ -179,6 +193,7 @@ export function Plan() {
         convert={convert}
         netIn={netIn}
         incomeIn={incomeIn}
+        split={incomeSplit}
         currency={currency}
         transactions={transactions}
         accounts={accounts}
