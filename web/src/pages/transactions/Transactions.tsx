@@ -152,6 +152,10 @@ export function TransactionsPage() {
   const isKept = (t: Transaction) => kept?.id === t.id && kept.view === view
   const inSelection = (t: Transaction) =>
     t.category === category || leafById.get(t.category)?.parent.id === category || isKept(t)
+  // counts in spending: income, own-account moves and investments do not
+  const isSpending = (t: Transaction) => !!leafById.get(t.category)?.parent.spending
+  // money only moved, not earned or spent: own-account moves and investments, shown with a grey amount
+  const moved = (t: Transaction) => !isSpending(t) && t.category !== 'income'
   const selectionLabel = (id: string) => {
     const leaf = leafById.get(id)
     if (!leaf) return categories.find((c) => c.id === id)?.label
@@ -306,8 +310,7 @@ export function TransactionsPage() {
   // what a day spent across the list shown: spending categories, refunds netted, cancellations left out
   const spentByDay = new Map<string, number>()
   for (const t of listed ?? [])
-    if (!t.cancelled && leafById.get(t.category)?.parent.spending)
-      spentByDay.set(dayKey(t.time), (spentByDay.get(dayKey(t.time)) ?? 0) - t.amount)
+    if (!t.cancelled && isSpending(t)) spentByDay.set(dayKey(t.time), (spentByDay.get(dayKey(t.time)) ?? 0) - t.amount)
   const daySpent = (time: string) => spentByDay.get(dayKey(time)) ?? 0
   const dayName = (time: string) => {
     const day = dayKey(time)
@@ -566,6 +569,10 @@ export function TransactionsPage() {
               <span className="inline-flex items-center gap-1">
                 <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden /> переказ між своїми рахунками
               </span>
+              <span>
+                <span className="font-semibold text-zinc-400 dark:text-zinc-500">сіра сума</span> — не враховано у
+                витратах
+              </span>
             </p>
             <ul>
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
@@ -737,11 +744,7 @@ export function TransactionsPage() {
                           )}
                         {/* the wish bought in this purchase, as a chip; spending without one offers the open wishes
                           on hover, like the note */}
-                        {(t.wish ||
-                          (openWishes.length > 0 &&
-                            t.amount < 0 &&
-                            !t.cancelled &&
-                            leafById.get(t.category)?.parent.spending)) && (
+                        {(t.wish || (openWishes.length > 0 && t.amount < 0 && !t.cancelled && isSpending(t))) && (
                           <ChipSelect
                             label={`Wish bought in ${t.description}`}
                             title={t.wish ? 'Змінити бажання' : 'Позначити, яке бажання з вішліста це купівля'}
@@ -795,8 +798,17 @@ export function TransactionsPage() {
                         {!byDate && <span className="truncate">· {dateTime.format(new Date(t.time))}</span>}
                       </p>
                     </div>
+                    {/* grey for money only moved (own accounts, investments), which the day's total leaves out;
+                        income and refunds stay green */}
                     <span
-                      className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}
+                      title={moved(t) ? 'Не враховано у витратах' : undefined}
+                      className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${
+                        moved(t)
+                          ? 'text-zinc-400 dark:text-zinc-500'
+                          : t.amount < 0
+                            ? 'text-zinc-900 dark:text-zinc-100'
+                            : 'text-emerald-700 dark:text-emerald-400'
+                      }`}
                     >
                       {format(t.amount, account.currency)}
                     </span>
