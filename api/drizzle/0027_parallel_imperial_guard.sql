@@ -1,0 +1,1 @@
+ALTER TABLE `budget` ADD `wish_share` integer;

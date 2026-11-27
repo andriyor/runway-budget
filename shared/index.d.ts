@@ -108,6 +108,8 @@ export type Budget = {
   minimalSpend: number | null
   minimalSpendCurrency: Currency | null
   targetMonths: number | null
+  // percent of income to save before wishes: the wishlist gets the surplus minus it; null saves nothing first
+  saveShare: number | null
 }
 
 // keeps: still comes in the "without income" estimates, like a pension or rent

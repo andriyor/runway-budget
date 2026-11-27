@@ -12,6 +12,7 @@ test('budget is empty, then set and overwritten', async (t) => {
     minimalSpend: null,
     minimalSpendCurrency: null,
     targetMonths: null,
+    saveShare: null,
   }
 
   assert.equal((await app.inject({ url: '/api/budget' })).json(), null)
@@ -41,7 +42,7 @@ test('budget is empty, then set and overwritten', async (t) => {
     minimalSpendCurrency: 'UAH',
     targetMonths: 12,
   }
-  assert.deepEqual((await put(fullBody)).json(), fullBody)
+  assert.deepEqual((await put(fullBody)).json(), { ...fullBody, saveShare: null })
   // an income saved without the flag does not keep coming, like those stored before it existed
   const withoutFlag = await put({
     monthlySpend: 1,
@@ -72,4 +73,18 @@ test('budget is empty, then set and overwritten', async (t) => {
   )
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', targetMonths: 0 })).statusCode, 400)
   assert.equal((await put({ monthlySpend: 1, currency: 'UAH', targetMonths: 1.5 })).statusCode, 400)
+})
+
+test('the save share is set on its own and kept by a budget PUT', async (t) => {
+  const app = await build(t)
+  const share = (saveShare: unknown) => app.inject({ method: 'PATCH', url: '/api/budget', payload: { saveShare } })
+
+  assert.equal((await share(30)).statusCode, 404)
+  await app.inject({ method: 'PUT', url: '/api/budget', payload: { monthlySpend: 1000, currency: 'UAH' } })
+  assert.equal((await share(30)).json().saveShare, 30)
+  // saving the rest of the budget leaves it
+  await app.inject({ method: 'PUT', url: '/api/budget', payload: { monthlySpend: 2000, currency: 'UAH' } })
+  assert.equal((await app.inject({ url: '/api/budget' })).json().saveShare, 30)
+  assert.equal((await share(null)).json().saveShare, null)
+  for (const bad of [0, 101, 12.5]) assert.equal((await share(bad)).statusCode, 400)
 })

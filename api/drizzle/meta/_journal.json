@@ -190,6 +190,20 @@
       "when": 1795811978644,
       "tag": "0026_goals_bought_set_null",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1795814149648,
+      "tag": "0027_parallel_imperial_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1795814426475,
+      "tag": "0028_rename_wish_share_to_save_share",
+      "breakpoints": true
     }
   ]
 }

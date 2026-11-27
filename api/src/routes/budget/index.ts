@@ -34,6 +34,7 @@ const toDto = (row?: typeof budget.$inferSelect): Budget | null =>
         minimalSpend: fromCents(row.minimalSpendCents),
         minimalSpendCurrency: row.minimalSpendCurrency,
         targetMonths: row.targetMonths,
+        saveShare: row.saveShare,
       }
     : null
 
@@ -112,6 +113,26 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
         .values({ id: 1, ...values })
         .onConflictDoUpdate({ target: budget.id, set: values })
         .returning()
+      return toDto(row)
+    },
+  )
+
+  // sets only the percent of income to save before wishes, 1–100; null saves nothing first
+  fastify.patch<{ Body: { saveShare: number | null } }>(
+    '/',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['saveShare'],
+          additionalProperties: false,
+          properties: { saveShare: { type: ['integer', 'null'], minimum: 1, maximum: 100 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const [row] = await fastify.db.update(budget).set({ saveShare: request.body.saveShare }).returning()
+      if (!row) return reply.notFound('Set your budget first')
       return toDto(row)
     },
   )

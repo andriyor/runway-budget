@@ -15,8 +15,8 @@ import { format, wholeMoney, withConverted } from '../../lib/format'
 import { cumulativeTargets, delayMonths, findPurchase, spreadWishes } from '../../lib/goals'
 import { parentsById } from '../../lib/categories'
 import { monthKey, monthLabel } from '../../lib/periods'
-import { card, linkButton, muted } from '../../lib/styles'
-import type { Account, BoughtWish, Category, Convert, Currency, Goal, Transaction } from '../../lib/types'
+import { card, inputBox, linkButton, muted } from '../../lib/styles'
+import type { Account, BoughtWish, Budget, Category, Convert, Currency, Goal, Transaction } from '../../lib/types'
 
 type WishlistProps = {
   // available savings minus the months-without-income cushion
@@ -24,6 +24,8 @@ type WishlistProps = {
   convert: Convert
   // income minus spending per month; undefined when spending is not set
   netIn: (c: Currency) => number | undefined
+  // all incomes per month; undefined when there are none
+  incomeIn: (c: Currency) => number | undefined
   // the currency the plan is shown in; prices keep their own, with this beside them
   currency: Currency
   // to spot a wish's purchase; transactions are undefined while they load
@@ -34,7 +36,16 @@ type WishlistProps = {
 
 // Smaller purchases you want, bought from the monthly surplus ahead of goals: each shows what buying it delays, so
 // the cost is weighed in goal time, and a month picked for each spreads them so no month takes more than it saves
-export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, accounts, categories }: WishlistProps) {
+export function Wishlist({
+  forGoalsIn,
+  convert,
+  netIn,
+  incomeIn,
+  currency,
+  transactions,
+  accounts,
+  categories,
+}: WishlistProps) {
   const query = useApi<Goal[]>('/goals')
   const all = query.data ?? []
   const goals = all.filter((g) => !g.wish)
@@ -177,7 +188,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     ...bought.map(boughtMonth).filter((m) => m >= thisMonth),
   ])
   const monthTotals = new Map([...months].map((m) => [m, monthTotal(m)]))
-  const surplus = netIn(currency)
+  // what wishes may take each month: the monthly surplus less the share of income saved first
+  const saveShare = useApi<Budget | null>('/budget').data?.saveShare ?? null
+  const fullSurplus = netIn(currency)
+  const savedFirst = saveShare === null ? 0 : ((incomeIn(currency) ?? 0) * saveShare) / 100
+  const surplus = fullSurplus === undefined ? undefined : Math.max(0, fullSurplus - savedFirst)
 
   // gives every unplanned wish a month, so each month's wishes stay within the surplus
   const unplanned = wishes.filter((w) => !w.plannedFor)
@@ -223,6 +238,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
         goals; pick a month for each, or spread them out, and drag one by its handle to reorder it or move it to another
         month.
       </p>
+      <SaveShare share={saveShare} saved={savedFirst} left={surplus} currency={currency} />
 
       <DragDropProvider
         onDragStart={() => setDragged(saved)}
@@ -242,6 +258,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
               month={month}
               sum={total([...items.map(price), ...boughtIn(month).map(paid)])}
               surplus={surplus}
+              saving={saveShare !== null}
               currency={currency}
             />
             <ul
@@ -394,14 +411,26 @@ function MonthHeader({
   month,
   sum,
   surplus,
+  saving,
   currency,
 }: {
   month: string | null
   sum: number | undefined
+  // what wishes may take a month: the monthly surplus, less what is saved first when saving
   surplus: number | undefined
+  saving: boolean
   currency: Currency
 }) {
-  const fit = month && sum !== undefined && surplus !== undefined && surplus > 0 ? sum / surplus : undefined
+  const of = saving ? 'the surplus left after saving' : 'your monthly surplus'
+  // nothing left for wishes makes any planned one over
+  const fit =
+    month && sum !== undefined && surplus !== undefined && (surplus > 0 || saving)
+      ? surplus > 0
+        ? sum / surplus
+        : sum > 0
+          ? Infinity
+          : 0
+      : undefined
   const over = fit !== undefined && fit > 1
   return (
     <>
@@ -433,7 +462,7 @@ function MonthHeader({
         <>
           <div
             role="progressbar"
-            aria-label={`${monthLabel(month!)} against the monthly surplus`}
+            aria-label={`${monthLabel(month!)} against ${of}`}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(Math.min(fit, 1) * 100)}
@@ -446,13 +475,70 @@ function MonthHeader({
           </div>
           <p className={`mt-1 text-xs tabular-nums ${muted}`}>
             {over
-              ? `${wholeMoney(sum! - surplus!, currency)} over your monthly surplus`
-              : `${wholeMoney(surplus! - sum!, currency)} of your monthly surplus left`}
+              ? `${wholeMoney(sum! - surplus!, currency)} over ${of}`
+              : `${wholeMoney(surplus! - sum!, currency)} of ${of} left`}
           </p>
         </>
       )}
       {!month && <p className={`mt-1 text-xs ${muted}`}>Spread out gives each a month, the top one first</p>}
     </>
+  )
+}
+
+// the percent of income to save before wishes ("pay yourself first"): the wishlist gets only the surplus left
+// after it. Empty saves nothing first
+function SaveShare({
+  share,
+  saved,
+  left,
+  currency,
+}: {
+  share: number | null
+  // that share of income a month, and the surplus left for wishes after it; left is undefined while loading
+  saved: number
+  left: number | undefined
+  currency: Currency
+}) {
+  const [draft, setDraft] = useState<string>()
+  const [error, setError] = useState('')
+  const shown = draft ?? (share === null ? '' : String(share))
+  async function save() {
+    setDraft(undefined)
+    const value = shown.trim() === '' ? null : Math.round(Number(shown))
+    if (value === share) return
+    if (value !== null && !(value >= 1 && value <= 100)) return setError('Pick 1–100%, or leave it empty')
+    try {
+      await api('/budget', { method: 'PATCH', body: JSON.stringify({ saveShare: value }) })
+      setError('')
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+  return (
+    <div className={`mt-3 text-sm ${muted}`}>
+      <label className="inline-flex flex-wrap items-center gap-2">
+        Save
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={100}
+          placeholder="0"
+          value={shown}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          className={`w-16 px-2 py-1 text-right text-zinc-900 tabular-nums dark:text-zinc-100 ${inputBox}`}
+        />
+        % of income first
+        {share !== null && left !== undefined && (
+          <span className="tabular-nums">
+            ≈ {wholeMoney(saved, currency)} a month; wishes get the {wholeMoney(left, currency)} left of the surplus
+          </span>
+        )}
+      </label>
+      <ErrorText>{error}</ErrorText>
+    </div>
   )
 }
 

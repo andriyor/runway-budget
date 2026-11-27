@@ -114,6 +114,9 @@ export const budget = sqliteTable('budget', {
   minimalSpendCurrency: text('minimal_spend_currency', { enum: currencies }),
   // optional months to live without salary; drives the max monthly spend
   targetMonths: integer('target_months'),
+  // percent of income to save before wishes: the wishlist gets the surplus minus it; null saves nothing first.
+  // Set on its own (PATCH), so PUT keeps it
+  saveShare: integer('save_share'),
 })
 
 // things owned that could be sold, like a car or a flat: counted in net worth, never in savings

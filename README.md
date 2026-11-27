@@ -159,7 +159,9 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   the month it was bought in, with what was paid against the planned price, and that month's total counts it;
   wishes bought in earlier months are listed under **Bought earlier**, and **Undo** puts one back. A purchase
   can also be marked as a wish's from Transactions. Each month
-  card carries the month's number. Below the list, the total of all wishes and how far buying them all pushes
+  card carries the month's number. **Save N% of income first** keeps that share of income out of the
+  wishlist ("pay yourself first"): month cards and spreading then measure wishes against the surplus left
+  after it, while goal dates still use the whole surplus. Below the list, the total of all wishes and how far buying them all pushes
   back each goal.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
   under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
@@ -388,6 +390,7 @@ erDiagram
         integer minimal_spend_cents
         text minimal_spend_currency
         integer target_months
+        integer save_share
     }
     category_budgets {
         text category PK "not null"
@@ -462,8 +465,9 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 | `PUT`    | `/accounts/order`                                      | Reorder: `{ ids }` with every account id in order                                                                                                                                                                                                                                                                                                   |
 | `PATCH`  | `/accounts/:id`                                        | Update any of `name`, `currency`, `balance`, `kind`                                                                                                                                                                                                                                                                                                 |
 | `DELETE` | `/accounts/:id`                                        | Delete account                                                                                                                                                                                                                                                                                                                                      |
-| `GET`    | `/budget`                                              | Monthly spend, incomes and reserve, or `null`                                                                                                                                                                                                                                                                                                       |
+| `GET`    | `/budget`                                              | Monthly spend, incomes, reserve and `saveShare`, or `null`                                                                                                                                                                                                                                                                                          |
 | `PUT`    | `/budget`                                              | Set `{ monthlySpend, currency, incomes?: [{ name, amount, currency, keeps }], reserve?, reserveCurrency?, minimalSpend?, minimalSpendCurrency?, targetMonths? }`                                                                                                                                                                                    |
+| `PATCH`  | `/budget`                                              | Set only `{ saveShare }`, the percent of income saved before wishes (1–100, `null` for none); `PUT` keeps it                                                                                                                                                                                                                                        |
 | `GET`    | `/category-budgets`                                    | Monthly caps per category                                                                                                                                                                                                                                                                                                                           |
 | `PUT`    | `/category-budgets/:category`                          | Set or replace a top-level spending category's cap `{ amount, currency }`                                                                                                                                                                                                                                                                           |
 | `DELETE` | `/category-budgets/:category`                          | Remove a cap                                                                                                                                                                                                                                                                                                                                        |
@@ -499,7 +503,8 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 - **Goal ETA** = (emergency fund + the targets of this goal and every goal above it − available savings)
   ÷ monthly surplus. Savings and the surplus fill the fund first, then goals in order.
 - **Wish delay** = how much further each goal ends up once the price leaves savings, ÷ monthly surplus.
-- **Wish month** fits when the prices of the wishes planned for it add up to no more than the monthly surplus.
+- **Wish month** fits when the prices of the wishes planned for it, and what the ones bought in it cost, add up
+  to no more than the monthly surplus, less the share of income saved first when one is set.
 
 Estimates assume flat spending and income, and ignore interest and inflation.
 

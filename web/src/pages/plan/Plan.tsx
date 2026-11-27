@@ -178,6 +178,7 @@ export function Plan() {
         forGoalsIn={forGoalsIn}
         convert={convert}
         netIn={netIn}
+        incomeIn={incomeIn}
         currency={currency}
         transactions={transactions}
         accounts={accounts}
