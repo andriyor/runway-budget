@@ -684,11 +684,28 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 
 - [x] Historical NBU rates, so the balance chart and cash flow show currency gains and losses
 - [x] Inflation: real (inflation-adjusted) spending history and growing spending in runway and goal estimates
-- [ ] Investments: track positions and value, count them in net worth, let goals assume a return
-- [ ] Debts and loans: liabilities with interest, net worth as assets − liabilities
+- [ ] Investments: track positions (units) and their value over time, count them in net worth, let goals
+      assume a return
+- [ ] Debts and loans: liabilities with interest, a payment schedule split into principal and interest,
+      credit card bills, net worth as assets − liabilities
+- [ ] Shared expenses: split a payment with other people, track who owes whom and record settling up, so
+      only your share counts as spending
 - [x] Emergency fund target: N months of essential spending (3–6 is the usual rule) with a status
 - [x] Category budgets: a monthly cap per category and progress against it
 - [ ] Taxes: set aside a ФОП's single tax and ЄСВ from income
+
+### Missing features
+
+Gaps next to [Securo](https://github.com/securo-finance/securo), a larger self-hosted ledger, most useful first:
+
+- [ ] Login: one password (or access only through a VPN), since anyone who reaches the port can read and
+      change everything today
+- [ ] File import (CSV first, then OFX/QIF/CAMT), so accounts without sync get a transaction history
+- [ ] Text search over transactions: description, note and amount
+- [ ] Rules with conditions: description, amount range or account → category, essential flag or note
+- [ ] Planned payments on dates (rent on the 5th, yearly subscriptions) and the balance projected forward
+- [ ] CSV export and scheduled backups of `data.db`
+- [ ] Attach a receipt (photo or PDF) to a transaction
 
 ### Tech debt
 
@@ -700,6 +717,8 @@ Deliberate shortcuts, each fine at today's size, with what would make it worth f
       the daily rate history in the API.
 - [ ] **Spending per year returns unused years.** Rows keep amounts for years outside `years`; the
       table ignores them.
+- [ ] **Transfers link same-currency accounts only** (`api/src/routes/transactions`). No conversion is
+      stored with the mirrored row; add the rate on the day if a transfer between currencies is needed.
 - [ ] **Monobank statements are not paged** (`api/src/mono.ts`). A request caps at 500 items; page by
       `to` if a month ever exceeds that.
 - [ ] **Rate history and CPI are cached in memory** (`api/src/routes/rates`, `api/src/routes/inflation`)
