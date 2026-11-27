@@ -101,7 +101,15 @@ All accounts together, in Runway's currency.
 - the filter card: the account with its balance and Sync on top, the period and «Усі витрати | Необхідні»
   under it, and the category and merchant picked in the charts as removable chips; on desktop it stays
   at the top while the page scrolls;
+- the list grouped by day when sorted by date: each day opens with «Сьогодні», «Вчора» or its weekday and
+  date and what it spent, and its rows hang on a timeline by time (a dot per transaction, green for money
+  coming in); sorted by amount the rows keep their date. Each row shows its category, essential as a ● / ○
+  dot (explained in a legend above the list) and a note, added with «+ нотатка» on hover;
 - sorting by date or amount and a note on any transaction.
+- **Transfers to an account without sync**: a card transfer, ATM withdrawal, incoming transfer or
+  investment can be linked to a cash or other manual account in the same currency («⇄ переказ»). That
+  account gets the opposite entry and its balance moves with it, so its history follows; both sides
+  become «Між своїми рахунками». The link shows as a «⇄ на Готівка» chip and can be moved or undone.
 - opens on the latest month with transactions, with the chart showing its year; «Усе» in the period picker shows everything.
 - the account picker lists only accounts with transactions (bank-synced or manually adjusted).
 
@@ -143,9 +151,12 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   first month whose wishes still fit in the monthly surplus, top one first, and each month shows its
   total against the surplus. Wishes sit in a card per month with its total against the surplus; drag one by
   its handle to reorder it or move it to another month. Give a wish a spending category and it watches for the purchase: spending in that category after it was added,
-  within 20% of its price, shows as "Looks bought" with **Bought it** to remove the wish or **Not it** to look
-  only at later transactions. Below the list, the total of all wishes and how far buying them all pushes back
-  each goal.
+  within 20% of its price, shows as "Looks bought" with **Bought it** to keep it as bought with that purchase or
+  **Not it** to look only at later transactions. A bought wish leaves the plan and sits ticked in the card of
+  the month it was bought in, with what was paid against the planned price, and that month's total counts it;
+  wishes bought in earlier months are listed under **Bought earlier**, and **Undo** puts one back. Each month
+  card carries the month's number. Below the list, the total of all wishes and how far buying them all pushes
+  back each goal.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
   under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
   that got more expensive, and what inflation takes from hryvnia savings. Fixed rules in the browser, never
@@ -160,7 +171,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   its own line (the timeline's date over its months, a goal's, wish's or planned expense's amount under it).
 - **Categories**: transactions are sorted into categories and subcategories automatically from their
   MCC. Correct one transaction or every transaction from a merchant, and mark transfers as income,
-  moves between your own accounts or investments so they do not count as spending.
+  moves between your own accounts or investments so they do not count as spending; a move to an account
+  without sync can be linked to it (see Transactions).
   The **Rules** page (linked from Transactions) lists every merchant and single-transaction override to
   change or reset.
 - **About**: what the app is for, and every term on its pages (runway, surplus, emergency fund, usual
@@ -386,6 +398,10 @@ erDiagram
         integer position "not null, default: 0"
         integer wish "not null, default: 0"
         text planned_for
+        text category
+        integer match_after
+        integer bought_at
+        integer bought_transaction_id FK
         integer added_at "not null, default: `0`"
     }
     merchant_categories {
@@ -418,6 +434,7 @@ erDiagram
         text note
         integer essential
     }
+transactions ||--o{ goals : "goals_bought_transaction_id_transactions_id_fk"
 accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 ```
 
@@ -428,12 +445,13 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 | Method   | Path                                                   | What                                                                                                                                                                                                                                                                                                                                                |
 | -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/accounts`                                            | List accounts, each with its `transactionCount`                                                                                                                                                                                                                                                                                                     |
-| `GET`    | `/accounts/:id/transactions`                           | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note` and `cancelled`                                                                                                                                                                               |
+| `GET`    | `/accounts/:id/transactions`                           | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note`, `cancelled` and `transferAccountId`                                                                                                                                                          |
 | `GET`    | `/categories`                                          | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }`                                                                                                                                                                                                                                                           |
 | `GET`    | `/categories/rules`                                    | Hand-set overrides: `merchants: [{ merchant, description, category, essential, transactionCount }]` and single `transactions: [{ id, accountId, description, time, amount, currency, category, essential }]`; `null` where left automatic                                                                                                           |
 | `PUT`    | `/categories/merchants`                                | Set a merchant's category `{ description, category }`; `category: null` resets it                                                                                                                                                                                                                                                                   |
 | `PUT`    | `/categories/transactions/:id`                         | Set one transaction's category `{ category }`; `null` resets it                                                                                                                                                                                                                                                                                     |
 | `PATCH`  | `/transactions/:id`                                    | Set a transaction's `{ note?, essential? }`; empty note or `null` clears                                                                                                                                                                                                                                                                            |
+| `PUT`    | `/transactions/:id/transfer`                           | Link a transaction to an account without sync in its currency `{ accountId }`: that account gets the opposite entry (`externalId` `transfer:<id>`) and its balance moves; `null` unlinks and undoes both                                                                                                                                            |
 | `PUT`    | `/categories/merchants/essential`                      | Mark a merchant essential `{ description, essential }`; `null` resets it                                                                                                                                                                                                                                                                            |
 | `POST`   | `/accounts/mono/sync`                                  | Import 31 days from Monobank ending at `?to=` (unix seconds, default now)                                                                                                                                                                                                                                                                           |
 | `POST`   | `/accounts`                                            | Create account `{ name, currency, balance, kind? }` (`bank` default or `cash`)                                                                                                                                                                                                                                                                      |
@@ -445,11 +463,13 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 | `GET`    | `/category-budgets`                                    | Monthly caps per category                                                                                                                                                                                                                                                                                                                           |
 | `PUT`    | `/category-budgets/:category`                          | Set or replace a top-level spending category's cap `{ amount, currency }`                                                                                                                                                                                                                                                                           |
 | `DELETE` | `/category-budgets/:category`                          | Remove a cap                                                                                                                                                                                                                                                                                                                                        |
-| `GET`    | `/goals`                                               | List goals and wishes in priority order, each with `wish`, `plannedFor`, `category`, `matchAfter` and `addedAt`                                                                                                                                                                                                                                     |
+| `GET`    | `/goals`                                               | List goals and the wishes not bought yet in priority order, each with `wish`, `plannedFor`, `category`, `matchAfter` and `addedAt`                                                                                                                                                                                                                  |
 | `POST`   | `/goals`                                               | Create a goal, or a wish with `wish: true`, last in order `{ name, target, currency, wish?, plannedFor?, category? }`                                                                                                                                                                                                                               |
-| `PUT`    | `/goals/order`                                         | Reorder: `{ ids }` with every goal and wish id in order                                                                                                                                                                                                                                                                                             |
+| `PUT`    | `/goals/order`                                         | Reorder: `{ ids }` with every goal and unbought wish id in order                                                                                                                                                                                                                                                                                    |
 | `PUT`    | `/goals/:id`                                           | Replace a goal's `{ name, target, currency, wish?, plannedFor?, category?, matchAfter? }`; the last four are kept when left out. `plannedFor` is a month (`"2027-03"`), `category` a top-level spending category, `matchAfter` the time up to which transactions are not the wish's purchase; `null` clears each, `wish: false` makes a wish a goal |
 | `DELETE` | `/goals/:id`                                           | Delete a goal or wish                                                                                                                                                                                                                                                                                                                               |
+| `GET`    | `/goals/bought`                                        | Bought wishes, newest first: `{ id, name, target, currency, boughtAt, purchase }`, `purchase` the transaction `{ id, description, time, amount, currency }` or `null`                                                                                                                                                                               |
+| `PUT`    | `/goals/:id/bought`                                    | Mark a wish bought `{ bought: true, transactionId? }`, taking it out of the plan; `{ bought: false }` puts it back on the list                                                                                                                                                                                                                      |
 | `GET`    | `/rates`                                               | NBU rates as UAH per unit, cached for an hour                                                                                                                                                                                                                                                                                                       |
 | `GET`    | `/rates/history?from=YYYY-MM-DD`                       | NBU rates for every day from `from` to today, cached for 12 hours                                                                                                                                                                                                                                                                                   |
 | `GET`    | `/inflation?from=YYYY-MM`                              | Ukraine's CPI, % change from the previous month, per published month (via the NBU), cached for a day                                                                                                                                                                                                                                                |
@@ -512,6 +532,15 @@ Estimates assume flat spending and income, and ignore interest and inflation.
   Rozetka) without moving the merchant. `merchant_categories` keys on the lowercased description with the
   `Скасування. ` prefix stripped, so one correction covers every purchase and refund from that
   merchant.
+- **A transfer to an account without sync is a mirrored row.** Linking adds the opposite transaction to
+  the other account with `externalId` `transfer:<source id>` and moves its stored balance, so its balance
+  history, transaction list and summaries need nothing new; the source's link is read back from that
+  row. Unlinking or relinking deletes the row and reverses the balance. Only same-currency accounts, as
+  there is no conversion; the mirrored side is changed from the source.
+- **Bought wishes stay in `goals`.** `bought_at` and `bought_transaction_id` mark one bought; `/goals`
+  leaves them out, so the plan, timeline, budgets and reorder never see them, and `/goals/bought` joins
+  the purchase. Deleting that transaction sets the link to null (migration 0026 rebuilt the table for
+  it, since SQLite's `ADD COLUMN` dropped the `ON DELETE SET NULL`).
 - **Spending is net of refunds.** The summaries sum each category's or merchant's amounts, so a
   refund lowers what it belongs to. `Надходження`, `Між своїми рахунками` and `Інвестиції` are not
   spending and stay out of every summary and chart.
