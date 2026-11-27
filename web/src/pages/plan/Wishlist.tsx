@@ -3,7 +3,7 @@ import { GoalForm, NameList, type GoalValues } from './Goals'
 import { ConfirmButton } from '../../components/ConfirmButton'
 import { ErrorText } from '../../components/ErrorText'
 import { Skeleton } from '../../components/Skeleton'
-import { CalendarDays, GripVertical, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
+import { CalendarDays, Check, GripVertical, Hourglass, Pencil, Target, Trash2 } from 'lucide-react'
 import { DragDropProvider, useDroppable } from '@dnd-kit/react'
 import { useSortable } from '@dnd-kit/react/sortable'
 import { move } from '@dnd-kit/helpers'
@@ -44,6 +44,15 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     .sort((a, b) => (a.plannedFor ?? '9999').localeCompare(b.plannedFor ?? '9999'))
   const cumulative = cumulativeTargets(goals, convert)
   const [now] = useState(Date.now)
+  // bought wishes sit in the card of the month they were bought in, from this month on; earlier ones are
+  // listed under "Bought earlier"
+  const bought = useApi<BoughtWish[]>('/goals/bought').data ?? []
+  const thisMonth = monthKey(new Date(now).toISOString())
+  const boughtMonth = (b: BoughtWish) => monthKey(b.purchase?.time ?? b.boughtAt)
+  const boughtIn = (month: string | null) => (month ? bought.filter((b) => boughtMonth(b) === month) : [])
+  // what it took from that month's surplus: the purchase, or the planned price when bought without one
+  const paid = (b: BoughtWish) =>
+    b.purchase ? convert(-b.purchase.amount, b.purchase.currency, currency) : convert(b.target, b.currency, currency)
   const [editing, setEditing] = useState<number>()
   const [saveError, setError] = useState('')
   const error = saveError || query.error?.message || ''
@@ -170,11 +179,19 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     const sum = monthTotals.has(w.plannedFor) ? monthTotals.get(w.plannedFor) : 0
     monthTotals.set(w.plannedFor, sum === undefined || price === undefined ? undefined : sum + price)
   }
+  for (const b of bought) {
+    const month = boughtMonth(b)
+    if (month < thisMonth) continue
+    const price = paid(b)
+    const sum = monthTotals.has(month) ? monthTotals.get(month) : 0
+    monthTotals.set(month, sum === undefined || price === undefined ? undefined : sum + price)
+  }
   const surplus = netIn(currency)
 
-  // a group's heading: its month and what its wishes add up to, a planned month also against the monthly surplus
+  // a group's heading: its month and what its wishes add up to (what the bought ones cost, the rest at their
+  // price), a planned month also against the monthly surplus
   function groupHeader(month: string | null, items: Goal[]) {
-    const prices = items.map((w) => convert(w.target, w.currency, currency))
+    const prices = [...items.map((w) => convert(w.target, w.currency, currency)), ...boughtIn(month).map(paid)]
     const sum = prices.some((p) => p === undefined) ? undefined : (prices as number[]).reduce((s, p) => s + p, 0)
     const fit = month && sum !== undefined && surplus !== undefined && surplus > 0 ? sum / surplus : undefined
     const over = fit !== undefined && fit > 1
@@ -249,13 +266,17 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
   // wish ids by month (noMonth for none), months in the shown order; while a drag runs, where it has put them so far
   const saved: Record<string, number[]> = {}
   for (const w of wishes) (saved[w.plannedFor ?? noMonth] ??= []).push(w.id)
+  for (const b of bought) if (boughtMonth(b) >= thisMonth) saved[boughtMonth(b)] ??= []
   const [dragged, setDragged] = useState<Record<string, number[]>>()
   const byId = new Map(wishes.map((w) => [w.id, w]))
-  const groups = Object.entries(dragged ?? saved).map(([key, ids]) => ({
-    key,
-    month: key === noMonth ? null : key,
-    items: ids.map((id) => byId.get(id)!).filter(Boolean),
-  }))
+  const groups = Object.entries(dragged ?? saved)
+    // months in order, no month last
+    .sort(([a], [b]) => (a === noMonth ? 1 : b === noMonth ? -1 : a.localeCompare(b)))
+    .map(([key, ids]) => ({
+      key,
+      month: key === noMonth ? null : key,
+      items: ids.map((id) => byId.get(id)!).filter(Boolean),
+    }))
 
   const days = (w: Goal) => Math.floor((now - Date.parse(w.addedAt)) / 864e5)
 
@@ -287,7 +308,9 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
         {groups.map(({ key, month, items }) => (
           <WishGroup key={key} id={key}>
             {groupHeader(month, items)}
-            <ul className="mt-4 flex flex-col gap-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+            <ul
+              className={`flex flex-col gap-5 ${items.length ? 'mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800' : ''}`}
+            >
               {items.map((w, i) => {
                 const group = key
                 if (editing === w.id) {
@@ -394,6 +417,13 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
                 )
               })}
             </ul>
+            {boughtIn(month).length > 0 && (
+              <ul className="mt-4 divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                {boughtIn(month).map((b) => (
+                  <BoughtRow key={b.id} wish={b} />
+                ))}
+              </ul>
+            )}
           </WishGroup>
         ))}
       </DragDropProvider>
@@ -419,78 +449,85 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <div className="mt-4">
         <GoalForm wish submitLabel="Add wish" onSave={add} />
       </div>
-      <BoughtHistory />
+      <BoughtHistory bought={bought.filter((b) => boughtMonth(b) < thisMonth)} />
     </section>
   )
 }
 
 const boughtDate = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
 
-// wishes already bought, newest first: where and when, and what was paid against what was planned. Undo puts
-// one back on the list
-function BoughtHistory() {
-  const bought = useApi<BoughtWish[]>('/goals/bought').data ?? []
+// a bought wish: where and when, and what was paid against what was planned. Undo puts it back on the list
+function BoughtRow({ wish: w }: { wish: BoughtWish }) {
   const [error, setError] = useState('')
-  if (bought.length === 0) return null
-  async function undo(w: BoughtWish) {
+  async function undo() {
     try {
       await api(`/goals/${w.id}/bought`, { method: 'PUT', body: JSON.stringify({ bought: false }) })
     } catch (err) {
       setError((err as Error).message)
     }
   }
+  const p = w.purchase
+  // the difference only means something in the wish's own currency
+  const diff = p && p.currency === w.currency ? -p.amount - w.target : undefined
+  return (
+    <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-sm">
+      <span className="flex min-w-0 items-baseline gap-2">
+        <Check
+          size={14}
+          strokeWidth={3}
+          aria-label="Bought"
+          className="shrink-0 self-center text-emerald-600 dark:text-emerald-400"
+        />
+        <span className="min-w-0">
+          <span className="text-zinc-900 dark:text-zinc-100">{w.name}</span>
+          <span className={muted}>
+            {' · '}
+            {p ? `${p.description} · ${boughtDate.format(new Date(p.time))}` : boughtDate.format(new Date(w.boughtAt))}
+          </span>
+        </span>
+      </span>
+      <span className="flex items-baseline gap-3 tabular-nums">
+        {p ? (
+          <span className="text-zinc-900 dark:text-zinc-100">
+            {format(-p.amount, p.currency)}
+            <span className={muted}>
+              {' '}
+              (planned {format(w.target, w.currency)}
+              {diff !== undefined && Math.abs(diff) >= 0.005 && (
+                <span
+                  className={diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}
+                >
+                  {', '}
+                  {diff > 0 ? '+' : '−'}
+                  {format(Math.abs(diff), w.currency)}
+                </span>
+              )}
+              )
+            </span>
+          </span>
+        ) : (
+          <span className={muted}>planned {format(w.target, w.currency)}</span>
+        )}
+        <button type="button" onClick={undo} className={linkButton}>
+          Undo
+        </button>
+      </span>
+      <ErrorText>{error}</ErrorText>
+    </li>
+  )
+}
+
+// wishes bought before this month, newest first; this month's and later ones are in their month's card
+function BoughtHistory({ bought }: { bought: BoughtWish[] }) {
+  if (bought.length === 0) return null
   return (
     <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Bought</h3>
+      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Bought earlier</h3>
       <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
-        {bought.map((w) => {
-          const p = w.purchase
-          // the difference only means something in the wish's own currency
-          const diff = p && p.currency === w.currency ? -p.amount - w.target : undefined
-          return (
-            <li key={w.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-sm">
-              <span className="min-w-0">
-                <span className="text-zinc-900 dark:text-zinc-100">{w.name}</span>
-                <span className={muted}>
-                  {' · '}
-                  {p
-                    ? `${p.description} · ${boughtDate.format(new Date(p.time))}`
-                    : boughtDate.format(new Date(w.boughtAt))}
-                </span>
-              </span>
-              <span className="flex items-baseline gap-3 tabular-nums">
-                {p ? (
-                  <span className="text-zinc-900 dark:text-zinc-100">
-                    {format(-p.amount, p.currency)}
-                    <span className={muted}>
-                      {' '}
-                      (planned {format(w.target, w.currency)}
-                      {diff !== undefined && Math.abs(diff) >= 0.005 && (
-                        <span
-                          className={
-                            diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
-                          }
-                        >
-                          {', '}
-                          {diff > 0 ? '+' : '−'}
-                          {format(Math.abs(diff), w.currency)}
-                        </span>
-                      )}
-                      )
-                    </span>
-                  </span>
-                ) : (
-                  <span className={muted}>planned {format(w.target, w.currency)}</span>
-                )}
-                <button type="button" onClick={() => undo(w)} className={linkButton}>
-                  Undo
-                </button>
-              </span>
-            </li>
-          )
-        })}
+        {bought.map((w) => (
+          <BoughtRow key={w.id} wish={w} />
+        ))}
       </ul>
-      <ErrorText>{error}</ErrorText>
     </div>
   )
 }
