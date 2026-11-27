@@ -573,7 +573,7 @@ export function TransactionsPage() {
                       // a hairline between rows of the same day, starting under the text like a list's inset;
                       // days are set apart by their header's space instead
                       i && (!byDate || dayKey(t.time) === dayKey(page[i - 1].time))
-                        ? `before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-zinc-200 dark:before:bg-zinc-800 ${byDate ? 'before:left-25' : 'before:left-12'}`
+                        ? `before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-zinc-200 dark:before:bg-zinc-800 ${byDate ? 'before:left-28' : 'before:left-12'}`
                         : ''
                     }`}
                   >
@@ -581,10 +581,26 @@ export function TransactionsPage() {
                     {byDate && (
                       <time
                         dateTime={t.time}
-                        className="w-10 shrink-0 text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+                        className="mr-3 w-10 shrink-0 text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
                       >
                         {timeOnly.format(new Date(t.time))}
                       </time>
+                    )}
+                    {/* a timeline down each day, in the gap after the time: a dot per transaction (green for money
+                        coming in), the line running from the day's first dot to its last */}
+                    {byDate && (
+                      <>
+                        <span
+                          aria-hidden
+                          className={`absolute left-[3.25rem] w-px bg-indigo-200 dark:bg-indigo-900 ${
+                            !i || dayKey(page[i - 1].time) !== dayKey(t.time) ? 'top-1/2' : 'top-0'
+                          } ${i === page.length - 1 || dayKey(page[i + 1].time) !== dayKey(t.time) ? 'bottom-1/2' : 'bottom-0'}`}
+                        />
+                        <span
+                          aria-hidden
+                          className={`absolute top-1/2 left-[3.25rem] size-2 -translate-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900 ${t.amount > 0 ? 'bg-emerald-500' : 'bg-indigo-500 dark:bg-indigo-400'}`}
+                        />
+                      </>
                     )}
                     <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
                     <div className="min-w-0 flex-1">
