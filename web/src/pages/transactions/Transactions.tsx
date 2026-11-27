@@ -1,10 +1,11 @@
 import { Fragment, useRef, useState } from 'react'
 import { CategoryPicker } from './CategoryPicker'
+import { ChipSelect } from './ChipSelect'
 import { BalanceHistory } from '../balances/BalanceHistory'
 import { CategorySpending } from './CategorySpending'
 import type { ChangeMode } from './Change'
 import { MerchantIcon } from '../../components/MerchantIcon'
-import { ArrowLeftRight, RefreshCw } from 'lucide-react'
+import { ArrowLeftRight, Gift, RefreshCw } from 'lucide-react'
 import { MerchantSpending } from './MerchantSpending'
 import { MonthlySpending } from './MonthlySpending'
 import { PeriodPicker } from './PeriodPicker'
@@ -25,7 +26,7 @@ import {
   rangeOf,
 } from '../../lib/periods'
 import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
-import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
+import type { Account, Budget, Goal, Transaction, Category, Leaf } from '../../lib/types'
 
 const PAGE = 100
 // categories a move between own accounts lands in: card transfers and ATMs, incoming transfers, investments
@@ -88,6 +89,8 @@ export function TransactionsPage() {
   // the opening account until one is picked
   const [pickedAccount, setAccountId] = useState<number>()
   const accountId = pickedAccount ?? (accountsQuery.data && openingAccount(accountsQuery.data, link))
+  // wishes not bought yet, to say which one a purchase was
+  const openWishes = (useApi<Goal[]>('/goals').data ?? []).filter((g) => g.wish)
   const listQuery = useApi<Transaction[]>(`/accounts/${accountId}/transactions`, accountId !== undefined)
   const list = listQuery.data
   // a failed save, else a failed load
@@ -228,14 +231,23 @@ export function TransactionsPage() {
   const transferTargets = accounts.filter(
     (a) => !a.monoAccountId && a.id !== accountId && a.currency === account?.currency,
   )
-  async function linkTransfer(t: Transaction, value: string) {
+  async function linkTransfer(t: Transaction, accountId: number | null) {
     try {
-      await api(`/transactions/${t.id}/transfer`, {
-        method: 'PUT',
-        body: JSON.stringify({ accountId: value ? Number(value) : null }),
-      })
+      await api(`/transactions/${t.id}/transfer`, { method: 'PUT', body: JSON.stringify({ accountId }) })
     } catch (err) {
       setError(`Transfer: ${(err as Error).message}`)
+    }
+  }
+
+  // a purchase holds one wish, so a change first puts the old one back; null only does that
+  async function linkWish(t: Transaction, wishId: number | null) {
+    const bought = (id: number, body: object) =>
+      api(`/goals/${id}/bought`, { method: 'PUT', body: JSON.stringify(body) })
+    try {
+      if (t.wish) await bought(t.wish.id, { bought: false })
+      if (wishId !== null) await bought(wishId, { bought: true, transactionId: t.id })
+    } catch (err) {
+      setError(`Wish: ${(err as Error).message}`)
     }
   }
 
@@ -693,17 +705,27 @@ export function TransactionsPage() {
                             {t.essentialSource !== 'auto' && '*'}
                           </button>
                         )}
-                        {/* a chip like the category's once linked, a link before; the transparent native select
-                          on top does the picking. The other side of a transfer is changed from where it came from */}
+                        {/* a chip like the category's once linked, a link before. The other side of a transfer is
+                          changed from where it came from */}
                         {!t.externalId.startsWith('transfer:') &&
                           (t.transferAccountId ||
                             (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
-                            <span
-                              className={`relative inline-flex max-w-44 shrink-0 items-center gap-1 text-xs focus-within:outline-2 focus-within:outline-indigo-500 ${
+                            <ChipSelect
+                              label={`Transfer: ${t.description}`}
+                              title={
+                                t.transferAccountId ? 'Змінити переказ' : 'Позначити як переказ між своїми рахунками'
+                              }
+                              value={t.transferAccountId}
+                              noneLabel="Не переказ"
+                              options={accounts
+                                .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
+                                .map((a) => ({ value: a.id, label: `${t.amount < 0 ? 'На' : 'З'} ${a.name}` }))}
+                              onChange={(id) => linkTransfer(t, id)}
+                              className={
                                 t.transferAccountId
-                                  ? 'rounded-full bg-indigo-50 py-0.5 pr-2 pl-2 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+                                  ? 'rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
                                   : `rounded ${linkButton}`
-                              }`}
+                              }
                             >
                               <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden className="shrink-0" />
                               <span className="truncate">
@@ -711,28 +733,35 @@ export function TransactionsPage() {
                                   ? `${t.amount < 0 ? 'на' : 'з'} ${accounts.find((a) => a.id === t.transferAccountId)?.name}`
                                   : 'переказ'}
                               </span>
-                              <select
-                                aria-label={`Transfer: ${t.description}`}
-                                title={
-                                  t.transferAccountId ? 'Змінити переказ' : 'Позначити як переказ між своїми рахунками'
-                                }
-                                value={t.transferAccountId ?? ''}
-                                onChange={(e) => linkTransfer(t, e.target.value)}
-                                className="absolute inset-0 cursor-pointer opacity-0"
-                              >
-                                <option value="">
-                                  {t.transferAccountId ? 'Не переказ' : `Переказ ${t.amount < 0 ? 'на' : 'з'}…`}
-                                </option>
-                                {accounts
-                                  .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
-                                  .map((a) => (
-                                    <option key={a.id} value={a.id}>
-                                      {t.amount < 0 ? 'На' : 'З'} {a.name}
-                                    </option>
-                                  ))}
-                              </select>
-                            </span>
+                            </ChipSelect>
                           )}
+                        {/* the wish bought in this purchase, as a chip; spending without one offers the open wishes
+                          on hover, like the note */}
+                        {(t.wish ||
+                          (openWishes.length > 0 &&
+                            t.amount < 0 &&
+                            !t.cancelled &&
+                            leafById.get(t.category)?.parent.spending)) && (
+                          <ChipSelect
+                            label={`Wish bought in ${t.description}`}
+                            title={t.wish ? 'Змінити бажання' : 'Позначити, яке бажання з вішліста це купівля'}
+                            value={t.wish?.id ?? null}
+                            noneLabel="Не з вішліста"
+                            options={[
+                              ...(t.wish ? [{ value: t.wish.id, label: t.wish.name }] : []),
+                              ...openWishes.map((w) => ({ value: w.id, label: w.name })),
+                            ]}
+                            onChange={(id) => linkWish(t, id)}
+                            className={
+                              t.wish
+                                ? 'rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                                : `rounded ${linkButton} pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100 pointer-fine:data-popup-open:opacity-100`
+                            }
+                          >
+                            <Gift size={12} strokeWidth={2.5} aria-hidden className="shrink-0" />
+                            <span className="truncate">{t.wish ? t.wish.name : 'з вішліста'}</span>
+                          </ChipSelect>
+                        )}
                         {t.categorySource === 'transaction' && !t.transferAccountId && (
                           <button
                             type="button"

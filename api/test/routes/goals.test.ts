@@ -218,6 +218,9 @@ test('a bought wish leaves the list for the history with its purchase, and undo 
     amount: -1507,
     currency: 'UAH',
   })
+  // the purchase says which wish it bought
+  const [listed] = (await app.inject({ url: `/api/accounts/${account.id}/transactions` })).json()
+  assert.deepEqual(listed.wish, { id: wish.id, name: 'штани чорні' })
   // reordering lists only what is still open
   const order = await app.inject({ method: 'PUT', url: '/api/goals/order', payload: { ids: [goal.id] } })
   assert.equal(order.statusCode, 204)

@@ -110,6 +110,9 @@ All accounts together, in Runway's currency.
   investment can be linked to a cash or other manual account in the same currency («⇄ переказ»). That
   account gets the opposite entry and its balance moves with it, so its history follows; both sides
   become «Між своїми рахунками». The link shows as a «⇄ на Готівка» chip and can be moved or undone.
+- **Wishes bought in a purchase**: on a spending row, «🎁 з вішліста» (on hover) picks which open wish it
+  bought, the same as **Bought it** on the wishlist, for purchases its suggestion missed. The row then shows a
+  «🎁 штани чорні» chip to change or undo it. Both chips are [Base UI](https://base-ui.com) selects.
 - opens on the latest month with transactions, with the chart showing its year; «Усе» in the period picker shows everything.
 - the account picker lists only accounts with transactions (bank-synced or manually adjusted).
 
@@ -154,7 +157,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   within 20% of its price, shows as "Looks bought" with **Bought it** to keep it as bought with that purchase or
   **Not it** to look only at later transactions. A bought wish leaves the plan and sits ticked in the card of
   the month it was bought in, with what was paid against the planned price, and that month's total counts it;
-  wishes bought in earlier months are listed under **Bought earlier**, and **Undo** puts one back. Each month
+  wishes bought in earlier months are listed under **Bought earlier**, and **Undo** puts one back. A purchase
+  can also be marked as a wish's from Transactions. Each month
   card carries the month's number. Below the list, the total of all wishes and how far buying them all pushes
   back each goal.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
@@ -445,7 +449,7 @@ accounts ||--o{ transactions : "transactions_account_id_accounts_id_fk"
 | Method   | Path                                                   | What                                                                                                                                                                                                                                                                                                                                                |
 | -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/accounts`                                            | List accounts, each with its `transactionCount`                                                                                                                                                                                                                                                                                                     |
-| `GET`    | `/accounts/:id/transactions`                           | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note`, `cancelled` and `transferAccountId`                                                                                                                                                          |
+| `GET`    | `/accounts/:id/transactions`                           | Transactions, newest first, with `merchant`, `category`, `categorySource`, `essential`, `essentialSource`, `mccDescription`, `merchantDomain`, `note`, `cancelled`, `transferAccountId` and `wish` (`{ id, name }` of the wish bought in it)                                                                                                        |
 | `GET`    | `/categories`                                          | Category tree `{ id, label, emoji, spending, subcategories: [{ id, label, essential }] }`                                                                                                                                                                                                                                                           |
 | `GET`    | `/categories/rules`                                    | Hand-set overrides: `merchants: [{ merchant, description, category, essential, transactionCount }]` and single `transactions: [{ id, accountId, description, time, amount, currency, category, essential }]`; `null` where left automatic                                                                                                           |
 | `PUT`    | `/categories/merchants`                                | Set a merchant's category `{ description, category }`; `category: null` resets it                                                                                                                                                                                                                                                                   |

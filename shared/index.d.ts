@@ -48,6 +48,8 @@ export type Transaction = {
   // the account without sync this was linked to as a transfer; that account holds the opposite entry,
   // whose externalId is transfer:<this id>
   transferAccountId: number | null
+  // the wishlist wish bought in this purchase
+  wish: { id: number; name: string } | null
 }
 
 export type Category = {

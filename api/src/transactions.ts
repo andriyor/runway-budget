@@ -1,13 +1,13 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type { Transaction } from '@runway-budget/shared'
-import { desc, eq, like } from 'drizzle-orm'
+import { desc, eq, isNotNull, like } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from './data/mcc.json'
 import { cancelledIds } from './cancellations'
 import { categorize, isEssential, merchantKey, type CategoryId } from './categories'
 // merchant domain → lowercase name fragments; the domain is used for the icon
 import merchantKeywords from './data/merchants.json'
-import { merchantCategories, merchantEssentials, transactions } from './db/schema'
+import { goals, merchantCategories, merchantEssentials, transactions } from './db/schema'
 
 const merchants = Object.entries(merchantKeywords as Record<string, string[]>)
 const merchantDomain = (description: string) => {
@@ -30,6 +30,15 @@ export async function accountTransactions(db: BetterSQLite3Database, accountId: 
   )
   const essentials = new Map((await db.select().from(merchantEssentials)).map((o) => [o.merchant, o.essential]))
   const cancelled = cancelledIds(rows)
+  // transaction id → the wish bought in it
+  const wishes = new Map(
+    (
+      await db
+        .select({ id: goals.id, name: goals.name, transactionId: goals.boughtTransactionId })
+        .from(goals)
+        .where(isNotNull(goals.boughtTransactionId))
+    ).map((w) => [w.transactionId!, { id: w.id, name: w.name }]),
+  )
   // source transaction id → the account its transfer went to
   const transferredTo = new Map(
     (
@@ -69,6 +78,7 @@ export async function accountTransactions(db: BetterSQLite3Database, accountId: 
         merchantDomain: merchantDomain(rest.description),
         cancelled: cancelled.has(rest.id),
         transferAccountId: transferredTo.get(rest.id) ?? null,
+        wish: wishes.get(rest.id) ?? null,
       }
     },
   )
