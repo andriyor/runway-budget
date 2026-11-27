@@ -723,9 +723,7 @@ export function TransactionsPage() {
                           </button>
                         )}
                         {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
-                        <span className="truncate" title={t.mccDescription ?? undefined}>
-                          · {!byDate && `${dateTime.format(new Date(t.time))} · `}MCC {t.mcc}
-                        </span>
+                        {!byDate && <span className="truncate">· {dateTime.format(new Date(t.time))}</span>}
                       </p>
                     </div>
                     <span
