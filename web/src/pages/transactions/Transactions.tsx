@@ -4,7 +4,7 @@ import { BalanceHistory } from '../balances/BalanceHistory'
 import { CategorySpending } from './CategorySpending'
 import type { ChangeMode } from './Change'
 import { MerchantIcon } from '../../components/MerchantIcon'
-import { RefreshCw } from 'lucide-react'
+import { ArrowLeftRight, RefreshCw } from 'lucide-react'
 import { MerchantSpending } from './MerchantSpending'
 import { MonthlySpending } from './MonthlySpending'
 import { PeriodPicker } from './PeriodPicker'
@@ -589,6 +589,46 @@ export function TransactionsPage() {
                           }}
                         />
                       </span>
+                      {/* a chip like the category's once linked, a link before; the transparent native select
+                          on top does the picking. The other side of a transfer is changed from where it came from */}
+                      {!t.externalId.startsWith('transfer:') &&
+                        (t.transferAccountId ||
+                          (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
+                          <span
+                            className={`relative inline-flex max-w-44 shrink-0 items-center gap-1 text-xs focus-within:outline-2 focus-within:outline-indigo-500 ${
+                              t.transferAccountId
+                                ? 'rounded-full bg-indigo-50 py-0.5 pr-2 pl-2 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+                                : `rounded ${linkButton}`
+                            }`}
+                          >
+                            <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden className="shrink-0" />
+                            <span className="truncate">
+                              {t.transferAccountId
+                                ? `${t.amount < 0 ? 'на' : 'з'} ${accounts.find((a) => a.id === t.transferAccountId)?.name}`
+                                : 'переказ'}
+                            </span>
+                            <select
+                              aria-label={`Transfer: ${t.description}`}
+                              title={
+                                t.transferAccountId ? 'Змінити переказ' : 'Позначити як переказ між своїми рахунками'
+                              }
+                              value={t.transferAccountId ?? ''}
+                              onChange={(e) => linkTransfer(t, e.target.value)}
+                              className="absolute inset-0 cursor-pointer opacity-0"
+                            >
+                              <option value="">
+                                {t.transferAccountId ? 'Не переказ' : `Переказ ${t.amount < 0 ? 'на' : 'з'}…`}
+                              </option>
+                              {accounts
+                                .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {t.amount < 0 ? 'На' : 'З'} {a.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </span>
+                        )}
                       {picking === t.id ? (
                         <select
                           ref={openPicker}
@@ -616,7 +656,7 @@ export function TransactionsPage() {
                           {essentialLabel(t)} <span aria-hidden>▾</span>
                         </button>
                       )}
-                      {t.categorySource === 'transaction' && (
+                      {t.categorySource === 'transaction' && !t.transferAccountId && (
                         <button
                           type="button"
                           className={linkButton}
@@ -634,28 +674,6 @@ export function TransactionsPage() {
                           скинути для продавця
                         </button>
                       )}
-                      {/* the other side of a transfer is changed from the transaction it came from */}
-                      {!t.externalId.startsWith('transfer:') &&
-                        (t.transferAccountId ||
-                          (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
-                          <select
-                            aria-label={`Transfer: ${t.description}`}
-                            value={t.transferAccountId ?? ''}
-                            onChange={(e) => linkTransfer(t, e.target.value)}
-                            className={`field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500 ${t.transferAccountId ? 'text-indigo-700 dark:text-indigo-300' : ''}`}
-                          >
-                            <option value="">
-                              {t.transferAccountId ? 'не переказ' : `переказ ${t.amount < 0 ? 'на' : 'з'}…`}
-                            </option>
-                            {accounts
-                              .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
-                              .map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  🔁 {t.amount < 0 ? '→' : '←'} {a.name}
-                                </option>
-                              ))}
-                          </select>
-                        )}
                       {!t.note && editing?.id !== t.id && (
                         <button
                           type="button"
