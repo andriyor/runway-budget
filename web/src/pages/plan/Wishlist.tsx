@@ -53,6 +53,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
   // what it took from that month's surplus: the purchase, or the planned price when bought without one
   const paid = (b: BoughtWish) =>
     b.purchase ? convert(-b.purchase.amount, b.purchase.currency, currency) : convert(b.target, b.currency, currency)
+  const price = (w: Goal) => convert(w.target, w.currency, currency)
   const [editing, setEditing] = useState<number>()
   const [saveError, setError] = useState('')
   const error = saveError || query.error?.message || ''
@@ -70,14 +71,14 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       setError((err as Error).message)
     }
   }
+  // the API replaces name, target and currency, so they go along with whatever changes
+  const patch = (w: Goal, changes: Partial<GoalValues> & { matchAfter?: string }) =>
+    api(`/goals/${w.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, ...changes }),
+    })
   // it keeps its place in the order, which puts it below the goals added before it
-  const commit = (w: Goal) =>
-    act(() =>
-      api(`/goals/${w.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, wish: false, plannedFor: null }),
-      }),
-    )
+  const commit = (w: Goal) => act(() => patch(w, { wish: false, plannedFor: null }))
   // puts a dragged wish at `index` among the wishes of `month` (null: no month yet), taking that month. Goals keep
   // their places in the shared order
   async function drop(wish: Goal, month: string | null, index: number) {
@@ -96,11 +97,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     list.splice(at, 0, moved)
     setCached('/goals', list)
     try {
-      if (moved !== wish)
-        await api(`/goals/${wish.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ name: wish.name, target: wish.target, currency: wish.currency, plannedFor: month }),
-        })
+      if (moved !== wish) await patch(wish, { plannedFor: month })
       await api('/goals/order', { method: 'PUT', body: JSON.stringify({ ids: list.map((g) => g.id) }) })
     } catch (err) {
       setCached('/goals', all)
@@ -126,13 +123,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       (t) => convert(-t.amount, currencyOf.get(t.accountId)!, w.currency),
     )
   // "not it": that transaction and every earlier one are left out from now on
-  const notIt = (w: Goal, t: Transaction) =>
-    act(() =>
-      api(`/goals/${w.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, matchAfter: t.time }),
-      }),
-    )
+  const notIt = (w: Goal, t: Transaction) => act(() => patch(w, { matchAfter: t.time }))
 
   // what spending `target` today does to each goal, said after `lead` ("Buying it"); undefined while rates or
   // balances load
@@ -177,100 +168,27 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     )
   }
 
-  // what each month's planned wishes add up to, in the plan's currency; undefined while rates load
-  const monthTotals = new Map<string, number | undefined>()
-  for (const w of wishes) {
-    if (!w.plannedFor) continue
-    const price = convert(w.target, w.currency, currency)
-    const sum = monthTotals.has(w.plannedFor) ? monthTotals.get(w.plannedFor) : 0
-    monthTotals.set(w.plannedFor, sum === undefined || price === undefined ? undefined : sum + price)
-  }
-  for (const b of bought) {
-    const month = boughtMonth(b)
-    if (month < thisMonth) continue
-    const price = paid(b)
-    const sum = monthTotals.has(month) ? monthTotals.get(month) : 0
-    monthTotals.set(month, sum === undefined || price === undefined ? undefined : sum + price)
-  }
+  // what a month takes from the surplus, in the plan's currency: its planned wishes at their price and the ones
+  // bought in it at what they cost; undefined while rates load
+  const monthTotal = (month: string) =>
+    total([...wishes.filter((w) => w.plannedFor === month).map(price), ...boughtIn(month).map(paid)])
+  const months = new Set([
+    ...wishes.flatMap((w) => (w.plannedFor ? [w.plannedFor] : [])),
+    ...bought.map(boughtMonth).filter((m) => m >= thisMonth),
+  ])
+  const monthTotals = new Map([...months].map((m) => [m, monthTotal(m)]))
   const surplus = netIn(currency)
-
-  // a group's heading: its month and what its wishes add up to (what the bought ones cost, the rest at their
-  // price), a planned month also against the monthly surplus
-  function groupHeader(month: string | null, items: Goal[]) {
-    const prices = [...items.map((w) => convert(w.target, w.currency, currency)), ...boughtIn(month).map(paid)]
-    const sum = prices.some((p) => p === undefined) ? undefined : (prices as number[]).reduce((s, p) => s + p, 0)
-    const fit = month && sum !== undefined && surplus !== undefined && surplus > 0 ? sum / surplus : undefined
-    const over = fit !== undefined && fit > 1
-    return (
-      <>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
-            {/* the month's number in a tile, where the calendar icon is for wishes without a month */}
-            {month ? (
-              <span
-                aria-hidden
-                className="grid h-6 min-w-6 place-items-center rounded-md bg-indigo-50 px-1 text-xs font-semibold text-indigo-700 tabular-nums dark:bg-indigo-950/60 dark:text-indigo-300"
-              >
-                {month.slice(5)}
-              </span>
-            ) : (
-              <CalendarDays />
-            )}
-            <span className="first-letter:uppercase">{month ? monthLabel(month) : 'No month yet'}</span>
-          </h3>
-          {sum !== undefined && (
-            <span
-              className={`text-sm tabular-nums ${fit === undefined ? muted : over ? 'font-medium text-amber-700 dark:text-amber-400' : 'font-medium text-emerald-600 dark:text-emerald-400'}`}
-            >
-              {wholeMoney(sum, currency)}
-              {fit !== undefined && ` / ${wholeMoney(surplus!, currency)}`}
-            </span>
-          )}
-        </div>
-        {fit !== undefined && (
-          <>
-            <div
-              role="progressbar"
-              aria-label={`${monthLabel(month!)} against the monthly surplus`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(Math.min(fit, 1) * 100)}
-              className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-            >
-              <div
-                className={`h-full rounded-full ${over ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                style={{ width: `${Math.min(fit, 1) * 100}%` }}
-              />
-            </div>
-            <p className={`mt-1 text-xs tabular-nums ${muted}`}>
-              {over
-                ? `${wholeMoney(sum! - surplus!, currency)} over your monthly surplus`
-                : `${wholeMoney(surplus! - sum!, currency)} of your monthly surplus left`}
-            </p>
-          </>
-        )}
-        {!month && <p className={`mt-1 text-xs ${muted}`}>Spread out gives each a month, the top one first</p>}
-      </>
-    )
-  }
 
   // gives every unplanned wish a month, so each month's wishes stay within the surplus
   const unplanned = wishes.filter((w) => !w.plannedFor)
-  const prices = unplanned.map((w) => convert(w.target, w.currency, currency))
+  const prices = unplanned.map(price)
   const taken = [...monthTotals].every(([, v]) => v !== undefined) ? (monthTotals as Map<string, number>) : undefined
   const canSpread =
     unplanned.length > 0 && surplus !== undefined && surplus > 0 && taken && prices.every((p) => p !== undefined)
   const spread = () =>
     act(async () => {
-      const months = spreadWishes(prices as number[], taken!, surplus!, monthKey(new Date(now).toISOString()))
-      await Promise.all(
-        unplanned.map((w, i) =>
-          api(`/goals/${w.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ name: w.name, target: w.target, currency: w.currency, plannedFor: months[i] }),
-          }),
-        ),
-      )
+      const months = spreadWishes(prices as number[], taken!, surplus!, thisMonth)
+      await Promise.all(unplanned.map((w, i) => patch(w, { plannedFor: months[i] })))
     })
 
   function cost(wish: Goal) {
@@ -294,11 +212,8 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       items: ids.map((id) => byId.get(id)!).filter(Boolean),
     }))
 
-  const days = (w: Goal) => Math.floor((now - Date.parse(w.addedAt)) / 864e5)
-
   // every wish together, in the plan's currency; undefined while rates load
-  const allPrices = wishes.map((w) => convert(w.target, w.currency, currency))
-  const total = allPrices.some((p) => p === undefined) ? undefined : (allPrices as number[]).reduce((s, p) => s + p, 0)
+  const allWishes = total(wishes.map(price))
 
   return (
     <section className={card}>
@@ -323,15 +238,19 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       >
         {groups.map(({ key, month, items }) => (
           <WishGroup key={key} id={key}>
-            {groupHeader(month, items)}
+            <MonthHeader
+              month={month}
+              sum={total([...items.map(price), ...boughtIn(month).map(paid)])}
+              surplus={surplus}
+              currency={currency}
+            />
             <ul
               className={`flex flex-col gap-5 ${items.length ? 'mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800' : ''}`}
             >
               {items.map((w, i) => {
-                const group = key
                 if (editing === w.id) {
                   return (
-                    <SortableWish key={w.id} id={w.id} index={i} group={group} disabled>
+                    <SortableWish key={w.id} id={w.id} index={i} group={key} disabled>
                       {() => (
                         <GoalForm
                           wish
@@ -346,8 +265,9 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
                 }
                 const effect = impact(w.target, w.currency, w.plannedFor ? 'Buying it' : 'Buying it now')
                 const bought = purchaseOf(w)
+                const days = Math.floor((now - Date.parse(w.addedAt)) / 864e5)
                 return (
-                  <SortableWish key={w.id} id={w.id} index={i} group={group}>
+                  <SortableWish key={w.id} id={w.id} index={i} group={key}>
                     {(handle) => (
                       <>
                         <div className="flex items-center gap-2">
@@ -416,9 +336,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
                         <p className={`mt-0.5 flex flex-wrap items-center gap-x-2 text-sm tabular-nums ${muted}`}>
                           <Hourglass />
                           <span>
-                            {days(w) === 0
-                              ? 'Added today'
-                              : `On your list for ${days(w)} ${days(w) === 1 ? 'day' : 'days'}`}
+                            {days === 0 ? 'Added today' : `On your list for ${days} ${days === 1 ? 'day' : 'days'}`}
                           </span>
                           {cost(w) && <span>· {cost(w)}</span>}
                           {w.category && parentOf.get(w.category) && (
@@ -443,13 +361,13 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
           </WishGroup>
         ))}
       </DragDropProvider>
-      {wishes.length > 1 && total !== undefined && (
+      {wishes.length > 1 && allWishes !== undefined && (
         <p className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
           <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
-            Total {format(total, currency)}
+            Total {format(allWishes, currency)}
           </span>
           {' · '}
-          {impact(total, currency, 'Buying them all') ?? <Skeleton />}
+          {impact(allWishes, currency, 'Buying them all') ?? <Skeleton />}
         </p>
       )}
       {wishes.length === 0 && (
@@ -467,6 +385,74 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       </div>
       <BoughtHistory bought={bought.filter((b) => boughtMonth(b) < thisMonth)} />
     </section>
+  )
+}
+
+// a month card's heading: the month, what its wishes add up to and, for a planned month, that against the
+// monthly surplus. sum is undefined while rates load
+function MonthHeader({
+  month,
+  sum,
+  surplus,
+  currency,
+}: {
+  month: string | null
+  sum: number | undefined
+  surplus: number | undefined
+  currency: Currency
+}) {
+  const fit = month && sum !== undefined && surplus !== undefined && surplus > 0 ? sum / surplus : undefined
+  const over = fit !== undefined && fit > 1
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
+          {/* the month's number in a tile, where the calendar icon is for wishes without a month */}
+          {month ? (
+            <span
+              aria-hidden
+              className="grid h-6 min-w-6 place-items-center rounded-md bg-indigo-50 px-1 text-xs font-semibold text-indigo-700 tabular-nums dark:bg-indigo-950/60 dark:text-indigo-300"
+            >
+              {month.slice(5)}
+            </span>
+          ) : (
+            <CalendarDays />
+          )}
+          <span className="first-letter:uppercase">{month ? monthLabel(month) : 'No month yet'}</span>
+        </h3>
+        {sum !== undefined && (
+          <span
+            className={`text-sm tabular-nums ${fit === undefined ? muted : over ? 'font-medium text-amber-700 dark:text-amber-400' : 'font-medium text-emerald-600 dark:text-emerald-400'}`}
+          >
+            {wholeMoney(sum, currency)}
+            {fit !== undefined && ` / ${wholeMoney(surplus!, currency)}`}
+          </span>
+        )}
+      </div>
+      {fit !== undefined && (
+        <>
+          <div
+            role="progressbar"
+            aria-label={`${monthLabel(month!)} against the monthly surplus`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(Math.min(fit, 1) * 100)}
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+          >
+            <div
+              className={`h-full rounded-full ${over ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(fit, 1) * 100}%` }}
+            />
+          </div>
+          <p className={`mt-1 text-xs tabular-nums ${muted}`}>
+            {over
+              ? `${wholeMoney(sum! - surplus!, currency)} over your monthly surplus`
+              : `${wholeMoney(surplus! - sum!, currency)} of your monthly surplus left`}
+          </p>
+        </>
+      )}
+      {!month && <p className={`mt-1 text-xs ${muted}`}>Spread out gives each a month, the top one first</p>}
+    </>
   )
 }
 
@@ -547,6 +533,10 @@ function BoughtHistory({ bought }: { bought: BoughtWish[] }) {
     </div>
   )
 }
+
+// the sum of amounts, or undefined if any is (a rate still loading)
+const total = (amounts: (number | undefined)[]) =>
+  amounts.some((a) => a === undefined) ? undefined : (amounts as number[]).reduce((s, a) => s + a, 0)
 
 // the sortable group of wishes without a month
 const noMonth = 'none'
