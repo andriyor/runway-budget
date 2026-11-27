@@ -28,6 +28,8 @@ import { linkButton, card, muted, inputBox, button } from '../../lib/styles'
 import type { Account, Budget, Transaction, Category, Leaf } from '../../lib/types'
 
 const PAGE = 100
+// categories a move between own accounts lands in: card transfers and ATMs, incoming transfers, investments
+const TRANSFER_CATEGORIES = new Set(['transfers', 'income', 'own', 'investments'])
 const CHANGE_MODE_KEY = 'changeMode'
 
 // the change column's form, remembered in this browser; money by default, since percentages run wild on small sums
@@ -212,6 +214,21 @@ export function TransactionsPage() {
       )
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
+    }
+  }
+
+  // accounts without sync a transaction can be linked to as a transfer: same currency, not this one
+  const transferTargets = accounts.filter(
+    (a) => !a.monoAccountId && a.id !== accountId && a.currency === account?.currency,
+  )
+  async function linkTransfer(t: Transaction, value: string) {
+    try {
+      await api(`/transactions/${t.id}/transfer`, {
+        method: 'PUT',
+        body: JSON.stringify({ accountId: value ? Number(value) : null }),
+      })
+    } catch (err) {
+      setError(`Transfer: ${(err as Error).message}`)
     }
   }
 
@@ -617,6 +634,28 @@ export function TransactionsPage() {
                           скинути для продавця
                         </button>
                       )}
+                      {/* the other side of a transfer is changed from the transaction it came from */}
+                      {!t.externalId.startsWith('transfer:') &&
+                        (t.transferAccountId ||
+                          (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
+                          <select
+                            aria-label={`Transfer: ${t.description}`}
+                            value={t.transferAccountId ?? ''}
+                            onChange={(e) => linkTransfer(t, e.target.value)}
+                            className={`field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500 ${t.transferAccountId ? 'text-indigo-700 dark:text-indigo-300' : ''}`}
+                          >
+                            <option value="">
+                              {t.transferAccountId ? 'не переказ' : `переказ ${t.amount < 0 ? 'на' : 'з'}…`}
+                            </option>
+                            {accounts
+                              .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
+                              .map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  🔁 {t.amount < 0 ? '→' : '←'} {a.name}
+                                </option>
+                              ))}
+                          </select>
+                        )}
                       {!t.note && editing?.id !== t.id && (
                         <button
                           type="button"

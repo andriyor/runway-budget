@@ -160,3 +160,63 @@ test('a cancellation pairs with the purchase it reverses', async (t) => {
     ['back', 'buy', 'drop', 'hidden', 'lens', 'new', 'olx', 'olxback', 'silpo', 'undo'],
   )
 })
+
+test('a transfer to an account without sync mirrors the transaction there and moves its balance', async (t) => {
+  const app = await build(t)
+  const [mono, cash, wallet, usd] = app.db
+    .insert(accounts)
+    .values([
+      { name: 'Mono', currency: 'UAH', balanceCents: 0, monoAccountId: 'm' },
+      { name: 'Cash', currency: 'UAH', balanceCents: 1000 },
+      { name: 'Wallet', currency: 'UAH', balanceCents: 0 },
+      { name: 'Dollars', currency: 'USD', balanceCents: 0 },
+    ])
+    .returning()
+    .all()
+  const [atm] = app.db
+    .insert(transactions)
+    .values({
+      accountId: mono.id,
+      externalId: 'atm',
+      time: new Date(),
+      description: 'Банкомат',
+      mcc: 6011,
+      amountCents: -50000,
+    })
+    .returning()
+    .all()
+  const link = (accountId: number | null, id = atm.id) =>
+    app.inject({ method: 'PUT', url: `/api/transactions/${id}/transfer`, payload: { accountId } })
+  const balance = (id: number) =>
+    app.db
+      .select()
+      .from(accounts)
+      .all()
+      .find((a: { id: number }) => a.id === id)!.balanceCents
+  const list = async (id: number) => (await app.inject({ url: `/api/accounts/${id}/transactions` })).json()
+
+  assert.equal((await link(cash.id)).statusCode, 204)
+  assert.equal(balance(cash.id), 51000)
+  const [source] = await list(mono.id)
+  assert.equal(source.category, 'own')
+  assert.equal(source.transferAccountId, cash.id)
+  const [mirror] = await list(cash.id)
+  assert.equal(mirror.amount, 500)
+  assert.equal(mirror.category, 'own')
+  assert.equal((await link(null, mirror.id)).statusCode, 400)
+
+  assert.equal((await link(wallet.id)).statusCode, 204)
+  assert.equal(balance(cash.id), 1000)
+  assert.equal(balance(wallet.id), 50000)
+  assert.equal((await list(cash.id)).length, 0)
+
+  assert.equal((await link(null)).statusCode, 204)
+  assert.equal(balance(wallet.id), 0)
+  const [unlinked] = await list(mono.id)
+  assert.equal(unlinked.transferAccountId, null)
+  assert.equal(unlinked.categorySource, 'auto')
+
+  assert.equal((await link(usd.id)).statusCode, 400)
+  assert.equal((await link(mono.id)).statusCode, 400)
+  assert.equal((await link(999)).statusCode, 400)
+})

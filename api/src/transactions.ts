@@ -1,6 +1,6 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type { Transaction } from '@runway-budget/shared'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, like } from 'drizzle-orm'
 // MCC → description, from github.com/Oleksios/Merchant-Category-Codes (MIT, see data/mcc.LICENSE)
 import mccDescriptions from './data/mcc.json'
 import { cancelledIds } from './cancellations'
@@ -15,6 +15,9 @@ const merchantDomain = (description: string) => {
   return merchants.find(([, keywords]) => keywords.some((k) => text.includes(k)))?.[0] ?? null
 }
 
+// externalId of the entry a transfer adds to the account it was linked to
+export const transferId = (sourceId: number) => `transfer:${sourceId}`
+
 // An account's transactions, newest first, with their category, essential flag and cancellation pairing resolved
 export async function accountTransactions(db: BetterSQLite3Database, accountId: number): Promise<Transaction[]> {
   const rows = await db
@@ -27,6 +30,15 @@ export async function accountTransactions(db: BetterSQLite3Database, accountId: 
   )
   const essentials = new Map((await db.select().from(merchantEssentials)).map((o) => [o.merchant, o.essential]))
   const cancelled = cancelledIds(rows)
+  // source transaction id → the account its transfer went to
+  const transferredTo = new Map(
+    (
+      await db
+        .select({ externalId: transactions.externalId, accountId: transactions.accountId })
+        .from(transactions)
+        .where(like(transactions.externalId, 'transfer:%'))
+    ).map((m) => [Number(m.externalId.slice('transfer:'.length)), m.accountId]),
+  )
   return rows.map(
     ({
       amountCents,
@@ -56,6 +68,7 @@ export async function accountTransactions(db: BetterSQLite3Database, accountId: 
         mccDescription: (mccDescriptions as Record<string, string>)[rest.mcc] ?? null,
         merchantDomain: merchantDomain(rest.description),
         cancelled: cancelled.has(rest.id),
+        transferAccountId: transferredTo.get(rest.id) ?? null,
       }
     },
   )

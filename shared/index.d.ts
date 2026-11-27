@@ -45,6 +45,9 @@ export type Transaction = {
   note: string | null
   // a purchase and the «Скасування» that reversed it, paired by the API; both count as nothing
   cancelled: boolean
+  // the account without sync this was linked to as a transfer; that account holds the opposite entry,
+  // whose externalId is transfer:<this id>
+  transferAccountId: number | null
 }
 
 export type Category = {
