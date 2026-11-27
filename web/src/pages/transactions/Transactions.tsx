@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { CategoryPicker } from './CategoryPicker'
 import { BalanceHistory } from '../balances/BalanceHistory'
 import { CategorySpending } from './CategorySpending'
@@ -41,6 +41,8 @@ function readChangeMode(): ChangeMode {
   }
 }
 const dateTime = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' })
+const timeOnly = new Intl.DateTimeFormat('uk-UA', { timeStyle: 'short' })
+const dayTitle = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // opens a dropdown that was just put in place of its button; the click still counts as user activation
 const openPicker = (el: HTMLSelectElement | null) => {
@@ -119,6 +121,11 @@ export function TransactionsPage() {
   const [notice, setNotice] = useState('')
   // today's day key, read once: the comparison cuts a running period at it
   const [today] = useState(() => dayKey(new Date().toISOString()))
+  const [yesterday] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return dayKey(d.toISOString())
+  })
   const [changeMode, setChangeMode] = useState(readChangeMode)
   function pickChangeMode(mode: ChangeMode) {
     setChangeMode(mode)
@@ -283,6 +290,17 @@ export function TransactionsPage() {
     'inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900 dark:hover:bg-indigo-950'
   // the charts and summaries skip cancelled purchases and their cancellations; the list still shows them
   const counted = (l: Transaction[]) => l.filter((t) => !t.cancelled)
+  const byDate = sortBy === 'date'
+  // what a day spent across the list shown: spending categories, refunds netted, cancellations left out
+  const spentByDay = new Map<string, number>()
+  for (const t of listed ?? [])
+    if (!t.cancelled && leafById.get(t.category)?.parent.spending)
+      spentByDay.set(dayKey(t.time), (spentByDay.get(dayKey(t.time)) ?? 0) - t.amount)
+  const daySpent = (time: string) => spentByDay.get(dayKey(time)) ?? 0
+  const dayName = (time: string) => {
+    const day = dayKey(time)
+    return day === today ? 'Сьогодні' : day === yesterday ? 'Вчора' : dayTitle.format(new Date(time))
+  }
   const sorted = (listed ?? []).toSorted((a, b) => (sortBy === 'amount' ? Math.abs(b.amount) - Math.abs(a.amount) : 0))
 
   return (
@@ -528,173 +546,186 @@ export function TransactionsPage() {
             </div>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
-              {sorted.slice(0, limit).map((t) => (
-                <li key={t.id} className={`flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''}`}>
-                  <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
-                    {editing?.id === t.id ? (
-                      <input
-                        autoFocus
-                        maxLength={1000}
-                        aria-label={`Note for ${t.description}`}
-                        placeholder="Нотатка"
-                        value={editing.draft}
-                        onChange={(e) => setEditing({ id: t.id, draft: e.target.value })}
-                        onBlur={() => (cancelled.current ? setEditing(undefined) : saveNote(t, editing.draft))}
-                        onFocus={() => {
-                          cancelled.current = false
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') cancelled.current = true
-                          if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
-                        }}
-                        className={`my-0.5 w-full px-2 py-1 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
-                      />
-                    ) : (
-                      t.note && (
-                        <button
-                          type="button"
-                          onClick={() => setEditing({ id: t.id, draft: t.note ?? '' })}
-                          title="Змінити нотатку"
-                          className="block max-w-full truncate text-left text-sm text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                        >
-                          {t.note}
-                        </button>
-                      )
-                    )}
-                    <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
-                      {/* one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it */}
-                      <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        <button
-                          type="button"
-                          title={`Статистика: ${selectionLabel(t.category)}`}
-                          onClick={() => {
-                            pickCategory(t.category)
-                            window.scrollTo({ top: 0, behavior: 'smooth' })
+              {sorted.slice(0, limit).map((t, i, page) => (
+                <Fragment key={t.id}>
+                  {/* by date, each day opens with its name and what it spent; by amount the rows keep their date */}
+                  {byDate && dayKey(t.time) !== (i ? dayKey(page[i - 1].time) : '') && (
+                    <li className="flex items-baseline justify-between pt-5 pb-1.5 text-xs font-medium text-zinc-500 first:pt-1 dark:text-zinc-400">
+                      <span className="first-letter:uppercase">{dayName(t.time)}</span>
+                      {daySpent(t.time) > 0 && (
+                        <span className="tabular-nums">−{format(daySpent(t.time), account.currency)}</span>
+                      )}
+                    </li>
+                  )}
+                  <li className={`flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''}`}>
+                    <MerchantIcon domain={t.merchantDomain} emoji={leafById.get(t.category)?.parent.emoji ?? ''} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.description}</p>
+                      {editing?.id === t.id ? (
+                        <input
+                          autoFocus
+                          maxLength={1000}
+                          aria-label={`Note for ${t.description}`}
+                          placeholder="Нотатка"
+                          value={editing.draft}
+                          onChange={(e) => setEditing({ id: t.id, draft: e.target.value })}
+                          onBlur={() => (cancelled.current ? setEditing(undefined) : saveNote(t, editing.draft))}
+                          onFocus={() => {
+                            cancelled.current = false
                           }}
-                          className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
-                        >
-                          {leafById.get(t.category)?.label ?? t.category}
-                        </button>
-                        <CategoryPicker
-                          label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
-                          value={t.categorySource === 'auto' ? '' : t.category}
-                          categories={categories}
-                          onPick={(category, forMerchant) => {
-                            setKept({ id: t.id, view })
-                            changeCategory(
-                              forMerchant ? [setMerchantCategory(t, category), setOwn(t, null)] : [setOwn(t, category)],
-                            )
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') cancelled.current = true
+                            if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
                           }}
+                          className={`my-0.5 w-full px-2 py-1 text-sm text-zinc-900 outline-none dark:text-zinc-100 ${inputBox}`}
                         />
-                      </span>
-                      {/* a chip like the category's once linked, a link before; the transparent native select
-                          on top does the picking. The other side of a transfer is changed from where it came from */}
-                      {!t.externalId.startsWith('transfer:') &&
-                        (t.transferAccountId ||
-                          (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
-                          <span
-                            className={`relative inline-flex max-w-44 shrink-0 items-center gap-1 text-xs focus-within:outline-2 focus-within:outline-indigo-500 ${
-                              t.transferAccountId
-                                ? 'rounded-full bg-indigo-50 py-0.5 pr-2 pl-2 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
-                                : `rounded ${linkButton}`
-                            }`}
-                          >
-                            <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden className="shrink-0" />
-                            <span className="truncate">
-                              {t.transferAccountId
-                                ? `${t.amount < 0 ? 'на' : 'з'} ${accounts.find((a) => a.id === t.transferAccountId)?.name}`
-                                : 'переказ'}
-                            </span>
-                            <select
-                              aria-label={`Transfer: ${t.description}`}
-                              title={
-                                t.transferAccountId ? 'Змінити переказ' : 'Позначити як переказ між своїми рахунками'
-                              }
-                              value={t.transferAccountId ?? ''}
-                              onChange={(e) => linkTransfer(t, e.target.value)}
-                              className="absolute inset-0 cursor-pointer opacity-0"
-                            >
-                              <option value="">
-                                {t.transferAccountId ? 'Не переказ' : `Переказ ${t.amount < 0 ? 'на' : 'з'}…`}
-                              </option>
-                              {accounts
-                                .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
-                                .map((a) => (
-                                  <option key={a.id} value={a.id}>
-                                    {t.amount < 0 ? 'На' : 'З'} {a.name}
-                                  </option>
-                                ))}
-                            </select>
-                          </span>
-                        )}
-                      {picking === t.id ? (
-                        <select
-                          ref={openPicker}
-                          aria-label={`Essential: ${t.description}`}
-                          value=""
-                          onBlur={() => setPicking(undefined)}
-                          onChange={(e) => {
-                            setPicking(undefined)
-                            changeEssential(t, e.target.value)
-                          }}
-                          className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
-                        >
-                          <option value="" disabled hidden>
-                            {essentialLabel(t)}
-                          </option>
-                          {essentialOptions}
-                        </select>
                       ) : (
-                        <button
-                          type="button"
-                          aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
-                          onClick={() => setPicking(t.id)}
-                          className={`${rowPicker} ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
-                        >
-                          {essentialLabel(t)} <span aria-hidden>▾</span>
-                        </button>
+                        t.note && (
+                          <button
+                            type="button"
+                            onClick={() => setEditing({ id: t.id, draft: t.note ?? '' })}
+                            title="Змінити нотатку"
+                            className="block max-w-full truncate text-left text-sm text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                          >
+                            {t.note}
+                          </button>
+                        )
                       )}
-                      {t.categorySource === 'transaction' && !t.transferAccountId && (
-                        <button
-                          type="button"
-                          className={linkButton}
-                          onClick={() => changeCategory([setMerchantCategory(t, t.category), setOwn(t, null)])}
-                        >
-                          усім від продавця
-                        </button>
-                      )}
-                      {t.categorySource === 'merchant' && (
-                        <button
-                          type="button"
-                          className={linkButton}
-                          onClick={() => changeCategory([setMerchantCategory(t, null)])}
-                        >
-                          скинути для продавця
-                        </button>
-                      )}
-                      {!t.note && editing?.id !== t.id && (
-                        <button
-                          type="button"
-                          className={linkButton}
-                          onClick={() => setEditing({ id: t.id, draft: '' })}
-                        >
-                          + нотатка
-                        </button>
-                      )}
-                      {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
-                      <span className="truncate" title={t.mccDescription ?? undefined}>
-                        · {dateTime.format(new Date(t.time))} · MCC {t.mcc}
-                      </span>
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}
-                  >
-                    {format(t.amount, account.currency)}
-                  </span>
-                </li>
+                      <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
+                        {/* one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it */}
+                        <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                          <button
+                            type="button"
+                            title={`Статистика: ${selectionLabel(t.category)}`}
+                            onClick={() => {
+                              pickCategory(t.category)
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }}
+                            className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
+                          >
+                            {leafById.get(t.category)?.label ?? t.category}
+                          </button>
+                          <CategoryPicker
+                            label={`Category of ${t.description}: ${selectionLabel(t.category)}`}
+                            value={t.categorySource === 'auto' ? '' : t.category}
+                            categories={categories}
+                            onPick={(category, forMerchant) => {
+                              setKept({ id: t.id, view })
+                              changeCategory(
+                                forMerchant
+                                  ? [setMerchantCategory(t, category), setOwn(t, null)]
+                                  : [setOwn(t, category)],
+                              )
+                            }}
+                          />
+                        </span>
+                        {/* a chip like the category's once linked, a link before; the transparent native select
+                          on top does the picking. The other side of a transfer is changed from where it came from */}
+                        {!t.externalId.startsWith('transfer:') &&
+                          (t.transferAccountId ||
+                            (transferTargets.length > 0 && TRANSFER_CATEGORIES.has(t.category))) && (
+                            <span
+                              className={`relative inline-flex max-w-44 shrink-0 items-center gap-1 text-xs focus-within:outline-2 focus-within:outline-indigo-500 ${
+                                t.transferAccountId
+                                  ? 'rounded-full bg-indigo-50 py-0.5 pr-2 pl-2 font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+                                  : `rounded ${linkButton}`
+                              }`}
+                            >
+                              <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden className="shrink-0" />
+                              <span className="truncate">
+                                {t.transferAccountId
+                                  ? `${t.amount < 0 ? 'на' : 'з'} ${accounts.find((a) => a.id === t.transferAccountId)?.name}`
+                                  : 'переказ'}
+                              </span>
+                              <select
+                                aria-label={`Transfer: ${t.description}`}
+                                title={
+                                  t.transferAccountId ? 'Змінити переказ' : 'Позначити як переказ між своїми рахунками'
+                                }
+                                value={t.transferAccountId ?? ''}
+                                onChange={(e) => linkTransfer(t, e.target.value)}
+                                className="absolute inset-0 cursor-pointer opacity-0"
+                              >
+                                <option value="">
+                                  {t.transferAccountId ? 'Не переказ' : `Переказ ${t.amount < 0 ? 'на' : 'з'}…`}
+                                </option>
+                                {accounts
+                                  .filter((a) => a.id === t.transferAccountId || transferTargets.includes(a))
+                                  .map((a) => (
+                                    <option key={a.id} value={a.id}>
+                                      {t.amount < 0 ? 'На' : 'З'} {a.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </span>
+                          )}
+                        {picking === t.id ? (
+                          <select
+                            ref={openPicker}
+                            aria-label={`Essential: ${t.description}`}
+                            value=""
+                            onBlur={() => setPicking(undefined)}
+                            onChange={(e) => {
+                              setPicking(undefined)
+                              changeEssential(t, e.target.value)
+                            }}
+                            className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
+                          >
+                            <option value="" disabled hidden>
+                              {essentialLabel(t)}
+                            </option>
+                            {essentialOptions}
+                          </select>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
+                            onClick={() => setPicking(t.id)}
+                            className={`${rowPicker} ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
+                          >
+                            {essentialLabel(t)} <span aria-hidden>▾</span>
+                          </button>
+                        )}
+                        {t.categorySource === 'transaction' && !t.transferAccountId && (
+                          <button
+                            type="button"
+                            className={linkButton}
+                            onClick={() => changeCategory([setMerchantCategory(t, t.category), setOwn(t, null)])}
+                          >
+                            усім від продавця
+                          </button>
+                        )}
+                        {t.categorySource === 'merchant' && (
+                          <button
+                            type="button"
+                            className={linkButton}
+                            onClick={() => changeCategory([setMerchantCategory(t, null)])}
+                          >
+                            скинути для продавця
+                          </button>
+                        )}
+                        {!t.note && editing?.id !== t.id && (
+                          <button
+                            type="button"
+                            className={linkButton}
+                            onClick={() => setEditing({ id: t.id, draft: '' })}
+                          >
+                            + нотатка
+                          </button>
+                        )}
+                        {t.cancelled && <span className="font-medium">· скасовано, не враховано</span>}
+                        <span className="truncate" title={t.mccDescription ?? undefined}>
+                          · {(byDate ? timeOnly : dateTime).format(new Date(t.time))} · MCC {t.mcc}
+                        </span>
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-sm font-semibold tabular-nums ${t.cancelled ? 'line-through' : ''} ${t.amount < 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400'}`}
+                    >
+                      {format(t.amount, account.currency)}
+                    </span>
+                  </li>
+                </Fragment>
               ))}
             </ul>
             {sorted.length > limit && (
