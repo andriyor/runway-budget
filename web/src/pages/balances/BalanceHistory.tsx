@@ -21,6 +21,16 @@ const dayLabel = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'shor
 
 // Total balance at the end of each day (see dailyValues): bank-synced transactions and manual ± adjustments
 // are undone backwards from today, and each day is valued at its own NBU rate, so currency moves show.
+// the "include accounts without history" switch, kept across visits on both pages that show the chart
+const WITH_UNTRACKED_KEY = 'balanceWithUntracked'
+function readWithUntracked() {
+  try {
+    return localStorage.getItem(WITH_UNTRACKED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 // Accounts without any transactions have no history, so they are left out unless asked for; then they are
 // drawn flat at today's balance, which can invent past money and exchange-rate gains.
 // With onPick (Transactions), the chart shades the picked period and shows its change; dragging across it
@@ -38,7 +48,15 @@ type BalanceHistoryProps = {
 
 export function BalanceHistory({ accounts, transactions, convertOn, currency, period, onPick }: BalanceHistoryProps) {
   const [today] = useState(() => new Date())
-  const [withUntracked, setWithUntracked] = useState(false)
+  const [withUntracked, setWithUntracked] = useState(readWithUntracked)
+  function pickWithUntracked(on: boolean) {
+    setWithUntracked(on)
+    try {
+      localStorage.setItem(WITH_UNTRACKED_KEY, String(on))
+    } catch {
+      // private mode: lasts until reload
+    }
+  }
   // indexes while dragging
   const [drag, setDrag] = useState<[number, number]>()
   // the same, read by the handlers: a quick click's mouseup can arrive before the mousedown's render
@@ -139,7 +157,7 @@ export function BalanceHistory({ accounts, transactions, convertOn, currency, pe
               ? `${untracked.length} ${untracked.length === 1 ? 'account' : 'accounts'} without history drawn flat at today's balance`
               : `${untracked.length} ${untracked.length === 1 ? 'account' : 'accounts'} without history left out, ≈ ${wholeMoney(untrackedTotal, currency)}`}
           </span>
-          <Switch checked={withUntracked} onChange={setWithUntracked} title={untracked.map((a) => a.name).join(', ')}>
+          <Switch checked={withUntracked} onChange={pickWithUntracked} title={untracked.map((a) => a.name).join(', ')}>
             Include them
           </Switch>
         </div>
