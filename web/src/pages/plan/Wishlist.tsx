@@ -199,7 +199,17 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <>
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
-            <CalendarDays />
+            {/* the month's number in a tile, where the calendar icon is for wishes without a month */}
+            {month ? (
+              <span
+                aria-hidden
+                className="grid h-6 min-w-6 place-items-center rounded-md bg-indigo-50 px-1 text-xs font-semibold text-indigo-700 tabular-nums dark:bg-indigo-950/60 dark:text-indigo-300"
+              >
+                {month.slice(5)}
+              </span>
+            ) : (
+              <CalendarDays />
+            )}
             <span className="first-letter:uppercase">{month ? monthLabel(month) : 'No month yet'}</span>
           </h3>
           {sum !== undefined && (
