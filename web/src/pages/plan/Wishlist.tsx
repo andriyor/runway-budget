@@ -83,10 +83,16 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
   async function drop(wish: Goal, month: string | null, index: number) {
     const target = wishes.filter((w) => w !== wish && w.plannedFor === month)
     const before = wishes.filter((w) => w.plannedFor === month).indexOf(wish)
-    if (target.length === 0 || (month === wish.plannedFor && index === before)) return
+    if (month === wish.plannedFor && index === before) return
     const moved = month === wish.plannedFor ? wish : { ...wish, plannedFor: month }
     const list = all.filter((g) => g !== wish)
-    const at = index < target.length ? list.indexOf(target[index]) : list.indexOf(target.at(-1)!) + 1
+    // into a month with no other open wish (empty, or holding only bought ones) it keeps its place in the order
+    const at =
+      target.length === 0
+        ? all.indexOf(wish)
+        : index < target.length
+          ? list.indexOf(target[index])
+          : list.indexOf(target.at(-1)!) + 1
     list.splice(at, 0, moved)
     setCached('/goals', list)
     try {
