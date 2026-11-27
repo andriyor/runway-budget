@@ -166,7 +166,10 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
   can also be marked as a wish's from Transactions. Each month
   card carries the month's number. **Save N% of income first** keeps that share of income out of the
   wishlist ("pay yourself first"): month cards and spreading then measure wishes against the surplus left
-  after it, while goal dates still use the whole surplus. Below the list, the total of all wishes and how far buying them all pushes
+  after it, while goal dates still use the whole surplus. Its card draws income as one bar: needs (essential
+  spending), wants (the rest of spending), saved first and left for wishes, with ticks where the 50/30/20 rule
+  splits (50% needs, 30% wants, 20% saved, explained in an ⓘ), and puts the 10–20% many guidelines suggest
+  next to the plan's own savings rate, past which nothing is left for wishes. Below the list, the total of all wishes and how far buying them all pushes
   back each goal.
 - **Tips**: up to three general tips from your own numbers, each with the number behind it: an emergency fund
   under 3 months or covered, a savings rate under 10% or over 20%, spending above income, recurring payments
