@@ -544,20 +544,39 @@ export function TransactionsPage() {
                 </div>
               </span>
             </div>
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {/* the rows show essential as a bare dot, so the legend says what the dots mean */}
+            <p className={`mb-3 flex flex-wrap gap-x-3 text-xs ${muted}`}>
+              <span>
+                <span className="text-emerald-700 dark:text-emerald-400">●</span> необхідне
+              </span>
+              <span>○ необов’язкове</span>
+              <span>* змінено вручну</span>
+              <span className="inline-flex items-center gap-1">
+                <ArrowLeftRight size={12} strokeWidth={2.5} aria-hidden /> переказ між своїми рахунками
+              </span>
+            </p>
+            <ul>
               {/* the API returns newest first; amount sorts biggest first, income and spending alike */}
               {sorted.slice(0, limit).map((t, i, page) => (
                 <Fragment key={t.id}>
                   {/* by date, each day opens with its name and what it spent; by amount the rows keep their date */}
                   {byDate && dayKey(t.time) !== (i ? dayKey(page[i - 1].time) : '') && (
-                    <li className="flex items-baseline justify-between pt-5 pb-1.5 text-xs font-medium text-zinc-500 first:pt-1 dark:text-zinc-400">
+                    <li className="flex items-baseline justify-between border-b border-zinc-200 pt-6 pb-1.5 text-xs font-medium text-zinc-500 first:pt-1 dark:border-zinc-800 dark:text-zinc-400">
                       <span className="first-letter:uppercase">{dayName(t.time)}</span>
                       {daySpent(t.time) > 0 && (
                         <span className="tabular-nums">−{format(daySpent(t.time), account.currency)}</span>
                       )}
                     </li>
                   )}
-                  <li className={`flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''}`}>
+                  <li
+                    className={`group relative flex items-center gap-3 py-3 ${t.cancelled ? 'opacity-60' : ''} ${
+                      // a hairline between rows of the same day, starting under the text like a list's inset;
+                      // days are set apart by their header's space instead
+                      i && (!byDate || dayKey(t.time) === dayKey(page[i - 1].time))
+                        ? `before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-zinc-200 dark:before:bg-zinc-800 ${byDate ? 'before:left-25' : 'before:left-12'}`
+                        : ''
+                    }`}
+                  >
                     {/* by date the day header carries the date, so the time leads the row */}
                     {byDate && (
                       <time
@@ -600,9 +619,9 @@ export function TransactionsPage() {
                           </button>
                         )
                       )}
-                      <p className={`flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 tabular-nums ${muted}`}>
+                      <p className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums ${muted}`}>
                         {/* one chip: the name shows that category's statistics, as in "Spending by category"; ▾ changes it */}
-                        <span className="inline-flex min-w-0 max-w-56 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        <span className="inline-flex max-w-56 min-w-0 shrink-0 items-stretch divide-x divide-zinc-200 overflow-hidden rounded-full bg-zinc-100 text-xs text-zinc-700 dark:divide-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           <button
                             type="button"
                             title={`Статистика: ${selectionLabel(t.category)}`}
@@ -610,7 +629,7 @@ export function TransactionsPage() {
                               pickCategory(t.category)
                               window.scrollTo({ top: 0, behavior: 'smooth' })
                             }}
-                            className="min-w-0 cursor-pointer truncate py-0.5 pr-2 pl-2.5 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
+                            className="min-w-0 flex-1 cursor-pointer truncate py-0.5 pr-2 pl-2.5 text-left hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
                           >
                             {leafById.get(t.category)?.label ?? t.category}
                           </button>
@@ -628,6 +647,36 @@ export function TransactionsPage() {
                             }}
                           />
                         </span>
+                        {picking === t.id ? (
+                          <select
+                            ref={openPicker}
+                            aria-label={`Essential: ${t.description}`}
+                            value=""
+                            onBlur={() => setPicking(undefined)}
+                            onChange={(e) => {
+                              setPicking(undefined)
+                              changeEssential(t, e.target.value)
+                            }}
+                            className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
+                          >
+                            <option value="" disabled hidden>
+                              {essentialLabel(t)}
+                            </option>
+                            {essentialOptions}
+                          </select>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
+                            onClick={() => setPicking(t.id)}
+                            title={`${essentialLabel(t)} — змінити`}
+                            className={`${rowPicker} w-5 text-center ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
+                          >
+                            {/* just the dot: the word is in the title; * marks one set by hand */}
+                            {t.essential ? '●' : '○'}
+                            {t.essentialSource !== 'auto' && '*'}
+                          </button>
+                        )}
                         {/* a chip like the category's once linked, a link before; the transparent native select
                           on top does the picking. The other side of a transfer is changed from where it came from */}
                         {!t.externalId.startsWith('transfer:') &&
@@ -668,33 +717,6 @@ export function TransactionsPage() {
                               </select>
                             </span>
                           )}
-                        {picking === t.id ? (
-                          <select
-                            ref={openPicker}
-                            aria-label={`Essential: ${t.description}`}
-                            value=""
-                            onBlur={() => setPicking(undefined)}
-                            onChange={(e) => {
-                              setPicking(undefined)
-                              changeEssential(t, e.target.value)
-                            }}
-                            className="field-sizing-content max-w-40 shrink-0 cursor-pointer truncate rounded bg-transparent focus-visible:outline-2 focus-visible:outline-indigo-500"
-                          >
-                            <option value="" disabled hidden>
-                              {essentialLabel(t)}
-                            </option>
-                            {essentialOptions}
-                          </select>
-                        ) : (
-                          <button
-                            type="button"
-                            aria-label={`Essential: ${t.description}: ${essentialLabel(t)}`}
-                            onClick={() => setPicking(t.id)}
-                            className={`${rowPicker} ${t.essential ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
-                          >
-                            {essentialLabel(t)} <span aria-hidden>▾</span>
-                          </button>
-                        )}
                         {t.categorySource === 'transaction' && !t.transferAccountId && (
                           <button
                             type="button"
@@ -716,7 +738,9 @@ export function TransactionsPage() {
                         {!t.note && editing?.id !== t.id && (
                           <button
                             type="button"
-                            className={linkButton}
+                            // with a mouse it shows on the row's hover, so the list isn't a column of the same link;
+                            // touch screens and the keyboard always reach it
+                            className={`${linkButton} pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100`}
                             onClick={() => setEditing({ id: t.id, draft: '' })}
                           >
                             + нотатка
