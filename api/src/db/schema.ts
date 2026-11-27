@@ -79,6 +79,10 @@ export const goals = sqliteTable('goals', {
   category: text('category'),
   // transactions up to this time were looked at and are not the wish's purchase; null when none were
   matchAfter: integer('match_after', { mode: 'timestamp' }),
+  // when a wish was bought: it leaves the plan and the list for the wishlist's history; null while wanted
+  boughtAt: integer('bought_at', { mode: 'timestamp' }),
+  // the purchase it was bought in; null when bought without one or once that transaction is gone
+  boughtTransactionId: integer('bought_transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
   // when the goal or wish was added; the default only fills rows from before the column, inserts set it
   addedAt: integer('added_at', { mode: 'timestamp' })
     .notNull()

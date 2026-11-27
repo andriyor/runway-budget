@@ -126,6 +126,18 @@ export type Goal = {
   addedAt: string
 }
 
+// a wish once bought: kept for the wishlist's history, out of the plan. purchase is the transaction it was
+// bought in, in its account's currency (negative for spending); null when bought without one
+export type BoughtWish = {
+  id: number
+  name: string
+  target: number
+  currency: Currency
+  // ISO 8601
+  boughtAt: string
+  purchase: { id: number; description: string; time: string; amount: number; currency: Currency } | null
+}
+
 // something owned that could be sold, like a car or a flat; value is an estimate, discount the percent
 // lost in a quick sale, and sellable false for things kept whatever happens, like the home you live in
 export type Asset = { id: number; name: string; value: number; currency: Currency; discount: number; sellable: boolean }

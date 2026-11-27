@@ -5,6 +5,7 @@ export type {
   Account,
   AccountKind,
   Asset,
+  BoughtWish,
   Budget,
   Category,
   CategoryBudget,

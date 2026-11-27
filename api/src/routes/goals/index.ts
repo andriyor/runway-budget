@@ -1,12 +1,20 @@
 import { type FastifyPluginAsync } from 'fastify'
-import type { Goal } from '@runway-budget/shared'
-import { eq, sql } from 'drizzle-orm'
-import { goals, currencies, type Currency } from '../../db/schema'
+import type { BoughtWish, Goal } from '@runway-budget/shared'
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { accounts, goals, currencies, transactions, type Currency } from '../../db/schema'
 import { categoryTree } from '../../categories'
 
 type GoalRow = typeof goals.$inferSelect
 
-const toDto = ({ targetCents, position: _position, addedAt, matchAfter, ...rest }: GoalRow): Goal => ({
+const toDto = ({
+  targetCents,
+  position: _position,
+  addedAt,
+  matchAfter,
+  boughtAt: _boughtAt,
+  boughtTransactionId: _boughtTransactionId,
+  ...rest
+}: GoalRow): Goal => ({
   ...rest,
   target: targetCents / 100,
   addedAt: addedAt.toISOString(),
@@ -52,10 +60,78 @@ const toRow = ({ name, target, currency, wish, plannedFor, category, matchAfter 
 })
 
 const goalsRoutes: FastifyPluginAsync = async (fastify) => {
+  // goals and the wishes still wanted; bought wishes are only in /bought
   fastify.get('/', async () => {
-    const rows = await fastify.db.select().from(goals).orderBy(goals.position, goals.id)
+    const rows = await fastify.db.select().from(goals).where(isNull(goals.boughtAt)).orderBy(goals.position, goals.id)
     return rows.map(toDto)
   })
+
+  // the wishes bought, newest first, with the purchase they were bought in
+  fastify.get('/bought', async (): Promise<BoughtWish[]> => {
+    const rows = await fastify.db
+      .select({ goal: goals, purchase: transactions, currency: accounts.currency })
+      .from(goals)
+      .leftJoin(transactions, eq(transactions.id, goals.boughtTransactionId))
+      .leftJoin(accounts, eq(accounts.id, transactions.accountId))
+      .where(isNotNull(goals.boughtAt))
+      .orderBy(desc(goals.boughtAt), desc(goals.id))
+    return rows.map(({ goal, purchase, currency }) => ({
+      id: goal.id,
+      name: goal.name,
+      target: goal.targetCents / 100,
+      currency: goal.currency,
+      boughtAt: goal.boughtAt!.toISOString(),
+      purchase:
+        purchase && currency
+          ? {
+              id: purchase.id,
+              description: purchase.description,
+              time: purchase.time.toISOString(),
+              amount: purchase.amountCents / 100,
+              currency,
+            }
+          : null,
+    }))
+  })
+
+  // marks a wish bought in that transaction (null: without one), which takes it out of the plan; bought: false
+  // puts it back on the list, in its old place
+  fastify.put<{ Params: { id: number }; Body: { bought: boolean; transactionId?: number | null } }>(
+    '/:id/bought',
+    {
+      schema: {
+        params,
+        body: {
+          type: 'object',
+          required: ['bought'],
+          additionalProperties: false,
+          properties: { bought: { type: 'boolean' }, transactionId: { type: ['integer', 'null'] } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { bought, transactionId = null } = request.body
+      if (bought && transactionId !== null) {
+        const exists = fastify.db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(eq(transactions.id, transactionId))
+          .get()
+        if (!exists) return reply.badRequest('No such transaction')
+      }
+      const [row] = await fastify.db
+        .update(goals)
+        .set(
+          bought
+            ? { boughtAt: new Date(), boughtTransactionId: transactionId }
+            : { boughtAt: null, boughtTransactionId: null },
+        )
+        .where(and(eq(goals.id, request.params.id), eq(goals.wish, true)))
+        .returning()
+      if (!row) return reply.notFound()
+      return reply.code(204).send()
+    },
+  )
 
   fastify.post<{ Body: GoalBody }>('/', { schema: { body } }, async (request, reply) => {
     // a new goal goes last, so it waits for every existing one
@@ -82,7 +158,9 @@ const goalsRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const { ids } = request.body
-      const existing = (await fastify.db.select({ id: goals.id }).from(goals)).map((g) => g.id)
+      const existing = (await fastify.db.select({ id: goals.id }).from(goals).where(isNull(goals.boughtAt))).map(
+        (g) => g.id,
+      )
       const sameSet = ids.length === existing.length && existing.every((id) => ids.includes(id))
       if (!sameSet) return reply.badRequest('ids must list every goal and wish exactly once')
 

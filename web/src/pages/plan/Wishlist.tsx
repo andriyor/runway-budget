@@ -16,7 +16,7 @@ import { cumulativeTargets, delayMonths, findPurchase, spreadWishes } from '../.
 import { parentsById } from '../../lib/categories'
 import { monthKey, monthLabel } from '../../lib/periods'
 import { card, linkButton, muted } from '../../lib/styles'
-import type { Account, Category, Convert, Currency, Goal, Transaction } from '../../lib/types'
+import type { Account, BoughtWish, Category, Convert, Currency, Goal, Transaction } from '../../lib/types'
 
 type WishlistProps = {
   // available savings minus the months-without-income cushion
@@ -93,6 +93,11 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
     }
   }
   const remove = (w: Goal) => act(() => api(`/goals/${w.id}`, { method: 'DELETE' }))
+  // kept, with its purchase, in the history below instead of deleted
+  const markBought = (w: Goal, t: Transaction) =>
+    act(() =>
+      api(`/goals/${w.id}/bought`, { method: 'PUT', body: JSON.stringify({ bought: true, transactionId: t.id }) }),
+    )
 
   // the transaction that looks like each wish's purchase
   const parentOf = parentsById(categories)
@@ -360,7 +365,7 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
                               Looks bought: {bought.description} on {new Date(bought.time).toLocaleDateString('uk-UA')}{' '}
                               for {format(-bought.amount, currencyOf.get(bought.accountId)!)}
                             </span>
-                            <button type="button" onClick={() => remove(w)} className={linkButton}>
+                            <button type="button" onClick={() => markBought(w, bought)} className={linkButton}>
                               Bought it
                             </button>
                             <button type="button" onClick={() => notIt(w, bought)} className={linkButton}>
@@ -414,7 +419,79 @@ export function Wishlist({ forGoalsIn, convert, netIn, currency, transactions, a
       <div className="mt-4">
         <GoalForm wish submitLabel="Add wish" onSave={add} />
       </div>
+      <BoughtHistory />
     </section>
+  )
+}
+
+const boughtDate = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })
+
+// wishes already bought, newest first: where and when, and what was paid against what was planned. Undo puts
+// one back on the list
+function BoughtHistory() {
+  const bought = useApi<BoughtWish[]>('/goals/bought').data ?? []
+  const [error, setError] = useState('')
+  if (bought.length === 0) return null
+  async function undo(w: BoughtWish) {
+    try {
+      await api(`/goals/${w.id}/bought`, { method: 'PUT', body: JSON.stringify({ bought: false }) })
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+  return (
+    <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Bought</h3>
+      <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-800">
+        {bought.map((w) => {
+          const p = w.purchase
+          // the difference only means something in the wish's own currency
+          const diff = p && p.currency === w.currency ? -p.amount - w.target : undefined
+          return (
+            <li key={w.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-sm">
+              <span className="min-w-0">
+                <span className="text-zinc-900 dark:text-zinc-100">{w.name}</span>
+                <span className={muted}>
+                  {' · '}
+                  {p
+                    ? `${p.description} · ${boughtDate.format(new Date(p.time))}`
+                    : boughtDate.format(new Date(w.boughtAt))}
+                </span>
+              </span>
+              <span className="flex items-baseline gap-3 tabular-nums">
+                {p ? (
+                  <span className="text-zinc-900 dark:text-zinc-100">
+                    {format(-p.amount, p.currency)}
+                    <span className={muted}>
+                      {' '}
+                      (planned {format(w.target, w.currency)}
+                      {diff !== undefined && Math.abs(diff) >= 0.005 && (
+                        <span
+                          className={
+                            diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
+                          }
+                        >
+                          {', '}
+                          {diff > 0 ? '+' : '−'}
+                          {format(Math.abs(diff), w.currency)}
+                        </span>
+                      )}
+                      )
+                    </span>
+                  </span>
+                ) : (
+                  <span className={muted}>planned {format(w.target, w.currency)}</span>
+                )}
+                <button type="button" onClick={() => undo(w)} className={linkButton}>
+                  Undo
+                </button>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <ErrorText>{error}</ErrorText>
+    </div>
   )
 }
 

@@ -176,6 +176,20 @@
       "when": 1795250790695,
       "tag": "0024_elite_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1795811949305,
+      "tag": "0025_careful_captain_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1795811978644,
+      "tag": "0026_goals_bought_set_null",
+      "breakpoints": true
     }
   ]
 }

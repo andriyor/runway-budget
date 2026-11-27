@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build } from '../helper'
+import { accounts, transactions } from '../../src/db/schema'
 
 // addedAt is the time of the request, so tests check it is recent and compare the rest
 const withoutAddedAt = <T extends { addedAt: string }>(goals: T[]) =>
@@ -182,4 +183,53 @@ test('a wish keeps its category and the time its purchase was looked for up to',
   assert.equal(checked.json().matchAfter, '2026-11-20T10:00:00.000Z')
   assert.equal((await put({ category: null })).json().category, null)
   assert.equal((await put({ category: 'income' })).statusCode, 400)
+})
+
+test('a bought wish leaves the list for the history with its purchase, and undo brings it back', async (t) => {
+  const app = await build(t)
+  const [account] = app.db.insert(accounts).values({ name: 'Mono', currency: 'UAH', balanceCents: 0 }).returning().all()
+  const [purchase] = app.db
+    .insert(transactions)
+    .values({
+      accountId: account.id,
+      externalId: 'p',
+      time: new Date(5000),
+      description: 'Colins',
+      mcc: 5651,
+      amountCents: -150700,
+    })
+    .returning()
+    .all()
+  const post = (payload: object) => app.inject({ method: 'POST', url: '/api/goals', payload })
+  const goal = (await post({ name: 'Car', target: 5000, currency: 'USD' })).json()
+  const wish = (await post({ name: 'штани чорні', target: 1500, currency: 'UAH', wish: true })).json()
+  const mark = (id: number, payload: object) => app.inject({ method: 'PUT', url: `/api/goals/${id}/bought`, payload })
+  const open = async () => (await app.inject({ url: '/api/goals' })).json().map((g: { id: number }) => g.id)
+  const history = async () => (await app.inject({ url: '/api/goals/bought' })).json()
+
+  assert.equal((await mark(wish.id, { bought: true, transactionId: purchase.id })).statusCode, 204)
+  assert.deepEqual(await open(), [goal.id])
+  const [bought] = await history()
+  assert.equal(bought.name, 'штани чорні')
+  assert.deepEqual(bought.purchase, {
+    id: purchase.id,
+    description: 'Colins',
+    time: new Date(5000).toISOString(),
+    amount: -1507,
+    currency: 'UAH',
+  })
+  // reordering lists only what is still open
+  const order = await app.inject({ method: 'PUT', url: '/api/goals/order', payload: { ids: [goal.id] } })
+  assert.equal(order.statusCode, 204)
+
+  // the purchase can go away without breaking the history
+  app.db.delete(accounts).run()
+  assert.equal((await history())[0].purchase, null)
+
+  assert.equal((await mark(wish.id, { bought: false })).statusCode, 204)
+  assert.deepEqual(await open(), [goal.id, wish.id])
+  assert.deepEqual(await history(), [])
+
+  assert.equal((await mark(goal.id, { bought: true })).statusCode, 404)
+  assert.equal((await mark(wish.id, { bought: true, transactionId: 999 })).statusCode, 400)
 })
