@@ -1,5 +1,15 @@
 import { useState, type ReactNode } from 'react'
-import { ArrowUpDown, TrendingDown, TrendingUp } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowUpDown,
+  ArrowUpToLine,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -17,7 +27,7 @@ import { format, percentOf, wholeMoney } from '../../lib/format'
 import { usePhone } from '../../lib/media'
 import { dayKey, monthKey, quarterLabel, quarterMonths, rangeOf, weekDays, weekOfDay } from '../../lib/periods'
 import { median, quantile } from '../../lib/stats'
-import { card, linkButton, muted } from '../../lib/styles'
+import { card, muted } from '../../lib/styles'
 import type { Category, Currency, Transaction, Leaf } from '../../lib/types'
 
 // categories with their own color; the rest fold into one neutral segment
@@ -127,8 +137,10 @@ type MonthlySpendingProps = {
   onClearMerchant: () => void
   // list holds only essential spending; the median is then the minimal month
   essentialOnly?: boolean
-  // store the median in Runway: monthly spending, or essential spending with essentialOnly
-  onUseMedian?: (value: number) => void
+  // store the median or a quartile in Runway: monthly spending, or essential spending with essentialOnly
+  onUseInRunway?: (value: number) => void
+  // what Runway holds now, in this chart's currency, so the matching choice shows as picked; undefined if unset
+  inRunway?: number
 }
 
 // Spending per month split by category: the SERIES biggest categories over the whole range keep
@@ -145,7 +157,8 @@ export function MonthlySpending({
   merchant,
   onClearMerchant,
   essentialOnly,
-  onUseMedian,
+  onUseInRunway,
+  inRunway,
 }: MonthlySpendingProps) {
   const phone = usePhone()
   const [thisMonth] = useState(() => monthKey(new Date().toISOString()))
@@ -202,17 +215,15 @@ export function MonthlySpending({
   // the median is a monthly figure, so a week of days has none
   const typical = !days && complete.length ? median(complete.map((b) => b.total)) : undefined
   // the usual range (middle half of the complete months), the lowest and the worst one; too few months make no range
+  const completeTotals = complete.map((b) => b.total)
   const spread =
     typical !== undefined && complete.length >= 4
       ? {
-          low: quantile(
-            complete.map((b) => b.total),
-            0.25,
-          ),
-          high: quantile(
-            complete.map((b) => b.total),
-            0.75,
-          ),
+          low: quantile(completeTotals, 0.25),
+          // halfway between a quartile and the median, for a choice in Runway
+          lowMid: quantile(completeTotals, 0.375),
+          highMid: quantile(completeTotals, 0.625),
+          high: quantile(completeTotals, 0.75),
           lowest: complete.reduce((a, b) => (b.total < a.total ? b : a)),
           worst: complete.reduce((a, b) => (b.total > a.total ? b : a)),
         }
@@ -258,10 +269,74 @@ export function MonthlySpending({
     <section className={`${card} viz`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{`${essentialOnly ? 'Essential spending' : 'Spending'} per ${days ? 'day' : 'month'}`}</h2>
-        {typical !== undefined && onUseMedian && (
-          <button type="button" onClick={() => onUseMedian(typical)} className={`text-sm ${linkButton}`}>
-            {essentialOnly ? 'Use median as essential spending in Runway' : 'Use median as monthly spending in Runway'}
-          </button>
+        {/* the median, or a quartile: the upper one is the careful pick, spent more only one month in four */}
+        {typical !== undefined && onUseInRunway && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className={`inline-flex items-center gap-1 ${muted}`}>
+              <Target size={14} aria-hidden />
+              {essentialOnly ? 'Essential spending in Runway' : 'Monthly spending in Runway'}
+            </span>
+            <div role="group" className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+              {[
+                ...(spread
+                  ? [
+                      {
+                        label: 'нижній квартиль',
+                        name: 'lower quartile',
+                        value: spread.low,
+                        icon: <ArrowDownToLine size={14} />,
+                      },
+                      {
+                        label: '37,5-й перцентиль',
+                        name: 'point halfway to the median',
+                        value: spread.lowMid,
+                        icon: <ChevronDown size={14} />,
+                      },
+                    ]
+                  : []),
+                { label: 'медіана', name: 'median', value: typical, icon: <MedianIcon /> },
+                ...(spread
+                  ? [
+                      {
+                        label: '62,5-й перцентиль',
+                        name: 'point halfway to the upper quartile',
+                        value: spread.highMid,
+                        icon: <ChevronUp size={14} />,
+                      },
+                      {
+                        label: 'верхній квартиль',
+                        name: 'upper quartile',
+                        value: spread.high,
+                        icon: <ArrowUpToLine size={14} />,
+                      },
+                    ]
+                  : []),
+              ].map(({ label, name, value, icon }) => {
+                // Runway stores whole amounts, so a picked one matches its rounded value
+                const picked = inRunway === Math.round(value)
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={picked}
+                    title={picked ? `Runway uses the ${name}` : `Use the ${name} in Runway`}
+                    aria-label={`${label}, ${wholeMoney(value, currency)}`}
+                    onClick={() => onUseInRunway(value)}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-indigo-500 ${
+                      picked
+                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-100'
+                        : 'text-zinc-600 hover:bg-white hover:text-indigo-700 dark:text-zinc-300 dark:hover:bg-zinc-950 dark:hover:text-indigo-300'
+                    }`}
+                  >
+                    <span aria-hidden className="text-indigo-500 dark:text-indigo-400">
+                      {picked ? <Check size={14} strokeWidth={3} /> : icon}
+                    </span>
+                    {wholeMoney(value, currency)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         )}
       </div>
       {typical !== undefined && (
@@ -274,15 +349,9 @@ export function MonthlySpending({
             <Stat
               icon={
                 // a piece of the chart's median line, so this tile is its legend
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  aria-hidden
-                  className="text-indigo-500 dark:text-indigo-400"
-                >
-                  <line x1="1" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="2" strokeDasharray="4 2" />
-                </svg>
+                <span className="text-indigo-500 dark:text-indigo-400">
+                  <MedianIcon />
+                </span>
               }
               label="Медіана за місяць"
               value={format(typical, currency)}
@@ -519,5 +588,14 @@ function SegmentTooltip({
         <span className={`ml-1.5 font-normal ${muted}`}>{percentOf(segment.value / monthTotal)}%</span>
       </p>
     </div>
+  )
+}
+
+// a piece of the chart's dashed median line, as its legend and on the button that uses it
+function MedianIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+      <line x1="1" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="2" strokeDasharray="4 2" />
+    </svg>
   )
 }

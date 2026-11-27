@@ -86,7 +86,12 @@ All accounts together, in Runway's currency.
 
 - the account's balance over time, with the picked period shaded and its change; drag across it (or tap
   two days on a phone) to filter by any range of days, shown as a removable chip in the period picker;
-- a stacked chart of spending per month by category, with a median line and a shaded usual range (p25–p75) over complete months;
+- a stacked chart of spending per month by category, with an indigo dashed median line and a shaded usual range
+  (p25–p75) over complete months. Five buttons above it send a step of those months to Runway as monthly
+  spending: the lower quartile, halfway to the median (37.5th percentile), the median, halfway to the upper
+  quartile (62.5th) and the upper quartile; the one Runway holds now shows a ✓. To cut spending gradually,
+  start at the median or the step above, move one step down after a month or two under it, and check
+  each step on the Plan page;
   picking a category or merchant reduces the bars to it to show its trend, and a year or quarter
   filter shows only its months (a picked month shows its year);
 - spending by category with a drill-down into subcategories, and how the total and each category changed
@@ -187,8 +192,8 @@ the browser. Goal and wish amounts keep their own currency, with the converted v
 - **Themes**: System, Light, Dark and Paper, a warm cream theme with a green accent and a monospace font,
   switched in the top bar and remembered in the browser.
 - **Minimal month**: spending is essential (rent, groceries, medicine, …) or optional. The
-  «Усі витрати | Необхідні» switch shows only essential spending. The chart's monthly median can be sent to Runway: the full median as
-  monthly spending, the essential one as essential spending.
+  «Усі витрати | Необхідні» switch shows only essential spending. The chart's steps (median and quartiles) can be sent to Runway: the
+  full ones as monthly spending, the essential ones as essential spending.
 
 ## Compared with other self-hosted apps
 
@@ -625,7 +630,9 @@ Estimates assume flat spending and income, and ignore interest and inflation.
 - **Median over complete months.** The chart's median leaves out the running month, which would
   pull it down, counts months without spending as zero when a category or merchant is selected, and
   covers only the months the period filter shows (every month for all time or a week).
-  The median, not the average, so one big month barely moves it. Sending it to Runway goes through
+  The median, not the average, so one big month barely moves it. The quartiles and the 37.5th and 62.5th
+  percentiles come from the same months, so each step is a real share of past months, not an average of two
+  numbers. Sending one to Runway goes through
   `web/src/lib/budget.ts`, which rebuilds the whole budget body because `PUT /budget` clears any
   field it is not given.
 - **Shared package is types only.** `shared/index.d.ts` declares the response shapes (`Account`,

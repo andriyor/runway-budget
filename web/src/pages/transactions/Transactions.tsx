@@ -91,6 +91,7 @@ export function TransactionsPage() {
   const accountId = pickedAccount ?? (accountsQuery.data && openingAccount(accountsQuery.data, link))
   // wishes not bought yet, to say which one a purchase was
   const openWishes = (useApi<Goal[]>('/goals').data ?? []).filter((g) => g.wish)
+  const budget = useApi<Budget | null>('/budget').data
   const listQuery = useApi<Transaction[]>(`/accounts/${accountId}/transactions`, accountId !== undefined)
   const list = listQuery.data
   // a failed save, else a failed load
@@ -121,7 +122,6 @@ export function TransactionsPage() {
   const period = pickedPeriod ?? (list ? openingPeriod(list, link) : '')
   // only spending needed to live: the chart's median becomes the minimal month
   const [essentialOnly, setEssentialOnly] = useState(false)
-  const [notice, setNotice] = useState('')
   // today's day key, read once: the comparison cuts a running period at it
   const [today] = useState(() => dayKey(new Date().toISOString()))
   const [yesterday] = useState(() => {
@@ -210,8 +210,18 @@ export function TransactionsPage() {
     }
   }
 
-  // writes the chart's median into Runway (see budgetWith), keeping the rest of the budget
-  async function useMedian(value: number) {
+  // what Runway holds now for the chart's choice, when in the account's currency, to show which one is picked
+  const runwayValue = essentialOnly
+    ? budget?.minimalSpendCurrency === account?.currency
+      ? budget?.minimalSpend
+      : undefined
+    : budget?.currency === account?.currency
+      ? budget?.monthlySpend
+      : undefined
+  const inRunway = runwayValue == null ? undefined : Math.round(runwayValue)
+
+  // writes the chart's median or a quartile into Runway (see budgetWith), keeping the rest of the budget
+  async function useInRunway(value: number) {
     const amount = Math.round(value)
     const currency = account!.currency
     try {
@@ -223,9 +233,7 @@ export function TransactionsPage() {
       )
       if (!body) return setError('Set "I spend per month" in Runway first')
       await api('/budget', { method: 'PUT', body: JSON.stringify(body) })
-      setNotice(
-        `Runway: ${essentialOnly ? 'essential spending' : 'monthly spending'} set to ${format(amount, currency)} per month`,
-      )
+      // the picked button in the chart shows it took
     } catch (err) {
       setError(`Runway: ${(err as Error).message}`)
     }
@@ -320,17 +328,6 @@ export function TransactionsPage() {
 
   return (
     <>
-      {notice && (
-        <p
-          role="status"
-          className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900"
-        >
-          {notice}
-          <button type="button" onClick={() => setNotice('')} className="shrink-0 font-medium hover:underline">
-            OK
-          </button>
-        </p>
-      )}
       <ErrorBanner>{error}</ErrorBanner>
       {/* desktop: stays at the top while the charts and the list scroll under it */}
       <section className={`${card} flex flex-col gap-3 lg:sticky lg:top-4 lg:z-20 lg:shadow-md`}>
@@ -480,7 +477,8 @@ export function TransactionsPage() {
           <MonthlySpending
             list={counted(base!)}
             essentialOnly={essentialOnly}
-            onUseMedian={!category && !merchant ? useMedian : undefined}
+            onUseInRunway={!category && !merchant ? useInRunway : undefined}
+            inRunway={inRunway}
             currency={account.currency}
             leafById={leafById}
             period={period}
